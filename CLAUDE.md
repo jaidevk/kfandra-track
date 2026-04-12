@@ -52,18 +52,37 @@ bd close <id>         # Complete work
 
 ## Build & Test
 
-_Add your build and test commands here_
-
 ```bash
-# Example:
-# npm install
-# npm test
+npm install          # Install dependencies
+npm run dev          # Start dev server (http://localhost:3000)
+npm run build        # Production build
+npm run lint         # ESLint
+npm run test         # Run unit tests (Vitest)
+npm run test:e2e     # Run E2E tests (Playwright)
+npx supabase start   # Start local Supabase
+npx supabase db push # Apply migrations
 ```
 
 ## Architecture Overview
 
-_Add a brief overview of your project architecture_
+KFANDRA Helper is a **Next.js 14+ PWA** for a football club in Pune, India.
+
+**Two modes:**
+1. **MMG (Monthly Multi-Games)** — Session-based points tracking (attendance, packing, game performance)
+2. **KLCFESGR1** — League/cup competition with clubs, balance sheets, player loans (currency: Kroopies)
+
+**Stack:** Next.js (App Router) + TypeScript + Tailwind CSS + shadcn/ui + Supabase (Auth, PostgreSQL, Edge Functions)
+
+**Roles:** super_admin > coach > admin > user
+
+**Key rule:** Google Sheets remain source of truth during validation. App stores data independently in Supabase.
 
 ## Conventions & Patterns
 
-_Add your project-specific conventions here_
+- TypeScript strict mode
+- App Router (Next.js) with server components by default, `'use client'` only when needed
+- All game rules externalized in `app_config` Supabase table (not hardcoded)
+- Row-Level Security (RLS) on all tables
+- Every feature needs tests before implementation (TDD via superpowers)
+- Commits: one bead = one commit with clear message
+- Mobile-first responsive design

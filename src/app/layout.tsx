@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -13,9 +13,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "KFANDRA Helper",
+  title: "KFandra Track",
   description: "MMG Points & KLCFESGR1 League Management for KFANDRA Football Club",
   manifest: "/manifest.json",
+};
+
+export const viewport: Viewport = {
   themeColor: "#1d4ed8",
 };
 

@@ -86,7 +86,7 @@ export default function Home() {
               transition={{ delay: 0.2, duration: 0.5 }}
               className="text-[10px] uppercase tracking-widest text-blue-100/70 font-semibold"
             >
-              KFANDRA Football Club
+              KFANDRA
             </motion.p>
             <motion.h1
               initial={{ opacity: 0, y: 12 }}

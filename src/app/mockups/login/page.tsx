@@ -179,7 +179,7 @@ export default function LoginMockup() {
           &ldquo;Respect, Trust, Integrity, Passion &amp; Humility&rdquo;
           <br />
           <span className="not-italic text-[10px] text-gray-400 tracking-wide">
-            KFANDRA Football Club · Est. 2000 · Pune, India
+            KFANDRA · Est. 2000 · Pune, India
           </span>
         </motion.p>
       </div>

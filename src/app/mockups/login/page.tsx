@@ -4,21 +4,21 @@ import { motion } from "framer-motion";
 
 export default function LoginMockup() {
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#0a0f1c] p-6">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#f8fafc] p-6">
       {/* Animated background orbs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <motion.div
           animate={{
             scale: [1, 1.15, 1],
-            opacity: [0.12, 0.2, 0.12],
+            opacity: [0.08, 0.13, 0.08],
           }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-600 blur-[120px]"
+          className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-200 blur-[120px]"
         />
         <motion.div
           animate={{
             scale: [1, 1.1, 1],
-            opacity: [0.08, 0.14, 0.08],
+            opacity: [0.06, 0.1, 0.06],
           }}
           transition={{
             duration: 10,
@@ -26,12 +26,12 @@ export default function LoginMockup() {
             ease: "easeInOut",
             delay: 2,
           }}
-          className="absolute -bottom-32 -right-32 h-80 w-80 rounded-full bg-blue-500 blur-[120px]"
+          className="absolute -bottom-32 -right-32 h-80 w-80 rounded-full bg-blue-100 blur-[120px]"
         />
         <motion.div
           animate={{
             scale: [1, 1.2, 1],
-            opacity: [0.05, 0.1, 0.05],
+            opacity: [0.04, 0.08, 0.04],
           }}
           transition={{
             duration: 12,
@@ -39,12 +39,9 @@ export default function LoginMockup() {
             ease: "easeInOut",
             delay: 4,
           }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-64 rounded-full bg-indigo-600 blur-[100px]"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-64 rounded-full bg-indigo-200 blur-[100px]"
         />
       </div>
-
-      {/* Grain overlay */}
-      <div className="grain pointer-events-none absolute inset-0" />
 
       {/* Content */}
       <div className="relative z-10 flex w-full max-w-sm flex-col items-center gap-8">
@@ -59,9 +56,9 @@ export default function LoginMockup() {
             <motion.div
               animate={{
                 boxShadow: [
-                  "0 0 20px rgba(37,99,235,0.3), 0 0 60px rgba(37,99,235,0.1)",
-                  "0 0 30px rgba(37,99,235,0.5), 0 0 80px rgba(37,99,235,0.2)",
-                  "0 0 20px rgba(37,99,235,0.3), 0 0 60px rgba(37,99,235,0.1)",
+                  "0 0 20px rgba(37,99,235,0.15), 0 0 60px rgba(37,99,235,0.05)",
+                  "0 0 30px rgba(37,99,235,0.25), 0 0 80px rgba(37,99,235,0.1)",
+                  "0 0 20px rgba(37,99,235,0.15), 0 0 60px rgba(37,99,235,0.05)",
                 ],
               }}
               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
@@ -74,10 +71,10 @@ export default function LoginMockup() {
           </div>
 
           <div className="flex flex-col items-center gap-1.5">
-            <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold text-white tracking-tight">
+            <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold text-gray-900 tracking-tight">
               KFandra Track
             </h1>
-            <p className="text-[10px] uppercase tracking-widest text-slate-500 font-medium">
+            <p className="text-[10px] uppercase tracking-widest text-gray-500 font-medium">
               Club Management Platform
             </p>
           </div>
@@ -92,10 +89,10 @@ export default function LoginMockup() {
         >
           {/* Google */}
           <div className="glass rounded-2xl p-4">
-            <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold mb-3">
+            <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold mb-3">
               Continue with
             </p>
-            <button className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-medium text-slate-200 transition-all hover:bg-white/[0.08] hover:border-white/20 active:scale-[0.98]">
+            <button className="flex w-full items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-all hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98]">
               <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
                 <path
                   fill="#4285F4"
@@ -120,22 +117,22 @@ export default function LoginMockup() {
 
           {/* Divider */}
           <div className="flex items-center gap-3 px-1">
-            <div className="h-px flex-1 bg-white/[0.06]" />
-            <span className="text-[10px] uppercase tracking-widest text-slate-600">
+            <div className="h-px flex-1 bg-gray-200" />
+            <span className="text-[10px] uppercase tracking-widest text-gray-400">
               or
             </span>
-            <div className="h-px flex-1 bg-white/[0.06]" />
+            <div className="h-px flex-1 bg-gray-200" />
           </div>
 
           {/* Magic Link */}
           <div className="glass rounded-2xl p-4 space-y-3">
-            <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">
+            <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">
               Magic Link
             </p>
             <input
               type="email"
               placeholder="player@kfandra.com"
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
             <button className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition-all hover:from-blue-500 hover:to-blue-400 active:scale-[0.98]">
               Send Magic Link
@@ -144,29 +141,29 @@ export default function LoginMockup() {
 
           {/* Divider */}
           <div className="flex items-center gap-3 px-1">
-            <div className="h-px flex-1 bg-white/[0.06]" />
-            <span className="text-[10px] uppercase tracking-widest text-slate-600">
+            <div className="h-px flex-1 bg-gray-200" />
+            <span className="text-[10px] uppercase tracking-widest text-gray-400">
               or
             </span>
-            <div className="h-px flex-1 bg-white/[0.06]" />
+            <div className="h-px flex-1 bg-gray-200" />
           </div>
 
           {/* Password */}
           <div className="glass rounded-2xl p-4 space-y-3">
-            <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">
+            <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">
               Email &amp; Password
             </p>
             <input
               type="email"
               placeholder="Email"
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
             <input
               type="password"
               placeholder="Password"
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
-            <button className="w-full rounded-xl border border-blue-500/40 bg-blue-500/10 px-4 py-3 text-sm font-semibold text-blue-400 transition-all hover:bg-blue-500/20 hover:border-blue-500/60 active:scale-[0.98]">
+            <button className="w-full rounded-xl border border-blue-300 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-600 transition-all hover:bg-blue-100 hover:border-blue-400 active:scale-[0.98]">
               Sign In
             </button>
           </div>
@@ -177,11 +174,11 @@ export default function LoginMockup() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5, duration: 0.6 }}
-          className="text-center text-xs text-slate-600 italic"
+          className="text-center text-xs text-gray-400 italic"
         >
           &ldquo;Respect, Trust, Integrity, Passion &amp; Humility&rdquo;
           <br />
-          <span className="not-italic text-[10px] text-slate-700 tracking-wide">
+          <span className="not-italic text-[10px] text-gray-400 tracking-wide">
             KFANDRA Football Club · Est. 2000 · Pune, India
           </span>
         </motion.p>

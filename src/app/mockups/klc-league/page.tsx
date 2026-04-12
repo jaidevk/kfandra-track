@@ -23,9 +23,9 @@ const recentMatches = [
 type Tab = "table" | "fixtures" | "stats";
 
 const divisionBadge = (div: string) => {
-  if (div === "1st") return "bg-blue-500/20 text-blue-400 border border-blue-500/30";
-  if (div === "2nd") return "bg-amber-500/20 text-amber-400 border border-amber-500/30";
-  return "bg-slate-500/20 text-slate-400 border border-slate-500/30";
+  if (div === "1st") return "bg-blue-50 text-blue-600 border border-blue-200";
+  if (div === "2nd") return "bg-amber-50 text-amber-600 border border-amber-200";
+  return "bg-gray-100 text-gray-500 border border-gray-200";
 };
 
 const clubGradient = (club: string) => {
@@ -61,13 +61,13 @@ export default function KLCLeagueMockup() {
         transition={{ duration: 0.4 }}
         className="flex flex-col gap-1"
       >
-        <p className="text-[10px] uppercase tracking-widest text-slate-500 font-medium">
+        <p className="text-[10px] uppercase tracking-widest text-gray-500 font-medium">
           KFANDRA League &amp; Cup
         </p>
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold text-white leading-tight">
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold text-gray-900 leading-tight">
           KLCFESGR1
         </h1>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-gray-500">
           Fooba Evolution Short Game Rehashed — Season 1
         </p>
       </motion.div>
@@ -84,13 +84,13 @@ export default function KLCLeagueMockup() {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`relative flex-1 rounded-lg px-3 py-2 text-xs font-semibold capitalize transition-all duration-200 ${
-              activeTab === tab ? "text-white" : "text-slate-500 hover:text-slate-300"
+              activeTab === tab ? "text-blue-600" : "text-gray-400 hover:text-gray-600"
             }`}
           >
             {activeTab === tab && (
               <motion.div
                 layoutId="tabBg"
-                className="absolute inset-0 rounded-lg bg-blue-600/30 border border-blue-500/40"
+                className="absolute inset-0 rounded-lg bg-blue-600/20 border border-blue-300"
                 transition={{ type: "spring", stiffness: 400, damping: 30 }}
               />
             )}
@@ -110,7 +110,7 @@ export default function KLCLeagueMockup() {
             className="glass rounded-2xl overflow-hidden"
           >
             {/* Table Header */}
-            <div className="grid grid-cols-[28px_1fr_28px_28px_28px_28px_38px_42px] border-b border-white/[0.06] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+            <div className="grid grid-cols-[28px_1fr_28px_28px_28px_28px_38px_42px] border-b border-gray-200 bg-gray-50 px-3 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-gray-500">
               <span>#</span>
               <span>Club</span>
               <span className="text-center">P</span>
@@ -126,9 +126,9 @@ export default function KLCLeagueMockup() {
                 <motion.div
                   key={team.club}
                   variants={item}
-                  className="grid grid-cols-[28px_1fr_28px_28px_28px_28px_38px_42px] border-b border-white/[0.04] px-3 py-3 items-center last:border-0 hover:bg-white/[0.02] transition-colors"
+                  className="grid grid-cols-[28px_1fr_28px_28px_28px_28px_38px_42px] border-b border-gray-100 px-3 py-3 items-center last:border-0 hover:bg-gray-50 transition-colors"
                 >
-                  <span className="text-xs font-medium text-slate-500 tabular-nums">
+                  <span className="text-xs font-medium text-gray-400 tabular-nums">
                     {team.pos}
                   </span>
                   <div className="flex items-center gap-2 min-w-0">
@@ -138,7 +138,7 @@ export default function KLCLeagueMockup() {
                       {team.club.slice(0, 2)}
                     </span>
                     <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
-                      <span className="text-xs font-medium text-slate-200 truncate">
+                      <span className="text-xs font-medium text-gray-700 truncate">
                         {team.name}
                       </span>
                       <span
@@ -148,30 +148,30 @@ export default function KLCLeagueMockup() {
                       </span>
                     </div>
                   </div>
-                  <span className="text-center text-xs text-slate-400 tabular-nums">
+                  <span className="text-center text-xs text-gray-400 tabular-nums">
                     {team.played}
                   </span>
-                  <span className="text-center text-xs text-slate-400 tabular-nums">
+                  <span className="text-center text-xs text-gray-400 tabular-nums">
                     {team.won}
                   </span>
-                  <span className="text-center text-xs text-slate-400 tabular-nums">
+                  <span className="text-center text-xs text-gray-400 tabular-nums">
                     {team.drawn}
                   </span>
-                  <span className="text-center text-xs text-slate-400 tabular-nums">
+                  <span className="text-center text-xs text-gray-400 tabular-nums">
                     {team.lost}
                   </span>
                   <span
                     className={`text-center text-xs font-semibold tabular-nums ${
                       team.gd > 0
-                        ? "text-emerald-400"
+                        ? "text-emerald-600"
                         : team.gd < 0
-                        ? "text-red-400"
-                        : "text-slate-400"
+                        ? "text-red-600"
+                        : "text-gray-400"
                     }`}
                   >
                     {team.gd > 0 ? `+${team.gd}` : team.gd}
                   </span>
-                  <span className="text-right text-sm font-bold text-white tabular-nums">
+                  <span className="text-right text-sm font-bold text-gray-900 tabular-nums">
                     {team.pts}
                   </span>
                 </motion.div>
@@ -179,17 +179,17 @@ export default function KLCLeagueMockup() {
             </motion.div>
 
             {/* Division Key */}
-            <div className="flex gap-4 px-3 py-3 border-t border-white/[0.04] bg-white/[0.01]">
-              <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
+            <div className="flex gap-4 px-3 py-3 border-t border-gray-100 bg-gray-50">
+              <span className="flex items-center gap-1.5 text-[10px] text-gray-500">
                 <span className="h-1.5 w-1.5 rounded-full bg-blue-400 inline-block" />
                 1st Division
               </span>
-              <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
+              <span className="flex items-center gap-1.5 text-[10px] text-gray-500">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-400 inline-block" />
                 2nd Division
               </span>
-              <span className="flex items-center gap-1.5 text-[10px] text-slate-500">
-                <span className="h-1.5 w-1.5 rounded-full bg-slate-500 inline-block" />
+              <span className="flex items-center gap-1.5 text-[10px] text-gray-500">
+                <span className="h-1.5 w-1.5 rounded-full bg-gray-400 inline-block" />
                 3rd Division
               </span>
             </div>
@@ -205,7 +205,7 @@ export default function KLCLeagueMockup() {
             transition={{ duration: 0.25 }}
             className="flex flex-col gap-3"
           >
-            <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold px-1">
+            <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold px-1">
               Recent Matches
             </p>
             <motion.div
@@ -227,7 +227,7 @@ export default function KLCLeagueMockup() {
                     >
                       {match.home}
                     </span>
-                    <span className="text-[10px] text-slate-500 font-medium">
+                    <span className="text-[10px] text-gray-500 font-medium">
                       {match.home}
                     </span>
                   </div>
@@ -235,20 +235,20 @@ export default function KLCLeagueMockup() {
                   {/* Score */}
                   <div className="flex flex-1 flex-col items-center gap-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-[family-name:var(--font-display)] text-3xl font-bold text-white tabular-nums">
+                      <span className="font-[family-name:var(--font-display)] text-3xl font-bold text-gray-900 tabular-nums">
                         {match.scoreH}
                       </span>
-                      <span className="text-slate-600 font-light text-xl">–</span>
-                      <span className="font-[family-name:var(--font-display)] text-3xl font-bold text-white tabular-nums">
+                      <span className="text-gray-300 font-light text-xl">–</span>
+                      <span className="font-[family-name:var(--font-display)] text-3xl font-bold text-gray-900 tabular-nums">
                         {match.scoreA}
                       </span>
                     </div>
-                    <p className="text-[10px] text-slate-500">{match.date}</p>
+                    <p className="text-[10px] text-gray-500">{match.date}</p>
                     <span
                       className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
                         match.type === "Cup"
-                          ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                          : "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                          ? "bg-amber-50 text-amber-600 border border-amber-200"
+                          : "bg-blue-50 text-blue-600 border border-blue-200"
                       }`}
                     >
                       {match.type}
@@ -262,7 +262,7 @@ export default function KLCLeagueMockup() {
                     >
                       {match.away}
                     </span>
-                    <span className="text-[10px] text-slate-500 font-medium">
+                    <span className="text-[10px] text-gray-500 font-medium">
                       {match.away}
                     </span>
                   </div>
@@ -281,7 +281,7 @@ export default function KLCLeagueMockup() {
             transition={{ duration: 0.25 }}
             className="flex flex-col gap-3"
           >
-            <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold px-1">
+            <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold px-1">
               Top Scorers
             </p>
             <div className="glass rounded-2xl overflow-hidden">
@@ -296,10 +296,10 @@ export default function KLCLeagueMockup() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.07, duration: 0.35 }}
-                  className="flex items-center justify-between border-b border-white/[0.04] px-4 py-3.5 last:border-0"
+                  className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5 last:border-0"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-slate-600 tabular-nums w-4">
+                    <span className="text-xs font-bold text-gray-300 tabular-nums w-4">
                       {i + 1}
                     </span>
                     <span
@@ -308,17 +308,17 @@ export default function KLCLeagueMockup() {
                       {scorer.club}
                     </span>
                     <div>
-                      <p className="text-sm font-semibold text-slate-200">
+                      <p className="text-sm font-semibold text-gray-700">
                         {scorer.player}
                       </p>
-                      <p className="text-[10px] text-slate-500">{scorer.club}</p>
+                      <p className="text-[10px] text-gray-500">{scorer.club}</p>
                     </div>
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className="font-[family-name:var(--font-display)] text-2xl font-bold text-blue-400 tabular-nums">
+                    <span className="font-[family-name:var(--font-display)] text-2xl font-bold text-blue-600 tabular-nums">
                       {scorer.goals}
                     </span>
-                    <span className="text-[10px] text-slate-600 uppercase tracking-wide">
+                    <span className="text-[10px] text-gray-300 uppercase tracking-wide">
                       gls
                     </span>
                   </div>

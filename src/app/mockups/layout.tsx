@@ -40,28 +40,28 @@ export default function MockupsLayout({
   const pathname = usePathname();
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#0a0f1c] relative grain">
+    <div className="flex min-h-screen flex-col bg-[#f8fafc] relative grain">
       {/* Top Header */}
-      <header className="sticky top-0 z-50 glass px-5 py-4">
+      <header className="sticky top-0 z-50 bg-white border-b border-gray-200 px-5 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 text-xs font-bold text-white shadow-lg shadow-blue-500/20">
                 KF
               </div>
-              <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 border-2 border-[#0a0f1c]" />
+              <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 border-2 border-white" />
             </div>
             <div>
-              <span className="text-base font-semibold tracking-tight text-white">
+              <span className="text-base font-semibold tracking-tight text-gray-900">
                 KFandra Track
               </span>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs font-medium text-slate-400 tracking-wide uppercase">
+            <span className="text-xs font-medium text-gray-500 tracking-wide uppercase">
               Apr &apos;26
             </span>
-            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-[10px] font-semibold text-slate-300 ring-1 ring-white/10">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-[10px] font-semibold text-gray-600 ring-1 ring-gray-200">
               JK
             </div>
           </div>
@@ -72,7 +72,7 @@ export default function MockupsLayout({
       <main className="flex-1 pb-24 relative z-0">{children}</main>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-white/[0.06] px-2 pb-[env(safe-area-inset-bottom)]">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 px-2 pb-[env(safe-area-inset-bottom)]">
         <div className="flex justify-around py-1">
           {tabs.map((tab) => {
             const isActive = pathname === tab.href;
@@ -89,11 +89,11 @@ export default function MockupsLayout({
                     transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 )}
-                <span className={isActive ? "text-blue-400" : "text-slate-500"}>
+                <span className={isActive ? "text-blue-600" : "text-gray-400"}>
                   {tab.icon(isActive)}
                 </span>
                 <span className={`text-[10px] font-medium tracking-wide ${
-                  isActive ? "text-blue-400" : "text-slate-500"
+                  isActive ? "text-blue-600" : "text-gray-400"
                 }`}>
                   {tab.label}
                 </span>

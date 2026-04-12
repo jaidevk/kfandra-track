@@ -63,14 +63,14 @@ export default function KLCBalanceMockup() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-        <p className="text-[10px] uppercase tracking-widest text-slate-500 font-medium mb-1">
+        <p className="text-[10px] uppercase tracking-widest text-gray-500 font-medium mb-1">
           Financial Records
         </p>
         <div className="flex items-end justify-between">
-          <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold text-white leading-tight">
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold text-gray-900 leading-tight">
             Balance Sheets
           </h1>
-          <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">
+          <span className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">
             KLCFESGR1
           </span>
         </div>
@@ -81,12 +81,12 @@ export default function KLCBalanceMockup() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
-        className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3"
+        className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3"
       >
-        <p className="text-[10px] uppercase tracking-widest text-amber-500/70 mb-1 font-semibold">
+        <p className="text-[10px] uppercase tracking-widest text-amber-700 mb-1 font-semibold">
           Kroopy Exchange Rate
         </p>
-        <p className="text-xs text-amber-300/80 font-medium">
+        <p className="text-xs text-amber-800 font-medium">
           300 Kr = 1 Rupee &nbsp;·&nbsp; 1 Kr = 2 MMG pts &nbsp;·&nbsp; 1 Rupee = 600 MMG pts
         </p>
       </motion.div>
@@ -105,7 +105,7 @@ export default function KLCBalanceMockup() {
             className={`relative flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-xs font-semibold transition-all duration-200 ${
               selectedClub === i
                 ? "text-white shadow-lg"
-                : "glass text-slate-400 hover:text-slate-200"
+                : "glass text-gray-500 hover:text-gray-700"
             }`}
           >
             {selectedClub === i && (
@@ -120,7 +120,7 @@ export default function KLCBalanceMockup() {
                 className={`flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold ${
                   selectedClub === i
                     ? "bg-white/20 text-white"
-                    : "bg-white/10 text-slate-300"
+                    : "bg-gray-100 text-gray-500"
                 }`}
               >
                 {c.code.charAt(0)}
@@ -143,57 +143,57 @@ export default function KLCBalanceMockup() {
           {/* Balance Cards */}
           <div className="grid grid-cols-2 gap-3">
             <div className="glass rounded-2xl p-4">
-              <p className="text-[10px] uppercase tracking-widest text-slate-500 font-medium mb-2">
+              <p className="text-[10px] uppercase tracking-widest text-gray-500 font-medium mb-2">
                 Opening Balance
               </p>
-              <p className="font-[family-name:var(--font-display)] text-3xl font-bold text-white tabular-nums">
+              <p className="font-[family-name:var(--font-display)] text-3xl font-bold text-gray-900 tabular-nums">
                 {club.openingBalance}
               </p>
-              <p className="text-xs text-slate-500 mt-0.5">Kroopies</p>
+              <p className="text-xs text-gray-500 mt-0.5">Kroopies</p>
             </div>
 
             <div
               className={`rounded-2xl p-4 border ${
                 isPositive
-                  ? "bg-emerald-500/[0.08] border-emerald-500/20"
-                  : "bg-red-500/[0.08] border-red-500/20"
+                  ? "bg-emerald-50 border-emerald-200"
+                  : "bg-red-50 border-red-200"
               }`}
               style={{
                 boxShadow: isPositive
-                  ? "0 0 24px rgba(16,185,129,0.08)"
-                  : "0 0 24px rgba(239,68,68,0.08)",
+                  ? "0 0 24px rgba(16,185,129,0.04)"
+                  : "0 0 24px rgba(239,68,68,0.04)",
               }}
             >
-              <p className="text-[10px] uppercase tracking-widest text-slate-500 font-medium mb-2">
+              <p className="text-[10px] uppercase tracking-widest text-gray-500 font-medium mb-2">
                 Current Balance
               </p>
               <p
                 className={`font-[family-name:var(--font-display)] text-3xl font-bold tabular-nums ${
-                  isPositive ? "text-emerald-400" : "text-red-400"
+                  isPositive ? "text-emerald-600" : "text-red-600"
                 }`}
               >
                 {isPositive ? "+" : ""}
                 {club.currentBalance}
               </p>
-              <p className="text-xs text-slate-500 mt-0.5">Kroopies</p>
+              <p className="text-xs text-gray-500 mt-0.5">Kroopies</p>
             </div>
           </div>
 
           {/* Match Breakdown */}
           <div className="glass rounded-2xl overflow-hidden">
-            <div className="border-b border-white/[0.06] px-4 py-3">
-              <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">
+            <div className="border-b border-gray-200 px-4 py-3">
+              <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">
                 Match Day Breakdown
               </p>
-              <p className="text-sm font-semibold text-white mt-0.5">{club.name}</p>
+              <p className="text-sm font-semibold text-gray-900 mt-0.5">{club.name}</p>
             </div>
 
             {/* Column Headers */}
-            <div className="grid grid-cols-[1fr_64px_64px_64px] border-b border-white/[0.04] px-4 py-2 text-[10px] font-semibold uppercase tracking-widest">
-              <span className="text-slate-600">Date</span>
+            <div className="grid grid-cols-[1fr_64px_64px_64px] border-b border-gray-100 px-4 py-2 text-[10px] font-semibold uppercase tracking-widest">
+              <span className="text-gray-400">Date</span>
               <span className="text-right text-emerald-600">Income</span>
               <span className="text-right text-red-600">Expense</span>
-              <span className="text-right text-slate-600">Net</span>
+              <span className="text-right text-gray-400">Net</span>
             </div>
 
             <motion.div variants={container} initial="hidden" animate="show">
@@ -201,20 +201,20 @@ export default function KLCBalanceMockup() {
                 <motion.div
                   key={i}
                   variants={item}
-                  className="grid grid-cols-[1fr_64px_64px_64px] border-b border-white/[0.04] px-4 py-3 items-center last:border-0 hover:bg-white/[0.02] transition-colors"
+                  className="grid grid-cols-[1fr_64px_64px_64px] border-b border-gray-100 px-4 py-3 items-center last:border-0 hover:bg-gray-50 transition-colors"
                 >
-                  <span className="text-xs text-slate-400 tabular-nums font-medium">
+                  <span className="text-xs text-gray-400 tabular-nums font-medium">
                     {match.date}
                   </span>
-                  <span className="text-right text-xs text-emerald-400 tabular-nums font-medium">
+                  <span className="text-right text-xs text-emerald-600 tabular-nums font-medium">
                     +{match.income}
                   </span>
-                  <span className="text-right text-xs text-red-400 tabular-nums font-medium">
+                  <span className="text-right text-xs text-red-600 tabular-nums font-medium">
                     {match.expenditure > 0 ? `-${match.expenditure}` : "—"}
                   </span>
                   <span
                     className={`text-right text-sm font-bold tabular-nums ${
-                      match.total >= 0 ? "text-white" : "text-red-400"
+                      match.total >= 0 ? "text-gray-900" : "text-red-600"
                     }`}
                   >
                     {match.total >= 0 ? "+" : ""}
@@ -227,13 +227,13 @@ export default function KLCBalanceMockup() {
 
           {/* Player Loans */}
           <div className="glass rounded-2xl overflow-hidden">
-            <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">
+                <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">
                   Player Loans
                 </p>
               </div>
-              <button className="rounded-full border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-[10px] font-semibold text-blue-400 uppercase tracking-wide hover:bg-blue-500/20 transition-colors">
+              <button className="rounded-full border border-blue-300 bg-blue-50 px-3 py-1 text-[10px] font-semibold text-blue-600 uppercase tracking-wide hover:bg-blue-100 transition-colors">
                 Request
               </button>
             </div>
@@ -244,30 +244,30 @@ export default function KLCBalanceMockup() {
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.2 + i * 0.08 }}
-                className="flex items-center justify-between border-b border-white/[0.04] px-4 py-3.5 last:border-0"
+                className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5 last:border-0"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 border border-white/10 text-xs font-bold text-slate-300">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 border border-gray-200 text-xs font-bold text-gray-600">
                     {loan.player.charAt(0)}
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-slate-200">
+                    <p className="text-sm font-semibold text-gray-700">
                       {loan.player}
                     </p>
-                    <p className="text-[10px] text-slate-500 font-medium">
-                      {loan.from} <span className="text-slate-600">→</span> {loan.to}
+                    <p className="text-[10px] text-gray-500 font-medium">
+                      {loan.from} <span className="text-gray-300">→</span> {loan.to}
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  <p className="text-sm font-bold text-white tabular-nums">
+                  <p className="text-sm font-bold text-gray-900 tabular-nums">
                     {loan.amount} Kr
                   </p>
                   <span
                     className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
                       loan.status === "active"
-                        ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
-                        : "bg-slate-500/20 text-slate-400 border border-slate-500/30"
+                        ? "bg-blue-50 text-blue-600 border border-blue-200"
+                        : "bg-gray-100 text-gray-500 border border-gray-200"
                     }`}
                   >
                     {loan.status}

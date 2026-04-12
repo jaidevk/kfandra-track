@@ -52,9 +52,8 @@ export default function MMGSessionMockup() {
 
   return (
     <div
-      className="min-h-screen"
+      className="min-h-screen bg-[#f8fafc]"
       style={{
-        background: "#0a0f1c",
         fontFamily: "var(--font-body, 'DM Sans', sans-serif)",
       }}
     >
@@ -71,42 +70,40 @@ export default function MMGSessionMockup() {
           <div className="flex items-start justify-between">
             <div>
               <p
-                className="uppercase tracking-widest text-slate-500 mb-1"
+                className="uppercase tracking-widest text-gray-400 mb-1"
                 style={{ fontSize: "10px" }}
               >
                 MMG Session
               </p>
               <h1
-                className="text-2xl font-bold text-white leading-tight"
+                className="text-2xl font-bold text-gray-900 leading-tight"
                 style={{ fontFamily: "var(--font-display, 'Playfair Display', serif)" }}
               >
                 Thursday, 9 Apr 2026
               </h1>
-              <p className="text-sm text-slate-400 mt-0.5">6:10 – 7:30 AM</p>
+              <p className="text-sm text-gray-500 mt-0.5">6:10 – 7:30 AM</p>
             </div>
             <span
               className="rounded-full px-3 py-1 text-xs font-semibold mt-1"
               style={{
-                background: "rgba(52,211,153,0.12)",
-                color: "#34d399",
-                border: "1px solid rgba(52,211,153,0.25)",
+                background: "rgba(5,150,105,0.08)",
+                color: "#059669",
+                border: "1px solid rgba(5,150,105,0.2)",
               }}
             >
               Completed
             </span>
           </div>
 
-          <div className="mt-4 flex gap-0 divide-x"
-            style={{ borderColor: "rgba(255,255,255,0.06)" }}
-          >
+          <div className="mt-4 flex gap-0 divide-x divide-gray-200">
             <div className="flex-1 pr-4">
               <p
-                className="text-3xl font-bold text-white tabular-nums"
+                className="text-3xl font-bold text-gray-900 tabular-nums"
                 style={{ fontFamily: "var(--font-display, 'Playfair Display', serif)" }}
               >
                 8
               </p>
-              <p className="uppercase tracking-widest text-slate-500 mt-0.5" style={{ fontSize: "10px" }}>
+              <p className="uppercase tracking-widest text-gray-400 mt-0.5" style={{ fontSize: "10px" }}>
                 Players
               </p>
             </div>
@@ -115,12 +112,12 @@ export default function MMGSessionMockup() {
                 className="text-3xl font-bold tabular-nums"
                 style={{
                   fontFamily: "var(--font-display, 'Playfair Display', serif)",
-                  color: "#60a5fa",
+                  color: "#2563eb",
                 }}
               >
                 24,800
               </p>
-              <p className="uppercase tracking-widest text-slate-500 mt-0.5" style={{ fontSize: "10px" }}>
+              <p className="uppercase tracking-widest text-gray-400 mt-0.5" style={{ fontSize: "10px" }}>
                 Total Points
               </p>
             </div>
@@ -135,8 +132,8 @@ export default function MMGSessionMockup() {
           variants={fadeUp}
           className="flex rounded-xl p-1 gap-1"
           style={{
-            background: "rgba(17,24,39,0.8)",
-            border: "1px solid rgba(255,255,255,0.06)",
+            background: "rgba(0,0,0,0.04)",
+            border: "1px solid rgba(0,0,0,0.06)",
           }}
         >
           {(["attendance", "packing", "game"] as Tab[]).map((tab) => (
@@ -154,7 +151,7 @@ export default function MMGSessionMockup() {
                   className="absolute inset-0 rounded-lg"
                   style={{
                     background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
-                    boxShadow: "0 0 16px rgba(37,99,235,0.4)",
+                    boxShadow: "0 0 16px rgba(37,99,235,0.2)",
                   }}
                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />
@@ -178,7 +175,7 @@ export default function MMGSessionMockup() {
               {/* Confirmation Order */}
               <div className="glass rounded-2xl p-4">
                 <p
-                  className="uppercase tracking-widest text-slate-500 mb-3"
+                  className="uppercase tracking-widest text-gray-400 mb-3"
                   style={{ fontSize: "10px" }}
                 >
                   Confirmation Order
@@ -191,38 +188,36 @@ export default function MMGSessionMockup() {
                       variants={fadeUp}
                       initial="hidden"
                       animate="visible"
-                      className="flex items-center justify-between rounded-xl px-3 py-2.5"
-                      style={{ background: "rgba(255,255,255,0.03)" }}
+                      className="flex items-center justify-between rounded-xl px-3 py-2.5 bg-gray-50"
                     >
                       <div className="flex items-center gap-3">
                         <span
-                          className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white tabular-nums flex-shrink-0"
+                          className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold tabular-nums flex-shrink-0"
                           style={{
                             background:
                               entry.rank <= 3
                                 ? "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)"
-                                : "rgba(100,116,139,0.25)",
+                                : "rgba(100,116,139,0.12)",
                             boxShadow:
                               entry.rank <= 3
-                                ? "0 0 10px rgba(59,130,246,0.4)"
+                                ? "0 0 10px rgba(59,130,246,0.2)"
                                 : "none",
-                            color: entry.rank <= 3 ? "#fff" : "#94a3b8",
+                            color: entry.rank <= 3 ? "#fff" : "#64748b",
                           }}
                         >
                           {entry.rank}
                         </span>
-                        <span className="text-sm font-medium text-slate-200">
+                        <span className="text-sm font-medium text-gray-700">
                           {entry.player}
                         </span>
                       </div>
                       <div className="text-right">
                         <p
-                          className="text-sm font-semibold tabular-nums"
-                          style={{ color: "#60a5fa" }}
+                          className="text-sm font-semibold tabular-nums text-blue-600"
                         >
                           +{entry.points}
                         </p>
-                        <p className="text-xs text-slate-500 tabular-nums">
+                        <p className="text-xs text-gray-400 tabular-nums">
                           {entry.time}
                         </p>
                       </div>
@@ -235,20 +230,20 @@ export default function MMGSessionMockup() {
               <div
                 className="rounded-2xl p-4"
                 style={{
-                  background: "rgba(37,99,235,0.1)",
-                  border: "1px solid rgba(59,130,246,0.2)",
+                  background: "rgba(37,99,235,0.05)",
+                  border: "1px solid rgba(59,130,246,0.15)",
                 }}
               >
                 <p
-                  className="uppercase tracking-widest text-blue-400 mb-1"
+                  className="uppercase tracking-widest text-blue-600 mb-1"
                   style={{ fontSize: "10px" }}
                 >
                   Early Bonus
                 </p>
-                <p className="text-sm font-medium text-blue-300">
+                <p className="text-sm font-medium text-blue-600">
                   Early Confirmation Bonus (before 7:30 AM)
                 </p>
-                <p className="text-xs text-blue-400/70 mt-0.5">
+                <p className="text-xs text-blue-500/70 mt-0.5">
                   6 players confirmed before 7:30 AM — +500 pts each
                 </p>
               </div>
@@ -265,7 +260,7 @@ export default function MMGSessionMockup() {
               className="glass rounded-2xl p-4"
             >
               <p
-                className="uppercase tracking-widest text-slate-500 mb-3"
+                className="uppercase tracking-widest text-gray-400 mb-3"
                 style={{ fontSize: "10px" }}
               >
                 Packing Points
@@ -278,18 +273,17 @@ export default function MMGSessionMockup() {
                     variants={fadeUp}
                     initial="hidden"
                     animate="visible"
-                    className="flex items-center justify-between rounded-xl px-3 py-3"
-                    style={{ background: "rgba(255,255,255,0.03)" }}
+                    className="flex items-center justify-between rounded-xl px-3 py-3 bg-gray-50"
                   >
                     <div>
-                      <p className="text-sm font-medium text-slate-200">
+                      <p className="text-sm font-medium text-gray-700">
                         {item.task}
                       </p>
-                      <p className="text-xs text-slate-500 mt-0.5">{item.player}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{item.player}</p>
                     </div>
                     <span
                       className="text-sm font-semibold tabular-nums"
-                      style={{ color: "#34d399" }}
+                      style={{ color: "#059669" }}
                     >
                       +{item.points}
                     </span>
@@ -311,31 +305,31 @@ export default function MMGSessionMockup() {
               {/* Match Result */}
               <div className="glass rounded-2xl p-4">
                 <p
-                  className="uppercase tracking-widest text-slate-500 mb-3"
+                  className="uppercase tracking-widest text-gray-400 mb-3"
                   style={{ fontSize: "10px" }}
                 >
                   Fooba / Full Game
                 </p>
                 <div className="flex items-center justify-center gap-6 py-2">
                   <div className="text-center flex-1">
-                    <p className="text-xs text-slate-400 uppercase tracking-widest mb-1">Team A</p>
+                    <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Team A</p>
                     <p
                       className="tabular-nums font-bold"
                       style={{
                         fontFamily: "var(--font-display, 'Playfair Display', serif)",
                         fontSize: "52px",
                         lineHeight: 1,
-                        color: "#60a5fa",
+                        color: "#2563eb",
                       }}
                     >
                       3
                     </p>
                   </div>
                   <div className="text-center">
-                    <span className="text-slate-500 font-medium text-sm">vs</span>
+                    <span className="text-gray-400 font-medium text-sm">vs</span>
                   </div>
                   <div className="text-center flex-1">
-                    <p className="text-xs text-slate-400 uppercase tracking-widest mb-1">Team B</p>
+                    <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Team B</p>
                     <p
                       className="tabular-nums font-bold"
                       style={{
@@ -352,11 +346,11 @@ export default function MMGSessionMockup() {
                 <div
                   className="mt-3 rounded-xl p-2.5 text-center"
                   style={{
-                    background: "rgba(52,211,153,0.08)",
-                    border: "1px solid rgba(52,211,153,0.15)",
+                    background: "rgba(5,150,105,0.06)",
+                    border: "1px solid rgba(5,150,105,0.15)",
                   }}
                 >
-                  <span className="text-sm font-medium" style={{ color: "#34d399" }}>
+                  <span className="text-sm font-medium" style={{ color: "#059669" }}>
                     Team A wins — +1,000 pts each
                   </span>
                 </div>
@@ -365,7 +359,7 @@ export default function MMGSessionMockup() {
               {/* Player Events */}
               <div className="glass rounded-2xl p-4">
                 <p
-                  className="uppercase tracking-widest text-slate-500 mb-3"
+                  className="uppercase tracking-widest text-gray-400 mb-3"
                   style={{ fontSize: "10px" }}
                 >
                   Player Events — Big Goal
@@ -378,29 +372,25 @@ export default function MMGSessionMockup() {
                       variants={fadeUp}
                       initial="hidden"
                       animate="visible"
-                      className="flex items-center justify-between rounded-xl px-3 py-2.5"
-                      style={{ background: "rgba(255,255,255,0.03)" }}
+                      className="flex items-center justify-between rounded-xl px-3 py-2.5 bg-gray-50"
                     >
                       <div className="flex items-center gap-2.5">
                         <span className="text-base leading-none">{stat.icon}</span>
-                        <span className="text-sm font-medium text-slate-200">
+                        <span className="text-sm font-medium text-gray-700">
                           {stat.player}
                         </span>
                         <span
                           className="rounded-full px-2 py-0.5 text-xs font-medium"
                           style={{
-                            background: "rgba(96,165,250,0.12)",
-                            color: "#93c5fd",
-                            border: "1px solid rgba(96,165,250,0.2)",
+                            background: "rgba(37,99,235,0.07)",
+                            color: "#2563eb",
+                            border: "1px solid rgba(37,99,235,0.15)",
                           }}
                         >
                           {stat.event}
                         </span>
                       </div>
-                      <span
-                        className="text-sm font-semibold tabular-nums"
-                        style={{ color: "#60a5fa" }}
-                      >
+                      <span className="text-sm font-semibold tabular-nums text-blue-600">
                         +{stat.points}
                       </span>
                     </motion.div>
@@ -412,27 +402,24 @@ export default function MMGSessionMockup() {
               <div
                 className="rounded-2xl p-4"
                 style={{
-                  background: "rgba(239,68,68,0.08)",
-                  border: "1px solid rgba(239,68,68,0.18)",
+                  background: "rgba(239,68,68,0.05)",
+                  border: "1px solid rgba(239,68,68,0.15)",
                 }}
               >
                 <p
-                  className="uppercase tracking-widest mb-2"
-                  style={{ fontSize: "10px", color: "#f87171" }}
+                  className="uppercase tracking-widest mb-2 text-red-600"
+                  style={{ fontSize: "10px" }}
                 >
                   Goals Conceded
                 </p>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-base">🥅</span>
-                    <span className="text-sm text-red-300">
+                    <span className="text-sm text-red-600">
                       Crank (GK) — 2 conceded
                     </span>
                   </div>
-                  <span
-                    className="text-sm font-semibold tabular-nums"
-                    style={{ color: "#f87171" }}
-                  >
+                  <span className="text-sm font-semibold tabular-nums text-red-600">
                     −400
                   </span>
                 </div>
@@ -447,25 +434,22 @@ export default function MMGSessionMockup() {
           animate="visible"
           custom={3}
           variants={fadeUp}
-          className="rounded-2xl p-5 relative overflow-hidden"
+          className="rounded-2xl p-5 relative overflow-hidden bg-white"
           style={{
-            background: "rgba(17,24,39,0.7)",
-            border: "1px solid rgba(96,165,250,0.2)",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
-            boxShadow: "0 0 32px rgba(37,99,235,0.18), inset 0 1px 0 rgba(255,255,255,0.06)",
+            border: "1px solid rgba(37,99,235,0.15)",
+            boxShadow: "0 0 32px rgba(37,99,235,0.08), inset 0 1px 0 rgba(255,255,255,0.8)",
           }}
         >
           {/* Glow blob */}
           <div
             className="absolute -top-8 -right-8 w-32 h-32 rounded-full pointer-events-none"
             style={{
-              background: "radial-gradient(circle, rgba(59,130,246,0.2) 0%, transparent 70%)",
+              background: "radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)",
             }}
           />
 
           <p
-            className="uppercase tracking-widest text-slate-500 mb-3 relative z-10"
+            className="uppercase tracking-widest text-gray-400 mb-3 relative z-10"
             style={{ fontSize: "10px" }}
           >
             Your Session Total
@@ -480,12 +464,12 @@ export default function MMGSessionMockup() {
               ].map(({ label, value }) => (
                 <div key={label} className="flex items-center gap-2">
                   <span
-                    className="uppercase tracking-widest text-slate-500"
+                    className="uppercase tracking-widest text-gray-400"
                     style={{ fontSize: "10px", minWidth: "72px" }}
                   >
                     {label}
                   </span>
-                  <span className="text-xs font-medium text-slate-400 tabular-nums">
+                  <span className="text-xs font-medium text-gray-500 tabular-nums">
                     {value}
                   </span>
                 </div>
@@ -498,14 +482,14 @@ export default function MMGSessionMockup() {
                 style={{
                   fontFamily: "var(--font-display, 'Playfair Display', serif)",
                   fontSize: "44px",
-                  color: "#60a5fa",
-                  textShadow: "0 0 24px rgba(96,165,250,0.5)",
+                  color: "#2563eb",
+                  textShadow: "0 0 24px rgba(37,99,235,0.2)",
                 }}
               >
                 2,800
               </p>
               <p
-                className="uppercase tracking-widest text-blue-400/60 mt-1"
+                className="uppercase tracking-widest text-blue-600/60 mt-1"
                 style={{ fontSize: "10px" }}
               >
                 Points

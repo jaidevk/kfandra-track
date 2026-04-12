@@ -26,33 +26,36 @@ const podiumOrder = [standings[1], standings[0], standings[2]]; // 2nd, 1st, 3rd
 const podiumConfig = [
   {
     position: 2,
-    gradient: "from-slate-400/30 via-slate-300/20 to-slate-500/10",
-    borderColor: "border-slate-400/40",
-    numberColor: "text-slate-300",
-    avatarRing: "ring-slate-400/60",
-    avatarBg: "bg-slate-700",
+    gradient: "from-gray-200 to-gray-100",
+    borderColor: "border-gray-300",
+    numberColor: "text-gray-500",
+    avatarRing: "ring-gray-400",
+    avatarBg: "bg-gray-200",
+    avatarText: "text-gray-700",
     barHeight: "h-20",
     avatarSize: "w-12 h-12 text-sm",
     label: "SILVER",
   },
   {
     position: 1,
-    gradient: "from-amber-500/40 via-amber-400/25 to-amber-600/10",
-    borderColor: "border-amber-400/50",
-    numberColor: "text-amber-400",
-    avatarRing: "ring-amber-400/70",
-    avatarBg: "bg-amber-900/60",
+    gradient: "from-amber-200 to-amber-100",
+    borderColor: "border-amber-300",
+    numberColor: "text-amber-700",
+    avatarRing: "ring-amber-400",
+    avatarBg: "bg-amber-100",
+    avatarText: "text-amber-800",
     barHeight: "h-28",
     avatarSize: "w-16 h-16 text-base",
     label: "GOLD",
   },
   {
     position: 3,
-    gradient: "from-orange-700/30 via-orange-600/20 to-orange-800/10",
-    borderColor: "border-orange-600/40",
-    numberColor: "text-orange-400",
-    avatarRing: "ring-orange-600/50",
-    avatarBg: "bg-orange-950/60",
+    gradient: "from-orange-200 to-orange-100",
+    borderColor: "border-orange-300",
+    numberColor: "text-orange-600",
+    avatarRing: "ring-orange-400",
+    avatarBg: "bg-orange-100",
+    avatarText: "text-orange-800",
     barHeight: "h-14",
     avatarSize: "w-12 h-12 text-sm",
     label: "BRONZE",
@@ -68,8 +71,7 @@ export default function MMGStandingsMockup() {
 
   return (
     <div
-      className="min-h-screen p-4 pb-10"
-      style={{ background: "#0a0f1c" }}
+      className="min-h-screen p-4 pb-10 bg-[#f8fafc]"
     >
       {/* Header */}
       <motion.div
@@ -80,19 +82,19 @@ export default function MMGStandingsMockup() {
       >
         <div>
           <p
-            className="text-[10px] uppercase tracking-widest text-slate-500 mb-1"
+            className="text-[10px] uppercase tracking-widest text-gray-400 mb-1"
           >
             KFandra Track
           </p>
           <h1
-            className="font-[family-name:var(--font-display)] text-3xl font-bold text-white leading-none"
+            className="font-[family-name:var(--font-display)] text-3xl font-bold text-gray-900 leading-none"
           >
             MMG Standings
           </h1>
         </div>
         <div className="text-right">
-          <p className="text-[10px] uppercase tracking-widest text-slate-500">Season</p>
-          <p className="text-sm font-semibold text-blue-400 tabular-nums">Apr 2026</p>
+          <p className="text-[10px] uppercase tracking-widest text-gray-400">Season</p>
+          <p className="text-sm font-semibold text-blue-600 tabular-nums">Apr 2026</p>
         </div>
       </motion.div>
 
@@ -102,7 +104,6 @@ export default function MMGStandingsMockup() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.08 }}
         className="mb-6 flex gap-1 rounded-xl p-1 glass"
-        style={{ background: "rgba(17,24,39,0.6)" }}
       >
         {(["week", "month", "all"] as Period[]).map((p) => (
           <button
@@ -110,8 +111,8 @@ export default function MMGStandingsMockup() {
             onClick={() => setPeriod(p)}
             className={`relative flex-1 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-widest transition-all duration-200 ${
               period === p
-                ? "bg-blue-500 text-white shadow-lg shadow-blue-500/30"
-                : "text-slate-400 hover:text-slate-200"
+                ? "bg-blue-500 text-white shadow-lg shadow-blue-500/20"
+                : "text-gray-500 hover:text-gray-700"
             }`}
           >
             {p === "all" ? "All Time" : p === "month" ? "Monthly" : "Weekly"}
@@ -126,7 +127,7 @@ export default function MMGStandingsMockup() {
         transition={{ duration: 0.5, delay: 0.15 }}
         className="mb-6"
       >
-        <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-4 text-center">
+        <p className="text-[10px] uppercase tracking-widest text-gray-400 mb-4 text-center">
           Top Performers
         </p>
         <div className="flex items-end justify-center gap-3">
@@ -142,19 +143,19 @@ export default function MMGStandingsMockup() {
               >
                 {/* Avatar */}
                 <div
-                  className={`${cfg.avatarSize} flex items-center justify-center rounded-full font-bold text-white ring-2 ${cfg.avatarRing} ${cfg.avatarBg}`}
+                  className={`${cfg.avatarSize} flex items-center justify-center rounded-full font-bold ring-2 ${cfg.avatarRing} ${cfg.avatarBg} ${cfg.avatarText}`}
                 >
                   {getInitials(player.name)}
                 </div>
                 {/* Name */}
                 <div className="text-center">
                   <p
-                    className={`text-xs font-semibold ${cfg.position === 1 ? "text-white" : "text-slate-300"}`}
+                    className={`text-xs font-semibold ${cfg.position === 1 ? "text-gray-900" : "text-gray-600"}`}
                   >
                     {player.name}
                   </p>
                   <p
-                    className={`text-[11px] font-bold tabular-nums ${cfg.position === 1 ? "text-amber-400" : "text-slate-400"}`}
+                    className={`text-[11px] font-bold tabular-nums ${cfg.position === 1 ? "text-amber-700" : "text-gray-500"}`}
                   >
                     {player.sumTotal.toLocaleString()}
                   </p>
@@ -162,7 +163,6 @@ export default function MMGStandingsMockup() {
                 {/* Podium block */}
                 <div
                   className={`w-20 ${cfg.barHeight} rounded-t-lg border ${cfg.borderColor} bg-gradient-to-b ${cfg.gradient} flex flex-col items-center justify-start pt-2`}
-                  style={{ backdropFilter: "blur(8px)" }}
                 >
                   <span
                     className={`font-[family-name:var(--font-display)] text-4xl font-bold leading-none ${cfg.numberColor}`}
@@ -170,7 +170,7 @@ export default function MMGStandingsMockup() {
                   >
                     {cfg.position}
                   </span>
-                  <span className="text-[8px] uppercase tracking-widest text-slate-500 mt-0.5">
+                  <span className="text-[8px] uppercase tracking-widest text-gray-400 mt-0.5">
                     {cfg.label}
                   </span>
                 </div>
@@ -186,22 +186,17 @@ export default function MMGStandingsMockup() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.35 }}
         className="rounded-2xl overflow-hidden glass"
-        style={{
-          background: "rgba(17,24,39,0.6)",
-          backdropFilter: "blur(16px)",
-          border: "1px solid rgba(255,255,255,0.06)",
-        }}
       >
         {/* Table Header */}
-        <div className="grid grid-cols-[36px_1fr_72px_80px] gap-0 px-4 py-3 border-b border-white/[0.06]">
-          <span className="text-[10px] uppercase tracking-widest text-slate-500">#</span>
-          <span className="text-[10px] uppercase tracking-widest text-slate-500">Player</span>
-          <span className="text-right text-[10px] uppercase tracking-widest text-slate-500">Att.</span>
-          <span className="text-right text-[10px] uppercase tracking-widest text-slate-500">Total</span>
+        <div className="grid grid-cols-[36px_1fr_72px_80px] gap-0 px-4 py-3 border-b border-gray-200">
+          <span className="text-[10px] uppercase tracking-widest text-gray-400">#</span>
+          <span className="text-[10px] uppercase tracking-widest text-gray-400">Player</span>
+          <span className="text-right text-[10px] uppercase tracking-widest text-gray-400">Att.</span>
+          <span className="text-right text-[10px] uppercase tracking-widest text-gray-400">Total</span>
         </div>
 
         {/* Rows */}
-        <div className="divide-y divide-white/[0.04]">
+        <div className="divide-y divide-gray-100">
           {standings.map((player, idx) => {
             const isCurrentUser = player.name === "Acid";
             return (
@@ -212,15 +207,14 @@ export default function MMGStandingsMockup() {
                 transition={{ duration: 0.3, delay: 0.4 + idx * 0.04 }}
                 className={`grid grid-cols-[36px_1fr_72px_80px] gap-0 px-4 py-3 items-center relative ${
                   isCurrentUser
-                    ? "bg-blue-500/[0.08]"
-                    : "hover:bg-white/[0.02] transition-colors duration-150"
+                    ? "bg-blue-50"
+                    : "hover:bg-gray-50 transition-colors duration-150"
                 }`}
               >
-                {/* Blue glow stripe for current user */}
+                {/* Blue stripe for current user */}
                 {isCurrentUser && (
                   <span
-                    className="absolute left-0 top-0 bottom-0 w-0.5 rounded-full bg-blue-400"
-                    style={{ boxShadow: "0 0 8px 1px rgba(96,165,250,0.6)" }}
+                    className="absolute left-0 top-0 bottom-0 w-0.5 rounded-full bg-blue-500"
                   />
                 )}
 
@@ -229,11 +223,11 @@ export default function MMGStandingsMockup() {
                   className={`font-[family-name:var(--font-display)] text-sm font-bold tabular-nums ${
                     player.rank <= 3
                       ? player.rank === 1
-                        ? "text-amber-400"
+                        ? "text-amber-600"
                         : player.rank === 2
-                        ? "text-slate-300"
-                        : "text-orange-400"
-                      : "text-slate-600"
+                        ? "text-gray-500"
+                        : "text-orange-500"
+                      : "text-gray-300"
                   }`}
                 >
                   {player.rank}
@@ -242,22 +236,22 @@ export default function MMGStandingsMockup() {
                 {/* Name + Trend */}
                 <div className="flex items-center gap-2">
                   <span
-                    className={`text-sm font-semibold ${isCurrentUser ? "text-blue-300" : "text-slate-200"}`}
+                    className={`text-sm font-semibold ${isCurrentUser ? "text-blue-600" : "text-gray-700"}`}
                   >
                     {player.name}
                   </span>
                   {player.change === "up" && (
-                    <span className="text-[10px] text-emerald-400">▲</span>
+                    <span className="text-[10px] text-emerald-600">▲</span>
                   )}
                   {player.change === "down" && (
-                    <span className="text-[10px] text-red-400">▼</span>
+                    <span className="text-[10px] text-red-600">▼</span>
                   )}
                   {player.change === "new" && (
                     <span
-                      className="rounded px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-400"
+                      className="rounded px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-600"
                       style={{
-                        background: "rgba(96,165,250,0.12)",
-                        border: "1px solid rgba(96,165,250,0.3)",
+                        background: "rgba(37,99,235,0.07)",
+                        border: "1px solid rgba(37,99,235,0.2)",
                       }}
                     >
                       NEW
@@ -265,10 +259,10 @@ export default function MMGStandingsMockup() {
                   )}
                   {isCurrentUser && (
                     <span
-                      className="rounded px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-400"
+                      className="rounded px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-600"
                       style={{
-                        background: "rgba(96,165,250,0.12)",
-                        border: "1px solid rgba(96,165,250,0.25)",
+                        background: "rgba(37,99,235,0.07)",
+                        border: "1px solid rgba(37,99,235,0.15)",
                       }}
                     >
                       YOU
@@ -279,7 +273,7 @@ export default function MMGStandingsMockup() {
                 {/* Attendance */}
                 <span
                   className={`text-right text-sm tabular-nums ${
-                    player.attendance > 0 ? "text-slate-400" : "text-slate-600"
+                    player.attendance > 0 ? "text-gray-500" : "text-gray-300"
                   }`}
                 >
                   {player.attendance > 0 ? player.attendance.toLocaleString() : "—"}
@@ -290,9 +284,9 @@ export default function MMGStandingsMockup() {
                   className={`text-right text-sm font-bold tabular-nums ${
                     player.sumTotal > 0
                       ? isCurrentUser
-                        ? "text-blue-300"
-                        : "text-white"
-                      : "text-slate-600"
+                        ? "text-blue-600"
+                        : "text-gray-900"
+                      : "text-gray-300"
                   }`}
                 >
                   {player.sumTotal > 0 ? player.sumTotal.toLocaleString() : "—"}
@@ -303,11 +297,11 @@ export default function MMGStandingsMockup() {
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-3 border-t border-white/[0.04] flex items-center justify-between">
-          <p className="text-[10px] uppercase tracking-widest text-slate-600">
+        <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between">
+          <p className="text-[10px] uppercase tracking-widest text-gray-300">
             {standings.length} players
           </p>
-          <p className="text-[10px] uppercase tracking-widest text-slate-600">
+          <p className="text-[10px] uppercase tracking-widest text-gray-300">
             Matchday pts + attendance
           </p>
         </div>

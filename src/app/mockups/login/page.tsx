@@ -46,7 +46,7 @@ export default function LoginMockup() {
               KFandra Track
             </h1>
             <p className="text-[10px] uppercase tracking-widest text-gray-500 font-medium">
-              Working name &middot; Coach to confirm
+              Working name &middot; KFANDRA to confirm
             </p>
           </div>
         </motion.div>
@@ -120,10 +120,10 @@ export default function LoginMockup() {
                   Register
                 </p>
                 <h2 className="mt-1 text-base font-bold text-gray-900">
-                  Self-register, Coach approves
+                  Self-register, KFANDRA approves
                 </h2>
                 <p className="mt-1 text-[11px] text-gray-500">
-                  Coach gets a notification and approves you before you can submit.
+                  KFANDRA gets a notification and approves you before you can submit.
                 </p>
               </div>
               <Field label="Name (player nickname)">
@@ -160,7 +160,7 @@ export default function LoginMockup() {
                 onClick={() => setMode("pending")}
                 className="block w-full rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition-all hover:from-blue-500 hover:to-blue-400 active:scale-[0.98]"
               >
-                Send to Coach for approval
+                Send to KFANDRA for approval
               </button>
               <button
                 onClick={() => setMode("login")}
@@ -192,13 +192,13 @@ export default function LoginMockup() {
               </motion.div>
               <div>
                 <p className="text-[10px] uppercase tracking-widest text-amber-700 font-semibold">
-                  Pending Coach approval
+                  Pending KFANDRA approval
                 </p>
                 <h2 className="mt-1 text-lg font-bold text-gray-900">
                   Sit tight, {name || "player"}
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
-                  Coach gets a notification and usually approves within a day. You&rsquo;ll be able to log in once approved.
+                  KFANDRA gets a notification and usually approves within a day. You&rsquo;ll be able to log in once approved.
                 </p>
               </div>
               <button

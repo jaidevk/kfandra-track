@@ -6,6 +6,20 @@ import { motion } from "framer-motion";
 
 type Status = "pending" | "approved" | "edited" | "rejected";
 
+type MMGDetail = {
+  participation?: string[];
+  performance?: { game: string; result: string; stats: string[]; pts: number }[];
+  other?: { description: string; pts: number }[];
+};
+
+type GymRow = {
+  bodyPart: string;
+  equipment: string;
+  weightKg?: number;
+  scheme: string;
+  notes?: string;
+};
+
 type Submission = {
   id: string;
   type: "MMG" | "Gym";
@@ -15,29 +29,47 @@ type Submission = {
   reportedTotal: number;
   approvedTotal?: number;
   status: Status;
-  coachNote?: string;
-  details: string[];
+  kfandraNote?: string;
+  mmg?: MMGDetail;
+  gym?: GymRow[];
+  narration?: string;
 };
 
 const submissions: Submission[] = [
   {
     id: "s1",
     type: "MMG",
-    title: "Fooba (Big Goal)",
+    title: "Tuesday session",
     date: "Tue 28/4",
     submittedAt: "11:42 am",
     reportedTotal: 4500,
     status: "pending",
-    details: [
-      "Pre-session unpacking +500",
-      "Goal +500",
-      "Goal +500",
-      "Assist +200",
-      "Win bonus +1000",
-      "Confirmation +500",
-      "Order of arrival 3rd +600",
-      "Other (extra reps) +700",
-    ],
+    mmg: {
+      participation: [
+        "Confirmation order: 3rd · pts at approval",
+        "Arrival: 4th · pts at approval",
+        "Unpacking: Yes · +500",
+        "Packing weights: No",
+        "Packing kit: Yes · +500",
+        "Confirmed by 8 am: Yes · +500",
+      ],
+      performance: [
+        {
+          game: "Football short",
+          result: "Won",
+          stats: ["2 goals", "1 assist"],
+          pts: 2200,
+        },
+        {
+          game: "3-and-in",
+          result: "Drew",
+          stats: ["1 goal"],
+          pts: 600,
+        },
+      ],
+      other: [{ description: "1st in race", pts: 200 }],
+    },
+    narration: "Left at 7:30 — kid drop-off",
   },
   {
     id: "s2",
@@ -48,27 +80,39 @@ const submissions: Submission[] = [
     reportedTotal: 11,
     approvedTotal: 11,
     status: "approved",
-    details: [
-      "Shoulders &mdash; 6 sets, 8 reps",
-      "Biceps &mdash; 5 sets, 10 reps (z-bar)",
+    gym: [
+      { bodyPart: "Shoulders", equipment: "Sbb", weightKg: 12, scheme: "6 sets, 8, 4×6, 8" },
+      { bodyPart: "Biceps", equipment: "Z-bar", weightKg: 15, scheme: "6 sets, All 6" },
     ],
   },
   {
     id: "s3",
     type: "MMG",
-    title: "Short Game",
+    title: "Saturday session",
     date: "Sat 25/4",
     submittedAt: "11:58 am",
     reportedTotal: 1700,
     approvedTotal: 1600,
     status: "edited",
-    coachNote: "Adjusted assist 200 → 100 (pre-assist).",
-    details: [
-      "GWW unpacking +500",
-      "Goal +500",
-      "Assist +200 → +100 (Coach edit)",
-      "Confirmation +500",
-    ],
+    kfandraNote: "Adjusted assist 200 → 100 (counted as pre-assist).",
+    mmg: {
+      participation: [
+        "Confirmation order: 5th · pts at approval",
+        "Arrival: 5th · pts at approval",
+        "Unpacking: Yes · +500",
+        "Packing weights: Yes · +500",
+        "Packing kit: No",
+        "Confirmed by 8 am: Yes · +500",
+      ],
+      performance: [
+        {
+          game: "Football short",
+          result: "Won",
+          stats: ["1 goal", "1 assist → pre-assist (KFANDRA edit)"],
+          pts: 1100,
+        },
+      ],
+    },
   },
   {
     id: "s4",
@@ -79,24 +123,26 @@ const submissions: Submission[] = [
     reportedTotal: 8,
     approvedTotal: 8,
     status: "approved",
-    details: [
-      "Press Ups &mdash; 4 sets, 20 reps",
-      "Abs &mdash; 4 sets, 25 reps",
+    gym: [
+      { bodyPart: "Press Ups", equipment: "None", scheme: "4 sets, super 7's" },
+      { bodyPart: "Abs", equipment: "None", scheme: "4 sets, 25 reps", notes: "z-shape" },
     ],
   },
   {
     id: "s5",
     type: "MMG",
-    title: "End-game Drill",
+    title: "Thursday session",
     date: "Thu 23/4",
     submittedAt: "12:14 pm",
     reportedTotal: 800,
     status: "rejected",
-    coachNote: "Submitted after 12 noon cut-off. Resubmit next session.",
-    details: [
-      "MMG drill +100 ×6",
-      "Goal bonus +500 (rejected)",
-    ],
+    kfandraNote: "Submitted after 12 noon cut-off. Resubmit next session.",
+    mmg: {
+      performance: [
+        { game: "Other", result: "Lost", stats: [], pts: 0 },
+      ],
+      other: [{ description: "Drill reps", pts: 800 }],
+    },
   },
 ];
 
@@ -128,7 +174,7 @@ export default function MySubmissionsMockup() {
           My submissions
         </h1>
         <p className="mt-1 text-sm text-gray-500">
-          Your history with Coach approvals and edits.
+          Your history with KFANDRA approvals and edits.
         </p>
       </header>
 
@@ -186,9 +232,9 @@ export default function MySubmissionsMockup() {
                     <> &middot; {s.reportedTotal.toLocaleString()}{s.type === "MMG" ? " pts" : ""}</>
                   )}
                 </p>
-                {s.coachNote && (
+                {s.kfandraNote && (
                   <p className="mt-1 text-[11px] italic text-gray-500 line-clamp-1">
-                    Coach: {s.coachNote}
+                    KFANDRA: {s.kfandraNote}
                   </p>
                 )}
               </div>
@@ -224,7 +270,7 @@ export default function MySubmissionsMockup() {
             animate={{ y: 0 }}
             transition={{ type: "spring", stiffness: 320, damping: 28 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full bg-white rounded-t-3xl p-5 max-h-[85vh] overflow-y-auto"
+            className="w-full bg-white rounded-t-3xl p-5 max-h-[88vh] overflow-y-auto"
           >
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-gray-200" />
             <div className="flex items-start justify-between mb-3">
@@ -241,7 +287,6 @@ export default function MySubmissionsMockup() {
               </span>
             </div>
 
-            {/* Totals */}
             {selectedSub.type === "MMG" && (
               <div className="rounded-xl bg-gray-50 p-3 mb-4 grid grid-cols-2 gap-2">
                 <div>
@@ -254,43 +299,140 @@ export default function MySubmissionsMockup() {
                 </div>
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                    Coach approved
+                    KFANDRA approved
                   </p>
                   <p className="font-[family-name:var(--font-display)] text-2xl font-bold tabular-nums text-gray-900">
-                    {selectedSub.approvedTotal !== undefined ? selectedSub.approvedTotal.toLocaleString() : "—"}
+                    {selectedSub.approvedTotal !== undefined
+                      ? selectedSub.approvedTotal.toLocaleString()
+                      : "—"}
                   </p>
                 </div>
               </div>
             )}
 
-            {selectedSub.coachNote && (
+            {selectedSub.kfandraNote && (
               <div className="mb-4 rounded-xl border-l-4 border-blue-400 bg-blue-50/50 p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-blue-700">Coach note</p>
-                <p className="mt-1 text-sm text-blue-900">{selectedSub.coachNote}</p>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-blue-700">
+                  KFANDRA note
+                </p>
+                <p className="mt-1 text-sm text-blue-900">{selectedSub.kfandraNote}</p>
               </div>
             )}
 
-            <h3 className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-2">
-              Details
-            </h3>
-            <div className="rounded-xl border border-gray-100 divide-y divide-gray-100 mb-4">
-              {selectedSub.details.map((d, i) => (
-                <div
-                  key={i}
-                  className="px-3.5 py-2.5 text-sm text-gray-700"
-                  dangerouslySetInnerHTML={{ __html: d }}
-                />
-              ))}
-            </div>
+            {selectedSub.type === "MMG" && selectedSub.mmg && (
+              <MMGDetailView mmg={selectedSub.mmg} />
+            )}
+
+            {selectedSub.type === "Gym" && selectedSub.gym && (
+              <GymDetailView rows={selectedSub.gym} />
+            )}
+
+            {selectedSub.narration && (
+              <>
+                <h3 className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mt-4 mb-2">
+                  Narration
+                </h3>
+                <p className="rounded-xl border border-gray-100 bg-white p-3 text-sm italic text-gray-700">
+                  {selectedSub.narration}
+                </p>
+              </>
+            )}
 
             {selectedSub.status === "pending" && (
-              <button className="w-full rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 hover:bg-rose-100">
+              <button className="mt-4 w-full rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 hover:bg-rose-100">
                 Withdraw submission
               </button>
             )}
           </motion.div>
         </div>
       )}
+    </div>
+  );
+}
+
+function MMGDetailView({ mmg }: { mmg: MMGDetail }) {
+  return (
+    <div className="space-y-4">
+      {mmg.participation && mmg.participation.length > 0 && (
+        <DetailSection label="Participation">
+          {mmg.participation.map((line, i) => (
+            <p key={i} className="px-3.5 py-2 text-sm text-gray-700">
+              {line}
+            </p>
+          ))}
+        </DetailSection>
+      )}
+      {mmg.performance && mmg.performance.length > 0 && (
+        <DetailSection label="Performance">
+          {mmg.performance.map((g, i) => (
+            <div key={i} className="px-3.5 py-2.5">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                {g.game}
+              </p>
+              <div className="flex items-baseline justify-between">
+                <p className="text-sm text-gray-700">
+                  {g.result}
+                  {g.stats.length > 0 ? ` · ${g.stats.join(", ")}` : ""}
+                </p>
+                <p className="text-sm font-bold tabular-nums text-blue-600">
+                  +{g.pts.toLocaleString()}
+                </p>
+              </div>
+            </div>
+          ))}
+        </DetailSection>
+      )}
+      {mmg.other && mmg.other.length > 0 && (
+        <DetailSection label="Other">
+          {mmg.other.map((o, i) => (
+            <div key={i} className="flex items-baseline justify-between px-3.5 py-2">
+              <p className="text-sm text-gray-700">{o.description}</p>
+              <p className="text-sm font-bold tabular-nums text-violet-600">
+                +{o.pts.toLocaleString()}
+              </p>
+            </div>
+          ))}
+        </DetailSection>
+      )}
+    </div>
+  );
+}
+
+function GymDetailView({ rows }: { rows: GymRow[] }) {
+  return (
+    <DetailSection label="Exercises">
+      {rows.map((r, i) => (
+        <div key={i} className="px-3.5 py-2.5">
+          <p className="text-sm font-semibold text-gray-900">
+            {r.bodyPart}
+            <span className="text-gray-400 font-normal"> · {r.equipment}</span>
+            {r.weightKg !== undefined && r.weightKg > 0 && (
+              <span className="text-emerald-700"> · {r.weightKg} kg</span>
+            )}
+          </p>
+          <p className="text-sm text-gray-700">{r.scheme}</p>
+          {r.notes && <p className="text-[11px] italic text-gray-500">{r.notes}</p>}
+        </div>
+      ))}
+    </DetailSection>
+  );
+}
+
+function DetailSection({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <h3 className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-2">
+        {label}
+      </h3>
+      <div className="rounded-xl border border-gray-100 divide-y divide-gray-100 bg-white">
+        {children}
+      </div>
     </div>
   );
 }

@@ -61,7 +61,7 @@ export default function MockupHome() {
                 MMG Score
               </h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                Calculator-style — tap buttons, submit to Coach
+                Tap entries · submit to KFANDRA
               </p>
             </div>
             <svg className="w-5 h-5 shrink-0 text-gray-300 group-hover:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -144,7 +144,7 @@ export default function MockupHome() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-700">Tue 28/4 &mdash; Fooba (Big Goal)</p>
-              <p className="text-[11px] text-gray-400">Submitted 11:42 am &middot; awaiting Coach</p>
+              <p className="text-[11px] text-gray-400">Submitted 11:42 am &middot; awaiting KFANDRA</p>
             </div>
             <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">Pending</span>
           </div>
@@ -154,7 +154,7 @@ export default function MockupHome() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-700">Mon 27/4 &mdash; Shoulders + Biceps</p>
-              <p className="text-[11px] text-gray-400">Approved by Coach &middot; 4:08 pm</p>
+              <p className="text-[11px] text-gray-400">Approved by KFANDRA &middot; 4:08 pm</p>
             </div>
             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">Approved</span>
           </div>
@@ -164,7 +164,7 @@ export default function MockupHome() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-700">Sat 25/4 &mdash; Short Game</p>
-              <p className="text-[11px] text-gray-400">Coach edited 200 &rarr; 100 &middot; Approved</p>
+              <p className="text-[11px] text-gray-400">KFANDRA edited 200 &rarr; 100 &middot; Approved</p>
             </div>
             <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">Edited</span>
           </div>

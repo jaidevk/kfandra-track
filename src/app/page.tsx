@@ -128,7 +128,7 @@ export default function Home() {
             </div>
             <h2 className="text-sm font-bold text-white mb-0.5">MMG</h2>
             <p className="text-[11px] text-blue-100/70 leading-relaxed">
-              Tap-to-add points &middot; submit to Coach
+              Tap-to-add points &middot; submit to KFANDRA
             </p>
           </motion.div>
 
@@ -144,7 +144,7 @@ export default function Home() {
             </div>
             <h2 className="text-sm font-bold text-white mb-0.5">Gym</h2>
             <p className="text-[11px] text-blue-100/70 leading-relaxed">
-              Body part &rarr; sets &amp; reps &middot; submit to Coach
+              Body part &rarr; sets &amp; reps &middot; submit to KFANDRA
             </p>
           </motion.div>
         </motion.div>

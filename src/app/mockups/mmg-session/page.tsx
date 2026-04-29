@@ -5,111 +5,156 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
 /**
- * Calculator-style MMG entry mockup.
+ * MMG entry — 4 sections: Participation, Performance, Other, Narration.
+ * Mockup-only: state held client-side, drafts in localStorage.
  *
- * Flow:
- *   1. Pick game type → relevant button set appears.
- *   2. Tap buttons (e.g. Goal +500) — repeated taps accumulate.
- *   3. Self-declare order-of-arrival rank (Coach approves later).
- *   4. Optional free-form "Other +N" entry for blip points.
- *   5. Optional narration at the end.
- *   6. Submit → reset to zero, draft cleared from localStorage.
+ * Confirmation order and arrival rank use a dynamic formula (N×100 down to 100)
+ * so points are computed by KFANDRA at approval time. App captures rank only.
  *
- * Mockup-only: no real submission, all state held client-side.
+ * Per-stat point values are placeholders KFANDRA can adjust later.
  */
 
+// ─── Types ─────────────────────────────────────────────────────────
+
+type Participation = {
+  confirmationOrder: number | null;
+  arrivalOrder: number | null;
+  unpacking: boolean | null;
+  packingWeights: boolean | null;
+  packingKit: boolean | null;
+  confirmedBy8am: boolean | null;
+};
+
 type GameType =
+  | "football-short"
+  | "rugby-short"
   | "fooba-big-goal"
   | "fooba-rebound"
-  | "short-game"
-  | "end-game-drill"
-  | "three-and-in";
+  | "three-and-in"
+  | "other";
 
-type Button = {
+type Result = "won" | "drew" | "lost";
+
+type Game = {
   id: string;
-  label: string;
-  points: number;
-  /** repeatable = tap-to-add accumulates (e.g. Goal, MMG drill 100) */
-  repeatable?: boolean;
-  tone?: "blue" | "emerald" | "amber" | "rose" | "violet";
+  type: GameType;
+  result: Result;
+  goals: number;
+  tries: number;
+  assists: number;
+  preAssists: number;
+  saves: number;
+  clearances: number;
 };
 
-type EventEntry = {
+type OtherRow = {
   id: string;
-  label: string;
-  points: number;
-  ts: number;
+  description: string;
+  points: string;
 };
-
-const games: { id: GameType; name: string; subtitle: string }[] = [
-  { id: "fooba-big-goal", name: "Fooba", subtitle: "Big Goal" },
-  { id: "fooba-rebound", name: "Fooba", subtitle: "Rebound Wall" },
-  { id: "short-game", name: "Short Game", subtitle: "Half pitch" },
-  { id: "end-game-drill", name: "End-game Drill", subtitle: "Closing" },
-  { id: "three-and-in", name: "3-and-in", subtitle: "Mini" },
-];
-
-// Pre-session / packing buttons appear for every game type
-const sessionButtons: Button[] = [
-  { id: "pre-unpack", label: "Pre-session unpacking", points: 500, tone: "amber" },
-  { id: "gww-unpack", label: "GWW unpacking", points: 500, tone: "amber" },
-  { id: "post-pack", label: "Post-GWW packing", points: 500, tone: "amber" },
-  { id: "confirmation", label: "Confirmation", points: 500, tone: "violet" },
-];
-
-const orderOfArrivalPoints: Record<number, number> = {
-  1: 800, 2: 700, 3: 600, 4: 500, 5: 400, 6: 300, 7: 200, 8: 100,
-};
-
-const matchButtons: Button[] = [
-  { id: "goal", label: "Goal", points: 500, repeatable: true, tone: "emerald" },
-  { id: "assist", label: "Assist", points: 200, repeatable: true, tone: "blue" },
-  { id: "pre-assist", label: "Pre-assist", points: 100, repeatable: true, tone: "blue" },
-  { id: "save", label: "Save", points: 500, repeatable: true, tone: "emerald" },
-  { id: "clearance", label: "Goal-line clearance", points: 500, repeatable: true, tone: "emerald" },
-  { id: "win-bonus-1k", label: "Win bonus", points: 1000, tone: "amber" },
-  { id: "win-bonus-500", label: "Win bonus (½)", points: 500, tone: "amber" },
-];
-
-const drillButtons: Button[] = [
-  { id: "mmg-drill-100", label: "MMG drill", points: 100, repeatable: true, tone: "rose" },
-  { id: "goal-bonus", label: "Goal bonus", points: 500, repeatable: true, tone: "emerald" },
-];
-
-const buttonsByGame: Record<GameType, Button[]> = {
-  "fooba-big-goal": [...sessionButtons, ...matchButtons, ...drillButtons],
-  "fooba-rebound": [...sessionButtons, ...matchButtons, ...drillButtons],
-  "short-game": [...sessionButtons, ...matchButtons.filter(b => b.id !== "win-bonus-1k"), ...drillButtons],
-  "end-game-drill": [...sessionButtons, ...drillButtons],
-  "three-and-in": [...sessionButtons, ...drillButtons.filter(b => b.id === "mmg-drill-100"), ...matchButtons.filter(b => b.id === "goal")],
-};
-
-const toneClass: Record<NonNullable<Button["tone"]>, string> = {
-  blue: "from-blue-50 to-white text-blue-700 border-blue-200 hover:border-blue-300",
-  emerald: "from-emerald-50 to-white text-emerald-700 border-emerald-200 hover:border-emerald-300",
-  amber: "from-amber-50 to-white text-amber-700 border-amber-200 hover:border-amber-300",
-  rose: "from-rose-50 to-white text-rose-700 border-rose-200 hover:border-rose-300",
-  violet: "from-violet-50 to-white text-violet-700 border-violet-200 hover:border-violet-300",
-};
-
-const DRAFT_KEY = "kfandra:mockup:mmg-draft";
 
 type Draft = {
-  game: GameType | null;
-  events: EventEntry[];
-  arrivalRank: number | null;
+  participation: Participation;
+  games: Game[];
+  others: OtherRow[];
   narration: string;
 };
 
-const emptyDraft: Draft = { game: null, events: [], arrivalRank: null, narration: "" };
+// ─── Constants ─────────────────────────────────────────────────────
+
+const POINTS = {
+  won: 1000,
+  drew: 100,
+  lost: 0,
+  goal: 500,
+  try: 500,
+  assist: 200,
+  preAssist: 100,
+  save: 500,
+  clearance: 500,
+  packingEvent: 500,    // placeholder — KFANDRA may adjust
+  confirmedBy8am: 500,  // placeholder
+} as const;
+
+const GAME_LABEL: Record<GameType, { name: string; emoji: string }> = {
+  "football-short": { name: "Football short", emoji: "⚽" },
+  "rugby-short": { name: "Rugby short", emoji: "🏉" },
+  "fooba-big-goal": { name: "Fooba (Big Goal)", emoji: "🥅" },
+  "fooba-rebound": { name: "Fooba (Rebound)", emoji: "🧱" },
+  "three-and-in": { name: "3-and-in", emoji: "🎯" },
+  other: { name: "Other", emoji: "✨" },
+};
+
+const RESULT_LABEL: Record<Result, string> = {
+  won: "Won",
+  drew: "Drew",
+  lost: "Lost",
+};
+
+const DRAFT_KEY = "kfandra:mockup:mmg-draft-v2";
+
+const emptyParticipation: Participation = {
+  confirmationOrder: null,
+  arrivalOrder: null,
+  unpacking: null,
+  packingWeights: null,
+  packingKit: null,
+  confirmedBy8am: null,
+};
+
+const emptyDraft: Draft = {
+  participation: emptyParticipation,
+  games: [],
+  others: [],
+  narration: "",
+};
+
+const emptyGame = (id: string): Game => ({
+  id,
+  type: "football-short",
+  result: "won",
+  goals: 0,
+  tries: 0,
+  assists: 0,
+  preAssists: 0,
+  saves: 0,
+  clearances: 0,
+});
+
+// ─── Point helpers ─────────────────────────────────────────────────
+
+function gameTotal(g: Game): number {
+  return (
+    POINTS[g.result] +
+    g.goals * POINTS.goal +
+    g.tries * POINTS.try +
+    g.assists * POINTS.assist +
+    g.preAssists * POINTS.preAssist +
+    g.saves * POINTS.save +
+    g.clearances * POINTS.clearance
+  );
+}
+
+function participationFixedTotal(p: Participation): number {
+  let t = 0;
+  if (p.unpacking) t += POINTS.packingEvent;
+  if (p.packingWeights) t += POINTS.packingEvent;
+  if (p.packingKit) t += POINTS.packingEvent;
+  if (p.confirmedBy8am) t += POINTS.confirmedBy8am;
+  return t;
+}
+
+function othersTotal(rows: OtherRow[]): number {
+  return rows.reduce((sum, r) => sum + (Number(r.points) || 0), 0);
+}
+
+// ─── Component ─────────────────────────────────────────────────────
 
 export default function MMGSessionMockup() {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
-  const [otherPoints, setOtherPoints] = useState("");
-  const [otherLabel, setOtherLabel] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [gameDraft, setGameDraft] = useState<Game | null>(null); // null = sheet closed
 
-  // Restore draft on mount (SSR: must rehydrate after first client render)
   useEffect(() => {
     if (typeof window === "undefined") return;
     const raw = window.localStorage.getItem(DRAFT_KEY);
@@ -121,304 +166,681 @@ export default function MMGSessionMockup() {
     }
   }, []);
 
-  // Persist draft on change (mockup behaviour: drafts survive a refresh)
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
   }, [draft]);
 
-  const total = useMemo(() => {
-    const base = draft.events.reduce((sum, e) => sum + e.points, 0);
-    const arrival = draft.arrivalRank ? orderOfArrivalPoints[draft.arrivalRank] ?? 0 : 0;
-    return base + arrival;
+  const visibleTotal = useMemo(
+    () =>
+      participationFixedTotal(draft.participation) +
+      draft.games.reduce((s, g) => s + gameTotal(g), 0) +
+      othersTotal(draft.others),
+    [draft]
+  );
+
+  const hasDynamicRank =
+    draft.participation.confirmationOrder !== null ||
+    draft.participation.arrivalOrder !== null;
+
+  const sectionsFilled = useMemo(() => {
+    const p = draft.participation;
+    const participationDone =
+      p.confirmationOrder !== null &&
+      p.arrivalOrder !== null &&
+      p.unpacking !== null &&
+      p.packingWeights !== null &&
+      p.packingKit !== null &&
+      p.confirmedBy8am !== null;
+    return {
+      participation: participationDone,
+      games: draft.games.length,
+      others: draft.others.length,
+    };
   }, [draft]);
 
-  const buttons = draft.game ? buttonsByGame[draft.game] : [];
+  const canSubmit =
+    sectionsFilled.participation || draft.games.length > 0 || draft.others.length > 0;
 
-  function tapButton(btn: Button) {
-    setDraft((d) => ({
-      ...d,
-      events: [
-        ...d.events,
-        {
-          id: `${btn.id}-${Date.now()}-${d.events.length}`,
-          label: btn.label,
-          points: btn.points,
-          ts: Date.now(),
-        },
-      ],
-    }));
+  function updateParticipation(patch: Partial<Participation>) {
+    setDraft((d) => ({ ...d, participation: { ...d.participation, ...patch } }));
   }
 
-  function removeEvent(id: string) {
-    setDraft((d) => ({ ...d, events: d.events.filter((e) => e.id !== id) }));
+  function openNewGame() {
+    setGameDraft(emptyGame(`g-${Date.now()}-${draft.games.length}`));
+  }
+
+  function openEditGame(g: Game) {
+    setGameDraft({ ...g });
+  }
+
+  function saveGame(g: Game) {
+    setDraft((d) => {
+      const exists = d.games.some((x) => x.id === g.id);
+      return {
+        ...d,
+        games: exists ? d.games.map((x) => (x.id === g.id ? g : x)) : [...d.games, g],
+      };
+    });
+    setGameDraft(null);
+  }
+
+  function deleteGame(id: string) {
+    setDraft((d) => ({ ...d, games: d.games.filter((g) => g.id !== id) }));
   }
 
   function addOther() {
-    const n = Number(otherPoints);
-    if (!Number.isFinite(n) || n === 0) return;
     setDraft((d) => ({
       ...d,
-      events: [
-        ...d.events,
-        {
-          id: `other-${Date.now()}-${d.events.length}`,
-          label: otherLabel.trim() || "Other",
-          points: n,
-          ts: Date.now(),
-        },
+      others: [
+        ...d.others,
+        { id: `o-${Date.now()}-${d.others.length}`, description: "", points: "" },
       ],
     }));
-    setOtherPoints("");
-    setOtherLabel("");
+  }
+
+  function updateOther(id: string, patch: Partial<OtherRow>) {
+    setDraft((d) => ({
+      ...d,
+      others: d.others.map((o) => (o.id === id ? { ...o, ...patch } : o)),
+    }));
+  }
+
+  function removeOther(id: string) {
+    setDraft((d) => ({ ...d, others: d.others.filter((o) => o.id !== id) }));
   }
 
   function submit() {
-    if (!draft.game || draft.events.length === 0) return;
+    if (!canSubmit) return;
     setSubmitted(true);
   }
 
   function newSession() {
     setDraft(emptyDraft);
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(DRAFT_KEY);
-    }
+    if (typeof window !== "undefined") window.localStorage.removeItem(DRAFT_KEY);
     setSubmitted(false);
   }
 
   if (submitted) {
-    return <SubmittedView total={total} onNew={newSession} />;
+    return <SubmittedView total={visibleTotal} hasDynamic={hasDynamicRank} onNew={newSession} />;
   }
 
   return (
     <div className="flex flex-col gap-5 p-5 pb-32">
-      {/* Running total — sticky-ish scoreboard */}
-      <div className="rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-900 p-5 text-white shadow-lg shadow-blue-500/20">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-200/80">
-              Running total
-            </p>
-            <p className="mt-1 font-[family-name:var(--font-display)] text-5xl font-black tabular-nums tracking-tight">
-              {total.toLocaleString()}
-            </p>
-            <p className="mt-1 text-[11px] text-blue-200/60">
-              {draft.events.length} {draft.events.length === 1 ? "tap" : "taps"} &middot; {draft.arrivalRank ? `arrived ${ordinal(draft.arrivalRank)}` : "no arrival rank"}
-            </p>
-          </div>
-          {draft.events.length > 0 && (
-            <button
-              onClick={() => setDraft((d) => ({ ...d, events: d.events.slice(0, -1) }))}
-              className="rounded-lg bg-white/10 backdrop-blur px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-white/20 transition-colors"
-            >
-              ← Undo
-            </button>
-          )}
-        </div>
-      </div>
+      <Scoreboard
+        total={visibleTotal}
+        hasDynamic={hasDynamicRank}
+        sectionsFilled={sectionsFilled}
+        onReset={() => setDraft(emptyDraft)}
+      />
 
-      {/* Step 1 — Game type */}
-      <Section title="1. Pick the game" subtitle="Different games show different buttons">
-        <div className="grid grid-cols-2 gap-2.5">
-          {games.map((g) => {
-            const active = draft.game === g.id;
-            return (
-              <button
-                key={g.id}
-                onClick={() => setDraft((d) => ({ ...d, game: g.id }))}
-                className={`text-left rounded-xl border p-3 transition-all ${
-                  active
-                    ? "border-blue-500 bg-blue-50 shadow-sm shadow-blue-500/10"
-                    : "border-gray-200 bg-white hover:border-blue-200"
-                }`}
-              >
-                <p className="text-sm font-bold text-gray-900">{g.name}</p>
-                <p className="text-[11px] text-gray-500">{g.subtitle}</p>
-                {active && (
-                  <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-blue-600">
-                    Selected
-                  </p>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </Section>
+      <SectionHeading
+        index={1}
+        title="Participation"
+        subtitle="Once per session — locks after submit"
+      />
+      <ParticipationCard p={draft.participation} onChange={updateParticipation} />
 
-      {/* Step 2 — Tap buttons */}
-      <AnimatePresence>
-        {draft.game && (
-          <motion.div
-            key="buttons"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.25 }}
-          >
-            <Section title="2. Tap to add points" subtitle="Repeated taps accumulate (e.g. 2 goals = 2 taps)">
-              <div className="grid grid-cols-2 gap-2.5">
-                {buttons.map((b) => (
-                  <button
-                    key={b.id}
-                    onClick={() => tapButton(b)}
-                    className={`relative overflow-hidden rounded-xl border bg-gradient-to-br p-3 text-left transition-all active:scale-[0.97] ${toneClass[b.tone ?? "blue"]}`}
-                  >
-                    <p className="text-[11px] font-semibold uppercase tracking-wide opacity-80">
-                      {b.label}
-                    </p>
-                    <p className="mt-1 font-[family-name:var(--font-display)] text-2xl font-black tabular-nums">
-                      +{b.points}
-                    </p>
-                    {b.repeatable && (
-                      <span className="absolute right-2 top-2 rounded-full bg-white/70 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-gray-500">
-                        Repeat
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </Section>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <SectionHeading
+        index={2}
+        title="Performance"
+        subtitle="One card per game played"
+      />
+      <PerformanceList
+        games={draft.games}
+        onEdit={openEditGame}
+        onDelete={deleteGame}
+        onAdd={openNewGame}
+      />
 
-      {/* Step 3 — Order of arrival */}
-      {draft.game && (
-        <Section title="3. Order of arrival" subtitle="Self-declare — Coach confirms against the sheet">
-          <div className="grid grid-cols-4 gap-2">
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((rank) => {
-              const active = draft.arrivalRank === rank;
-              return (
-                <button
-                  key={rank}
-                  onClick={() => setDraft((d) => ({ ...d, arrivalRank: active ? null : rank }))}
-                  className={`rounded-xl border py-2.5 text-center transition-all ${
-                    active
-                      ? "border-violet-500 bg-violet-50 text-violet-700 shadow-sm shadow-violet-500/10"
-                      : "border-gray-200 bg-white text-gray-700 hover:border-violet-200"
-                  }`}
-                >
-                  <p className="text-sm font-bold">{ordinal(rank)}</p>
-                  <p className="text-[10px] tabular-nums opacity-75">+{orderOfArrivalPoints[rank]}</p>
-                </button>
-              );
-            })}
-          </div>
-        </Section>
-      )}
+      <SectionHeading
+        index={3}
+        title="Other"
+        subtitle="Races, team challenges, anything ad-hoc"
+      />
+      <OtherList
+        rows={draft.others}
+        onAdd={addOther}
+        onUpdate={updateOther}
+        onRemove={removeOther}
+      />
 
-      {/* Step 4 — Other free-form */}
-      {draft.game && (
-        <Section title="4. Other points" subtitle="Free-form for one-off Coach awards (Coach to confirm format)">
-          <div className="rounded-2xl border border-gray-200 bg-white p-3 space-y-2">
-            <input
-              type="text"
-              value={otherLabel}
-              onChange={(e) => setOtherLabel(e.target.value)}
-              placeholder="Reason (e.g. extra reps)"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            />
-            <div className="flex gap-2">
-              <input
-                type="number"
-                inputMode="numeric"
-                value={otherPoints}
-                onChange={(e) => setOtherPoints(e.target.value)}
-                placeholder="Points"
-                className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm tabular-nums focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
-              <button
-                onClick={addOther}
-                disabled={!otherPoints}
-                className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-800"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-        </Section>
-      )}
+      <SectionHeading
+        index={4}
+        title="Narration"
+        subtitle="Optional — for KFANDRA's eyes only"
+      />
+      <textarea
+        value={draft.narration}
+        onChange={(e) => setDraft((d) => ({ ...d, narration: e.target.value }))}
+        placeholder="e.g. left early at 7:25 to drop kid at school"
+        rows={3}
+        className="w-full rounded-2xl border border-gray-200 bg-white p-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+      />
 
-      {/* Tap history */}
-      {draft.events.length > 0 && (
-        <Section title="Taps so far" subtitle="Tap × to remove">
-          <div className="rounded-xl border border-gray-100 bg-white divide-y divide-gray-100 overflow-hidden">
-            {draft.events.map((e) => (
-              <div key={e.id} className="flex items-center justify-between px-3.5 py-2.5">
-                <p className="text-sm text-gray-700">{e.label}</p>
-                <div className="flex items-center gap-3">
-                  <span className="font-[family-name:var(--font-display)] text-sm font-bold tabular-nums text-gray-900">
-                    {e.points >= 0 ? `+${e.points}` : e.points}
-                  </span>
-                  <button
-                    onClick={() => removeEvent(e.id)}
-                    className="text-gray-300 hover:text-rose-500 text-lg leading-none"
-                    aria-label="Remove"
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {/* Step 5 — Narration */}
-      {draft.game && (
-        <Section title="5. Narration (optional)" subtitle="Notes for the Coach — does not affect points">
-          <textarea
-            value={draft.narration}
-            onChange={(e) => setDraft((d) => ({ ...d, narration: e.target.value }))}
-            placeholder="e.g. left early at 7:25 to drop kid at school"
-            rows={3}
-            className="w-full rounded-2xl border border-gray-200 bg-white p-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-          />
-        </Section>
-      )}
-
-      {/* Sticky submit bar */}
-      {draft.game && draft.events.length > 0 && (
+      {canSubmit && (
         <div className="fixed bottom-20 left-0 right-0 z-40 px-5">
           <button
             onClick={submit}
             className="w-full rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 py-4 text-sm font-bold text-white shadow-xl shadow-blue-500/30 active:scale-[0.99]"
           >
-            Submit {total.toLocaleString()} pts to Coach
+            Submit {visibleTotal.toLocaleString()}
+            {hasDynamicRank ? "+ pts" : " pts"} to KFANDRA
           </button>
         </div>
       )}
+
+      <AnimatePresence>
+        {gameDraft && (
+          <GameSheet
+            initial={gameDraft}
+            onSave={saveGame}
+            onClose={() => setGameDraft(null)}
+            onDelete={
+              draft.games.some((g) => g.id === gameDraft.id)
+                ? () => {
+                    deleteGame(gameDraft.id);
+                    setGameDraft(null);
+                  }
+                : null
+            }
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-function Section({
-  title,
-  subtitle,
-  children,
+// ─── Sub-components ────────────────────────────────────────────────
+
+function Scoreboard({
+  total,
+  hasDynamic,
+  sectionsFilled,
+  onReset,
 }: {
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
+  total: number;
+  hasDynamic: boolean;
+  sectionsFilled: { participation: boolean; games: number; others: number };
+  onReset: () => void;
 }) {
   return (
-    <section>
-      <div className="mb-2.5">
-        <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
-        {subtitle && <p className="text-[11px] text-gray-500">{subtitle}</p>}
+    <div className="rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-900 p-5 text-white shadow-lg shadow-blue-500/20">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-blue-200/80">
+            Running total
+          </p>
+          <p className="mt-1 font-[family-name:var(--font-display)] text-5xl font-black tabular-nums tracking-tight">
+            {total.toLocaleString()}
+            {hasDynamic && (
+              <span className="ml-1 text-2xl font-bold text-blue-200/80">+</span>
+            )}
+          </p>
+          <p className="mt-1 text-[11px] text-blue-200/60">
+            Participation {sectionsFilled.participation ? "✓" : "—"} ·{" "}
+            {sectionsFilled.games} {sectionsFilled.games === 1 ? "game" : "games"} ·{" "}
+            {sectionsFilled.others} other
+          </p>
+          {hasDynamic && (
+            <p className="mt-1 text-[10px] text-blue-200/60 italic">
+              + arrival &amp; confirmation pts (calculated at approval)
+            </p>
+          )}
+        </div>
+        {(total > 0 || sectionsFilled.participation) && (
+          <button
+            onClick={onReset}
+            className="rounded-lg bg-white/10 backdrop-blur px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-white/20"
+          >
+            Reset
+          </button>
+        )}
       </div>
-      {children}
-    </section>
+    </div>
   );
 }
 
-function ordinal(n: number) {
-  const s = ["th", "st", "nd", "rd"];
-  const v = n % 100;
-  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
+function SectionHeading({
+  index,
+  title,
+  subtitle,
+}: {
+  index: number;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <div className="mt-2 flex items-baseline gap-3 border-b border-gray-200 pb-1">
+      <span className="font-[family-name:var(--font-display)] text-2xl font-black text-gray-300 tabular-nums">
+        {index}
+      </span>
+      <div>
+        <h2 className="text-sm font-bold uppercase tracking-widest text-gray-900">{title}</h2>
+        <p className="text-[10px] text-gray-500">{subtitle}</p>
+      </div>
+    </div>
+  );
 }
 
-function SubmittedView({ total, onNew }: { total: number; onNew: () => void }) {
+function ParticipationCard({
+  p,
+  onChange,
+}: {
+  p: Participation;
+  onChange: (patch: Partial<Participation>) => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-4">
+      <RankInput
+        label="Order of confirmation"
+        hint="Position when you confirmed — points scale with attendance"
+        value={p.confirmationOrder}
+        onChange={(v) => onChange({ confirmationOrder: v })}
+      />
+      <RankInput
+        label="Arrival to ground"
+        hint="Position you arrived in — points scale with attendance"
+        value={p.arrivalOrder}
+        onChange={(v) => onChange({ arrivalOrder: v })}
+      />
+      <YesNoRow
+        label="Present for unpacking?"
+        value={p.unpacking}
+        onChange={(v) => onChange({ unpacking: v })}
+      />
+      <YesNoRow
+        label="Present for packing weights?"
+        value={p.packingWeights}
+        onChange={(v) => onChange({ packingWeights: v })}
+      />
+      <YesNoRow
+        label="Present for packing kit?"
+        value={p.packingKit}
+        onChange={(v) => onChange({ packingKit: v })}
+      />
+      <YesNoRow
+        label="Confirmed by 8 am?"
+        value={p.confirmedBy8am}
+        onChange={(v) => onChange({ confirmedBy8am: v })}
+      />
+    </div>
+  );
+}
+
+function RankInput({
+  label,
+  hint,
+  value,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  value: number | null;
+  onChange: (v: number | null) => void;
+}) {
+  const display = value ?? "—";
+  return (
+    <div>
+      <p className="text-sm font-semibold text-gray-900">{label}</p>
+      <p className="text-[11px] text-gray-500">{hint}</p>
+      <div className="mt-2 flex items-center gap-2">
+        <button
+          onClick={() => onChange(value && value > 1 ? value - 1 : null)}
+          disabled={value === null || value <= 1}
+          className="h-10 w-10 rounded-xl border border-gray-200 bg-white text-lg font-bold text-gray-600 disabled:opacity-30 hover:bg-gray-50"
+        >
+          −
+        </button>
+        <div className="flex-1 text-center font-[family-name:var(--font-display)] text-2xl font-bold tabular-nums text-gray-900">
+          {display}
+        </div>
+        <button
+          onClick={() => onChange((value ?? 0) + 1)}
+          className="h-10 w-10 rounded-xl border border-gray-200 bg-white text-lg font-bold text-gray-600 hover:bg-gray-50"
+        >
+          +
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function YesNoRow({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: boolean | null;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <p className="text-sm text-gray-800 flex-1 min-w-0">{label}</p>
+      <div className="flex shrink-0 rounded-xl bg-gray-100 p-1">
+        <button
+          onClick={() => onChange(true)}
+          className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            value === true ? "bg-emerald-500 text-white" : "text-gray-500"
+          }`}
+        >
+          Yes
+        </button>
+        <button
+          onClick={() => onChange(false)}
+          className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            value === false ? "bg-gray-700 text-white" : "text-gray-500"
+          }`}
+        >
+          No
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PerformanceList({
+  games,
+  onEdit,
+  onDelete,
+  onAdd,
+}: {
+  games: Game[];
+  onEdit: (g: Game) => void;
+  onDelete: (id: string) => void;
+  onAdd: () => void;
+}) {
+  return (
+    <div className="space-y-2.5">
+      {games.map((g) => {
+        const total = gameTotal(g);
+        const meta = GAME_LABEL[g.type];
+        const stats: string[] = [];
+        if (g.goals) stats.push(`${g.goals} goal${g.goals > 1 ? "s" : ""}`);
+        if (g.tries) stats.push(`${g.tries} tr${g.tries > 1 ? "ies" : "y"}`);
+        if (g.assists) stats.push(`${g.assists} assist${g.assists > 1 ? "s" : ""}`);
+        if (g.preAssists) stats.push(`${g.preAssists} pre-assist${g.preAssists > 1 ? "s" : ""}`);
+        if (g.saves) stats.push(`${g.saves} save${g.saves > 1 ? "s" : ""}`);
+        if (g.clearances) stats.push(`${g.clearances} clearance${g.clearances > 1 ? "s" : ""}`);
+        return (
+          <div key={g.id} className="rounded-2xl border border-gray-200 bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <button
+                onClick={() => onEdit(g)}
+                className="flex-1 min-w-0 text-left"
+              >
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                  {meta.emoji} {meta.name}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">
+                  {RESULT_LABEL[g.result]}
+                  {stats.length > 0 ? ` · ${stats.join(", ")}` : ""}
+                </p>
+                <p className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold tabular-nums text-blue-600">
+                  +{total.toLocaleString()} pts
+                </p>
+              </button>
+              <button
+                onClick={() => onDelete(g.id)}
+                className="text-gray-300 hover:text-rose-500 text-lg leading-none px-1"
+                aria-label="Delete game"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        );
+      })}
+      <button
+        onClick={onAdd}
+        className="w-full rounded-2xl border-2 border-dashed border-blue-300 bg-blue-50/40 py-4 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+      >
+        + Add a game
+      </button>
+    </div>
+  );
+}
+
+function OtherList({
+  rows,
+  onAdd,
+  onUpdate,
+  onRemove,
+}: {
+  rows: OtherRow[];
+  onAdd: () => void;
+  onUpdate: (id: string, patch: Partial<OtherRow>) => void;
+  onRemove: (id: string) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      {rows.map((r) => (
+        <div key={r.id} className="flex items-center gap-2">
+          <input
+            type="text"
+            value={r.description}
+            onChange={(e) => onUpdate(r.id, { description: e.target.value })}
+            placeholder="Description (e.g. 1st in race)"
+            className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          />
+          <input
+            type="number"
+            inputMode="numeric"
+            value={r.points}
+            onChange={(e) => onUpdate(r.id, { points: e.target.value })}
+            placeholder="Pts"
+            className="w-20 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm tabular-nums focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          />
+          <button
+            onClick={() => onRemove(r.id)}
+            className="text-gray-300 hover:text-rose-500 text-lg leading-none px-1"
+            aria-label="Remove"
+          >
+            ×
+          </button>
+        </div>
+      ))}
+      <button
+        onClick={onAdd}
+        className="w-full rounded-2xl border-2 border-dashed border-violet-300 bg-violet-50/40 py-3 text-sm font-semibold text-violet-700 hover:bg-violet-50"
+      >
+        + Add ad-hoc points
+      </button>
+    </div>
+  );
+}
+
+function GameSheet({
+  initial,
+  onSave,
+  onClose,
+  onDelete,
+}: {
+  initial: Game;
+  onSave: (g: Game) => void;
+  onClose: () => void;
+  onDelete: (() => void) | null;
+}) {
+  const [g, setG] = useState<Game>(initial);
+  const total = gameTotal(g);
+
+  function step(field: keyof Pick<Game, "goals" | "tries" | "assists" | "preAssists" | "saves" | "clearances">, delta: number) {
+    setG((x) => ({ ...x, [field]: Math.max(0, x[field] + delta) }));
+  }
+
+  const stats: { key: "goals" | "tries" | "assists" | "preAssists" | "saves" | "clearances"; label: string; mult: number }[] = [
+    { key: "goals", label: "Goals", mult: POINTS.goal },
+    { key: "tries", label: "Tries", mult: POINTS.try },
+    { key: "assists", label: "Assists", mult: POINTS.assist },
+    { key: "preAssists", label: "Pre-assists", mult: POINTS.preAssist },
+    { key: "saves", label: "Saves", mult: POINTS.save },
+    { key: "clearances", label: "Clearances", mult: POINTS.clearance },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-50 bg-black/40 flex items-end"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ type: "spring", stiffness: 320, damping: 28 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full bg-white rounded-t-3xl p-5 max-h-[92vh] overflow-y-auto"
+      >
+        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-gray-200" />
+
+        <h3 className="text-base font-bold text-gray-900 mb-1">
+          {onDelete ? "Edit game" : "Add a game"}
+        </h3>
+        <p className="text-[11px] text-gray-500 mb-4">
+          Points update as you tap.
+        </p>
+
+        {/* Game type */}
+        <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-2">
+          Game type
+        </p>
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          {(Object.keys(GAME_LABEL) as GameType[]).map((t) => {
+            const active = g.type === t;
+            return (
+              <button
+                key={t}
+                onClick={() => setG((x) => ({ ...x, type: t }))}
+                className={`text-left rounded-xl border p-2.5 transition-all ${
+                  active
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-gray-200 bg-white hover:border-blue-200"
+                }`}
+              >
+                <p className="text-sm font-semibold text-gray-900">
+                  {GAME_LABEL[t].emoji} {GAME_LABEL[t].name}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Result */}
+        <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-2">
+          Result
+        </p>
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {(["won", "drew", "lost"] as Result[]).map((r) => {
+            const active = g.result === r;
+            const tone =
+              r === "won"
+                ? active
+                  ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                  : "border-gray-200 bg-white text-gray-700"
+                : r === "drew"
+                ? active
+                  ? "border-amber-500 bg-amber-50 text-amber-700"
+                  : "border-gray-200 bg-white text-gray-700"
+                : active
+                ? "border-rose-500 bg-rose-50 text-rose-700"
+                : "border-gray-200 bg-white text-gray-700";
+            return (
+              <button
+                key={r}
+                onClick={() => setG((x) => ({ ...x, result: r }))}
+                className={`rounded-xl border py-2.5 text-center transition-all ${tone}`}
+              >
+                <p className="text-sm font-bold">{RESULT_LABEL[r]}</p>
+                <p className="text-[10px] tabular-nums opacity-75">+{POINTS[r]}</p>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Stats */}
+        <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-2">
+          Stats
+        </p>
+        <div className="space-y-2 mb-4">
+          {stats.map((s) => (
+            <div key={s.key} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-2.5">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900">{s.label}</p>
+                <p className="text-[10px] text-gray-500">
+                  ×{s.mult} = {(g[s.key] * s.mult).toLocaleString()}
+                </p>
+              </div>
+              <button
+                onClick={() => step(s.key, -1)}
+                disabled={g[s.key] === 0}
+                className="h-9 w-9 rounded-lg border border-gray-200 text-base font-bold text-gray-600 disabled:opacity-30 hover:bg-gray-50"
+              >
+                −
+              </button>
+              <p className="w-8 text-center font-[family-name:var(--font-display)] text-lg font-bold tabular-nums text-gray-900">
+                {g[s.key]}
+              </p>
+              <button
+                onClick={() => step(s.key, 1)}
+                className="h-9 w-9 rounded-lg border border-gray-200 text-base font-bold text-gray-600 hover:bg-gray-50"
+              >
+                +
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* Total */}
+        <div className="rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 p-3 mb-4 flex items-center justify-between">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-blue-700">
+            Game total
+          </p>
+          <p className="font-[family-name:var(--font-display)] text-2xl font-bold tabular-nums text-blue-700">
+            +{total.toLocaleString()}
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2">
+          {onDelete && (
+            <button
+              onClick={onDelete}
+              className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 hover:bg-rose-100"
+            >
+              Delete
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onSave(g)}
+            className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/20"
+          >
+            Save game
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function SubmittedView({
+  total,
+  hasDynamic,
+  onNew,
+}: {
+  total: number;
+  hasDynamic: boolean;
+  onNew: () => void;
+}) {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-16 gap-6">
       <motion.div
@@ -434,10 +856,12 @@ function SubmittedView({ total, onNew }: { total: number; onNew: () => void }) {
       <div className="text-center">
         <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">Sent</p>
         <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-bold text-gray-900">
-          {total.toLocaleString()} pts to Coach
+          {total.toLocaleString()}
+          {hasDynamic ? "+ pts" : " pts"} to KFANDRA
         </h1>
         <p className="mt-2 text-sm text-gray-500 max-w-xs">
-          Coach approves by 4 pm. You&rsquo;ll see the result in History.
+          KFANDRA approves by 4 pm.
+          {hasDynamic && " Arrival & confirmation points are added at approval."}
         </p>
       </div>
       <div className="flex flex-col gap-2 w-full max-w-xs">

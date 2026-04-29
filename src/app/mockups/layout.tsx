@@ -81,7 +81,7 @@ export default function MockupsLayout({
       </header>
 
       {/* Content */}
-      <main className="flex-1 pb-24 relative z-0">{children}</main>
+      <main className="flex-1 pb-24">{children}</main>
 
       {/* Bottom Navigation — 3 tabs */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 px-2 pb-[env(safe-area-inset-bottom)]">

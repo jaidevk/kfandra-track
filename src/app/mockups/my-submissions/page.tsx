@@ -262,7 +262,7 @@ export default function MySubmissionsMockup() {
       {/* Detail sheet */}
       {selectedSub && (
         <div
-          className="fixed inset-0 z-50 bg-black/40 flex items-end"
+          className="fixed inset-0 z-[60] bg-black/40 flex items-end"
           onClick={() => setSelected(null)}
         >
           <motion.div

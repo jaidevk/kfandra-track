@@ -91,6 +91,28 @@ const RESULT_LABEL: Record<Result, string> = {
   lost: "Lost",
 };
 
+type StatKey = "goals" | "tries" | "assists" | "preAssists" | "saves" | "clearances";
+
+const ALL_STATS: { key: StatKey; label: string; mult: number }[] = [
+  { key: "goals", label: "Goals", mult: POINTS.goal },
+  { key: "tries", label: "Tries", mult: POINTS.try },
+  { key: "assists", label: "Assists", mult: POINTS.assist },
+  { key: "preAssists", label: "Pre-assists", mult: POINTS.preAssist },
+  { key: "saves", label: "Saves", mult: POINTS.save },
+  { key: "clearances", label: "Clearances", mult: POINTS.clearance },
+];
+
+// Which stats are relevant per game type. Hidden stats are zeroed
+// when the player changes type, so totals don't carry phantom points.
+const STATS_BY_TYPE: Record<GameType, StatKey[]> = {
+  "football-short": ["goals", "assists", "preAssists", "saves", "clearances"],
+  "fooba-big-goal": ["goals", "assists", "preAssists", "saves", "clearances"],
+  "fooba-rebound": ["goals", "assists", "preAssists", "saves", "clearances"],
+  "three-and-in": ["goals", "assists", "preAssists"],
+  "rugby-short": ["tries", "assists", "preAssists"],
+  other: ["goals", "tries", "assists", "preAssists", "saves", "clearances"],
+};
+
 const DRAFT_KEY = "kfandra:mockup:mmg-draft-v2";
 
 const emptyParticipation: Participation = {
@@ -665,18 +687,24 @@ function GameSheet({
   const [g, setG] = useState<Game>(initial);
   const total = gameTotal(g);
 
-  function step(field: keyof Pick<Game, "goals" | "tries" | "assists" | "preAssists" | "saves" | "clearances">, delta: number) {
+  function step(field: StatKey, delta: number) {
     setG((x) => ({ ...x, [field]: Math.max(0, x[field] + delta) }));
   }
 
-  const stats: { key: "goals" | "tries" | "assists" | "preAssists" | "saves" | "clearances"; label: string; mult: number }[] = [
-    { key: "goals", label: "Goals", mult: POINTS.goal },
-    { key: "tries", label: "Tries", mult: POINTS.try },
-    { key: "assists", label: "Assists", mult: POINTS.assist },
-    { key: "preAssists", label: "Pre-assists", mult: POINTS.preAssist },
-    { key: "saves", label: "Saves", mult: POINTS.save },
-    { key: "clearances", label: "Clearances", mult: POINTS.clearance },
-  ];
+  function changeType(t: GameType) {
+    setG((x) => {
+      const allowed = new Set(STATS_BY_TYPE[t]);
+      const cleared: Game = { ...x, type: t };
+      for (const s of ALL_STATS) {
+        if (!allowed.has(s.key)) cleared[s.key] = 0;
+      }
+      return cleared;
+    });
+  }
+
+  const stats = STATS_BY_TYPE[g.type]
+    .map((k) => ALL_STATS.find((s) => s.key === k)!)
+    .filter(Boolean);
 
   return (
     <motion.div
@@ -684,7 +712,7 @@ function GameSheet({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-50 bg-black/40 flex items-end"
+      className="fixed inset-0 z-[60] bg-black/40 flex items-end"
       onClick={onClose}
     >
       <motion.div
@@ -714,7 +742,7 @@ function GameSheet({
             return (
               <button
                 key={t}
-                onClick={() => setG((x) => ({ ...x, type: t }))}
+                onClick={() => changeType(t)}
                 className={`text-left rounded-xl border p-2.5 transition-all ${
                   active
                     ? "border-blue-500 bg-blue-50"

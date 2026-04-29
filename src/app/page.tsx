@@ -123,12 +123,12 @@ export default function Home() {
           >
             <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 border border-white/30">
               <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75l-2.489-2.489m0 0a3.375 3.375 0 10-4.773-4.773 3.375 3.375 0 004.773 4.773zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <h2 className="text-sm font-bold text-white mb-0.5">MMG</h2>
             <p className="text-[11px] text-blue-100/70 leading-relaxed">
-              Monthly Multi-Games points &amp; standings
+              Tap-to-add points &middot; submit to Coach
             </p>
           </motion.div>
 
@@ -137,14 +137,14 @@ export default function Home() {
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
             className="bg-white/20 backdrop-blur rounded-2xl p-4 text-left border border-white/30"
           >
-            <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-amber-400/30 border border-amber-300/40">
-              <svg className="h-4 w-4 text-amber-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5" />
+            <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-400/30 border border-emerald-300/40">
+              <svg className="h-4 w-4 text-emerald-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3.75h-1.5a1.5 1.5 0 00-1.5 1.5v13.5a1.5 1.5 0 001.5 1.5h1.5m10.5-16.5h1.5a1.5 1.5 0 011.5 1.5v13.5a1.5 1.5 0 01-1.5 1.5h-1.5M6.75 12h10.5M9 7.5v9m6-9v9" />
               </svg>
             </div>
-            <h2 className="text-sm font-bold text-white mb-0.5">KLCFESGR1</h2>
+            <h2 className="text-sm font-bold text-white mb-0.5">Gym</h2>
             <p className="text-[11px] text-blue-100/70 leading-relaxed">
-              League, Cup &amp; Club finances
+              Body part &rarr; sets &amp; reps &middot; submit to Coach
             </p>
           </motion.div>
         </motion.div>

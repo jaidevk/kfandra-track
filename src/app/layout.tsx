@@ -17,7 +17,7 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   title: "KFandra Track",
   description:
-    "MMG Points & KLCFESGR1 League Management for KFANDRA",
+    "MMG points & gym performance tracker for KFANDRA",
   manifest: "/manifest.json",
 };
 

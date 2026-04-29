@@ -1,188 +1,233 @@
 "use client";
 
-import { motion } from "framer-motion";
+import Link from "next/link";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+
+type Mode = "login" | "register" | "pending";
 
 export default function LoginMockup() {
+  const [mode, setMode] = useState<Mode>("login");
+  const [phone, setPhone] = useState("");
+  const [name, setName] = useState("");
+  const [pin, setPin] = useState("");
+
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#f8fafc] p-6">
-      {/* Animated background orbs */}
+      {/* Background orbs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <motion.div
-          animate={{
-            scale: [1, 1.15, 1],
-            opacity: [0.08, 0.13, 0.08],
-          }}
+          animate={{ scale: [1, 1.15, 1], opacity: [0.08, 0.13, 0.08] }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
           className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-200 blur-[120px]"
         />
         <motion.div
-          animate={{
-            scale: [1, 1.1, 1],
-            opacity: [0.06, 0.1, 0.06],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 2,
-          }}
+          animate={{ scale: [1, 1.1, 1], opacity: [0.06, 0.1, 0.06] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }}
           className="absolute -bottom-32 -right-32 h-80 w-80 rounded-full bg-blue-100 blur-[120px]"
-        />
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.04, 0.08, 0.04],
-          }}
-          transition={{
-            duration: 12,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 4,
-          }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-64 rounded-full bg-indigo-200 blur-[100px]"
         />
       </div>
 
-      {/* Content */}
       <div className="relative z-10 flex w-full max-w-sm flex-col items-center gap-8">
-        {/* Logo & Title */}
+        {/* Logo */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="flex flex-col items-center gap-4"
+          transition={{ duration: 0.5 }}
+          className="flex flex-col items-center gap-3"
         >
-          <div className="relative">
-            <motion.div
-              animate={{
-                boxShadow: [
-                  "0 0 20px rgba(37,99,235,0.15), 0 0 60px rgba(37,99,235,0.05)",
-                  "0 0 30px rgba(37,99,235,0.25), 0 0 80px rgba(37,99,235,0.1)",
-                  "0 0 20px rgba(37,99,235,0.15), 0 0 60px rgba(37,99,235,0.05)",
-                ],
-              }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700"
-            >
-              <span className="font-[family-name:var(--font-display)] text-3xl font-black text-white">
-                KF
-              </span>
-            </motion.div>
+          <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 shadow-lg shadow-blue-500/20">
+            <span className="font-[family-name:var(--font-display)] text-3xl font-black text-white">
+              KF
+            </span>
           </div>
-
-          <div className="flex flex-col items-center gap-1.5">
-            <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold text-gray-900 tracking-tight">
+          <div className="flex flex-col items-center gap-1">
+            <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold text-gray-900 tracking-tight">
               KFandra Track
             </h1>
             <p className="text-[10px] uppercase tracking-widest text-gray-500 font-medium">
-              Club Management Platform
+              Working name &middot; Coach to confirm
             </p>
           </div>
         </motion.div>
 
-        {/* Auth Cards */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
-          className="w-full space-y-3"
-        >
-          {/* Google */}
-          <div className="glass rounded-2xl p-4">
-            <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold mb-3">
-              Continue with
-            </p>
-            <button className="flex w-full items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-all hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98]">
-              <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
+        <AnimatePresence initial={false}>
+          {mode === "login" && (
+            <motion.div
+              key="login"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25 }}
+              className="w-full glass rounded-2xl p-5 space-y-4"
+            >
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">
+                  Sign in
+                </p>
+                <h2 className="mt-1 text-base font-bold text-gray-900">Phone &amp; 4-digit PIN</h2>
+              </div>
+              <Field label="Phone number">
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="98xxxxxxxx"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm tabular-nums focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              </Field>
+              <Field label="4-digit PIN">
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                  placeholder="••••"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm tabular-nums tracking-[0.5em] text-center focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+              </Field>
+              <Link
+                href="/mockups"
+                className="block w-full rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition-all hover:from-blue-500 hover:to-blue-400 active:scale-[0.98]"
+              >
+                Sign in
+              </Link>
+              <div className="flex items-center justify-between text-[11px]">
+                <button
+                  onClick={() => setMode("register")}
+                  className="text-blue-600 font-semibold hover:text-blue-700"
+                >
+                  Create an account
+                </button>
+                <span className="text-gray-400">SMS OTP coming in V2</span>
+              </div>
+            </motion.div>
+          )}
+
+          {mode === "register" && (
+            <motion.div
+              key="register"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25 }}
+              className="w-full glass rounded-2xl p-5 space-y-4"
+            >
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">
+                  Register
+                </p>
+                <h2 className="mt-1 text-base font-bold text-gray-900">
+                  Self-register, Coach approves
+                </h2>
+                <p className="mt-1 text-[11px] text-gray-500">
+                  Coach gets a notification and approves you before you can submit.
+                </p>
+              </div>
+              <Field label="Name (player nickname)">
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Acid"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+              </Field>
+              <Field label="Phone number">
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="98xxxxxxxx"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm tabular-nums focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
-              </svg>
-              Continue with Google
-            </button>
-          </div>
+              </Field>
+              <Field label="Choose a 4-digit PIN">
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                  placeholder="••••"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm tabular-nums tracking-[0.5em] text-center focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </Field>
+              <button
+                onClick={() => setMode("pending")}
+                className="block w-full rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition-all hover:from-blue-500 hover:to-blue-400 active:scale-[0.98]"
+              >
+                Send to Coach for approval
+              </button>
+              <button
+                onClick={() => setMode("login")}
+                className="block w-full text-[11px] text-gray-500 hover:text-gray-700 font-semibold"
+              >
+                ← Back to sign-in
+              </button>
+            </motion.div>
+          )}
 
-          {/* Divider */}
-          <div className="flex items-center gap-3 px-1">
-            <div className="h-px flex-1 bg-gray-200" />
-            <span className="text-[10px] uppercase tracking-widest text-gray-400">
-              or
-            </span>
-            <div className="h-px flex-1 bg-gray-200" />
-          </div>
+          {mode === "pending" && (
+            <motion.div
+              key="pending"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3 }}
+              className="w-full glass rounded-2xl p-6 text-center space-y-4"
+            >
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 250, damping: 18 }}
+                className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-50 border border-amber-200"
+              >
+                <svg className="h-8 w-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </motion.div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-amber-700 font-semibold">
+                  Pending Coach approval
+                </p>
+                <h2 className="mt-1 text-lg font-bold text-gray-900">
+                  Sit tight, {name || "player"}
+                </h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Coach gets a notification and usually approves within a day. You&rsquo;ll be able to log in once approved.
+                </p>
+              </div>
+              <button
+                onClick={() => setMode("login")}
+                className="block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Back to sign-in
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-          {/* Magic Link */}
-          <div className="glass rounded-2xl p-4 space-y-3">
-            <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">
-              Magic Link
-            </p>
-            <input
-              type="email"
-              placeholder="player@kfandra.com"
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-            />
-            <button className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition-all hover:from-blue-500 hover:to-blue-400 active:scale-[0.98]">
-              Send Magic Link
-            </button>
-          </div>
-
-          {/* Divider */}
-          <div className="flex items-center gap-3 px-1">
-            <div className="h-px flex-1 bg-gray-200" />
-            <span className="text-[10px] uppercase tracking-widest text-gray-400">
-              or
-            </span>
-            <div className="h-px flex-1 bg-gray-200" />
-          </div>
-
-          {/* Password */}
-          <div className="glass rounded-2xl p-4 space-y-3">
-            <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">
-              Email &amp; Password
-            </p>
-            <input
-              type="email"
-              placeholder="Email"
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-            />
-            <button className="w-full rounded-xl border border-blue-300 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-600 transition-all hover:bg-blue-100 hover:border-blue-400 active:scale-[0.98]">
-              Sign In
-            </button>
-          </div>
-        </motion.div>
-
-        {/* Footer motto */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5, duration: 0.6 }}
-          className="text-center text-xs text-gray-400 italic"
-        >
+        <p className="text-center text-[10px] text-gray-400 italic">
           &ldquo;Respect, Trust, Integrity, Passion &amp; Humility&rdquo;
           <br />
-          <span className="not-italic text-[10px] text-gray-400 tracking-wide">
-            KFANDRA · Est. 2000 · Pune, India
-          </span>
-        </motion.p>
+          <span className="not-italic tracking-wide">KFANDRA &middot; Est. 2000 &middot; Pune, India</span>
+        </p>
       </div>
     </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">
+        {label}
+      </span>
+      <div className="mt-1.5">{children}</div>
+    </label>
   );
 }

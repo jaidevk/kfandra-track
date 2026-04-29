@@ -1,503 +1,458 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
-const confirmationOrder = [
-  { rank: 1, player: "Abe", time: "5:45 AM", points: 800 },
-  { rank: 2, player: "Acid", time: "5:50 AM", points: 700 },
-  { rank: 3, player: "Ahjoo", time: "5:55 AM", points: 600 },
-  { rank: 4, player: "Jake", time: "6:00 AM", points: 500 },
-  { rank: 5, player: "Mkul", time: "6:02 AM", points: 400 },
-  { rank: 6, player: "Seito", time: "6:05 AM", points: 300 },
-  { rank: 7, player: "Goodman", time: "6:08 AM", points: 200 },
-  { rank: 8, player: "Crank", time: "6:10 AM", points: 100 },
-];
+/**
+ * Calculator-style MMG entry mockup.
+ *
+ * Flow:
+ *   1. Pick game type → relevant button set appears.
+ *   2. Tap buttons (e.g. Goal +500) — repeated taps accumulate.
+ *   3. Self-declare order-of-arrival rank (Coach approves later).
+ *   4. Optional free-form "Other +N" entry for blip points.
+ *   5. Optional narration at the end.
+ *   6. Submit → reset to zero, draft cleared from localStorage.
+ *
+ * Mockup-only: no real submission, all state held client-side.
+ */
 
-const packingItems = [
-  { task: "GWW Unpacking", player: "Abe", points: 500 },
-  { task: "GWW Packing", player: "Acid", points: 500 },
-  { task: "Session Packing", player: "Jake", points: 200 },
-];
+type GameType =
+  | "fooba-big-goal"
+  | "fooba-rebound"
+  | "short-game"
+  | "end-game-drill"
+  | "three-and-in";
 
-const playerEvents = [
-  { player: "Acid", event: "Goal", points: 500, icon: "⚽" },
-  { player: "Acid", event: "Goal", points: 500, icon: "⚽" },
-  { player: "Abe", event: "Assist", points: 200, icon: "👟" },
-  { player: "Ahjoo", event: "Goal", points: 500, icon: "⚽" },
-  { player: "Jake", event: "Save", points: 500, icon: "🧤" },
-  { player: "Mkul", event: "Goal Line Clearance", points: 500, icon: "🛡️" },
-  { player: "Seito", event: "Pre-Assist", points: 100, icon: "🔗" },
-];
-
-type Tab = "attendance" | "packing" | "game";
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 16 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.35, delay: i * 0.06, ease: "easeOut" as const },
-  }),
+type Button = {
+  id: string;
+  label: string;
+  points: number;
+  /** repeatable = tap-to-add accumulates (e.g. Goal, MMG drill 100) */
+  repeatable?: boolean;
+  tone?: "blue" | "emerald" | "amber" | "rose" | "violet";
 };
 
-const tabContent = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" as const } },
-  exit: { opacity: 0, y: -8, transition: { duration: 0.2, ease: "easeIn" as const } },
+type EventEntry = {
+  id: string;
+  label: string;
+  points: number;
+  ts: number;
 };
+
+const games: { id: GameType; name: string; subtitle: string }[] = [
+  { id: "fooba-big-goal", name: "Fooba", subtitle: "Big Goal" },
+  { id: "fooba-rebound", name: "Fooba", subtitle: "Rebound Wall" },
+  { id: "short-game", name: "Short Game", subtitle: "Half pitch" },
+  { id: "end-game-drill", name: "End-game Drill", subtitle: "Closing" },
+  { id: "three-and-in", name: "3-and-in", subtitle: "Mini" },
+];
+
+// Pre-session / packing buttons appear for every game type
+const sessionButtons: Button[] = [
+  { id: "pre-unpack", label: "Pre-session unpacking", points: 500, tone: "amber" },
+  { id: "gww-unpack", label: "GWW unpacking", points: 500, tone: "amber" },
+  { id: "post-pack", label: "Post-GWW packing", points: 500, tone: "amber" },
+  { id: "confirmation", label: "Confirmation", points: 500, tone: "violet" },
+];
+
+const orderOfArrivalPoints: Record<number, number> = {
+  1: 800, 2: 700, 3: 600, 4: 500, 5: 400, 6: 300, 7: 200, 8: 100,
+};
+
+const matchButtons: Button[] = [
+  { id: "goal", label: "Goal", points: 500, repeatable: true, tone: "emerald" },
+  { id: "assist", label: "Assist", points: 200, repeatable: true, tone: "blue" },
+  { id: "pre-assist", label: "Pre-assist", points: 100, repeatable: true, tone: "blue" },
+  { id: "save", label: "Save", points: 500, repeatable: true, tone: "emerald" },
+  { id: "clearance", label: "Goal-line clearance", points: 500, repeatable: true, tone: "emerald" },
+  { id: "win-bonus-1k", label: "Win bonus", points: 1000, tone: "amber" },
+  { id: "win-bonus-500", label: "Win bonus (½)", points: 500, tone: "amber" },
+];
+
+const drillButtons: Button[] = [
+  { id: "mmg-drill-100", label: "MMG drill", points: 100, repeatable: true, tone: "rose" },
+  { id: "goal-bonus", label: "Goal bonus", points: 500, repeatable: true, tone: "emerald" },
+];
+
+const buttonsByGame: Record<GameType, Button[]> = {
+  "fooba-big-goal": [...sessionButtons, ...matchButtons, ...drillButtons],
+  "fooba-rebound": [...sessionButtons, ...matchButtons, ...drillButtons],
+  "short-game": [...sessionButtons, ...matchButtons.filter(b => b.id !== "win-bonus-1k"), ...drillButtons],
+  "end-game-drill": [...sessionButtons, ...drillButtons],
+  "three-and-in": [...sessionButtons, ...drillButtons.filter(b => b.id === "mmg-drill-100"), ...matchButtons.filter(b => b.id === "goal")],
+};
+
+const toneClass: Record<NonNullable<Button["tone"]>, string> = {
+  blue: "from-blue-50 to-white text-blue-700 border-blue-200 hover:border-blue-300",
+  emerald: "from-emerald-50 to-white text-emerald-700 border-emerald-200 hover:border-emerald-300",
+  amber: "from-amber-50 to-white text-amber-700 border-amber-200 hover:border-amber-300",
+  rose: "from-rose-50 to-white text-rose-700 border-rose-200 hover:border-rose-300",
+  violet: "from-violet-50 to-white text-violet-700 border-violet-200 hover:border-violet-300",
+};
+
+const DRAFT_KEY = "kfandra:mockup:mmg-draft";
+
+type Draft = {
+  game: GameType | null;
+  events: EventEntry[];
+  arrivalRank: number | null;
+  narration: string;
+};
+
+const emptyDraft: Draft = { game: null, events: [], arrivalRank: null, narration: "" };
 
 export default function MMGSessionMockup() {
-  const [activeTab, setActiveTab] = useState<Tab>("attendance");
+  const [draft, setDraft] = useState<Draft>(emptyDraft);
+  const [otherPoints, setOtherPoints] = useState("");
+  const [otherLabel, setOtherLabel] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  // Restore draft on mount (SSR: must rehydrate after first client render)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem(DRAFT_KEY);
+    if (raw) {
+      try {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage rehydration on mount
+        setDraft(JSON.parse(raw));
+      } catch { /* ignore */ }
+    }
+  }, []);
+
+  // Persist draft on change (mockup behaviour: drafts survive a refresh)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  }, [draft]);
+
+  const total = useMemo(() => {
+    const base = draft.events.reduce((sum, e) => sum + e.points, 0);
+    const arrival = draft.arrivalRank ? orderOfArrivalPoints[draft.arrivalRank] ?? 0 : 0;
+    return base + arrival;
+  }, [draft]);
+
+  const buttons = draft.game ? buttonsByGame[draft.game] : [];
+
+  function tapButton(btn: Button) {
+    setDraft((d) => ({
+      ...d,
+      events: [
+        ...d.events,
+        {
+          id: `${btn.id}-${Date.now()}-${d.events.length}`,
+          label: btn.label,
+          points: btn.points,
+          ts: Date.now(),
+        },
+      ],
+    }));
+  }
+
+  function removeEvent(id: string) {
+    setDraft((d) => ({ ...d, events: d.events.filter((e) => e.id !== id) }));
+  }
+
+  function addOther() {
+    const n = Number(otherPoints);
+    if (!Number.isFinite(n) || n === 0) return;
+    setDraft((d) => ({
+      ...d,
+      events: [
+        ...d.events,
+        {
+          id: `other-${Date.now()}-${d.events.length}`,
+          label: otherLabel.trim() || "Other",
+          points: n,
+          ts: Date.now(),
+        },
+      ],
+    }));
+    setOtherPoints("");
+    setOtherLabel("");
+  }
+
+  function submit() {
+    if (!draft.game || draft.events.length === 0) return;
+    setSubmitted(true);
+  }
+
+  function newSession() {
+    setDraft(emptyDraft);
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(DRAFT_KEY);
+    }
+    setSubmitted(false);
+  }
+
+  if (submitted) {
+    return <SubmittedView total={total} onNew={newSession} />;
+  }
 
   return (
-    <div
-      className="min-h-screen bg-[#f8fafc]"
-      style={{
-        fontFamily: "var(--font-body, 'DM Sans', sans-serif)",
-      }}
-    >
-      <div className="flex flex-col gap-4 p-4 pb-8">
-
-        {/* Session Header */}
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          custom={0}
-          variants={fadeUp}
-          className="glass rounded-2xl p-5"
-        >
-          <div className="flex items-start justify-between">
-            <div>
-              <p
-                className="uppercase tracking-widest text-gray-400 mb-1"
-                style={{ fontSize: "10px" }}
-              >
-                MMG Session
-              </p>
-              <h1
-                className="text-2xl font-bold text-gray-900 leading-tight"
-                style={{ fontFamily: "var(--font-display, 'Playfair Display', serif)" }}
-              >
-                Thursday, 9 Apr 2026
-              </h1>
-              <p className="text-sm text-gray-500 mt-0.5">6:10 – 7:30 AM</p>
-            </div>
-            <span
-              className="rounded-full px-3 py-1 text-xs font-semibold mt-1"
-              style={{
-                background: "rgba(5,150,105,0.08)",
-                color: "#059669",
-                border: "1px solid rgba(5,150,105,0.2)",
-              }}
-            >
-              Completed
-            </span>
+    <div className="flex flex-col gap-5 p-5 pb-32">
+      {/* Running total — sticky-ish scoreboard */}
+      <div className="rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-900 p-5 text-white shadow-lg shadow-blue-500/20">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-200/80">
+              Running total
+            </p>
+            <p className="mt-1 font-[family-name:var(--font-display)] text-5xl font-black tabular-nums tracking-tight">
+              {total.toLocaleString()}
+            </p>
+            <p className="mt-1 text-[11px] text-blue-200/60">
+              {draft.events.length} {draft.events.length === 1 ? "tap" : "taps"} &middot; {draft.arrivalRank ? `arrived ${ordinal(draft.arrivalRank)}` : "no arrival rank"}
+            </p>
           </div>
-
-          <div className="mt-4 flex gap-0 divide-x divide-gray-200">
-            <div className="flex-1 pr-4">
-              <p
-                className="text-3xl font-bold text-gray-900 tabular-nums"
-                style={{ fontFamily: "var(--font-display, 'Playfair Display', serif)" }}
-              >
-                8
-              </p>
-              <p className="uppercase tracking-widest text-gray-400 mt-0.5" style={{ fontSize: "10px" }}>
-                Players
-              </p>
-            </div>
-            <div className="flex-1 pl-4">
-              <p
-                className="text-3xl font-bold tabular-nums"
-                style={{
-                  fontFamily: "var(--font-display, 'Playfair Display', serif)",
-                  color: "#2563eb",
-                }}
-              >
-                24,800
-              </p>
-              <p className="uppercase tracking-widest text-gray-400 mt-0.5" style={{ fontSize: "10px" }}>
-                Total Points
-              </p>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Tab Selector */}
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          custom={1}
-          variants={fadeUp}
-          className="flex rounded-xl p-1 gap-1"
-          style={{
-            background: "rgba(0,0,0,0.04)",
-            border: "1px solid rgba(0,0,0,0.06)",
-          }}
-        >
-          {(["attendance", "packing", "game"] as Tab[]).map((tab) => (
+          {draft.events.length > 0 && (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className="relative flex-1 rounded-lg px-3 py-2.5 text-sm font-medium capitalize transition-colors"
-              style={{
-                color: activeTab === tab ? "#fff" : "#64748b",
-              }}
+              onClick={() => setDraft((d) => ({ ...d, events: d.events.slice(0, -1) }))}
+              className="rounded-lg bg-white/10 backdrop-blur px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-white/20 transition-colors"
             >
-              {activeTab === tab && (
-                <motion.span
-                  layoutId="tab-pill"
-                  className="absolute inset-0 rounded-lg"
-                  style={{
-                    background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
-                    boxShadow: "0 0 16px rgba(37,99,235,0.2)",
-                  }}
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                />
-              )}
-              <span className="relative z-10">{tab}</span>
+              ← Undo
             </button>
-          ))}
-        </motion.div>
-
-        {/* Tab Content */}
-        <AnimatePresence mode="wait">
-          {activeTab === "attendance" && (
-            <motion.div
-              key="attendance"
-              variants={tabContent}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="flex flex-col gap-3"
-            >
-              {/* Confirmation Order */}
-              <div className="glass rounded-2xl p-4">
-                <p
-                  className="uppercase tracking-widest text-gray-400 mb-3"
-                  style={{ fontSize: "10px" }}
-                >
-                  Confirmation Order
-                </p>
-                <div className="flex flex-col gap-2">
-                  {confirmationOrder.map((entry, i) => (
-                    <motion.div
-                      key={entry.rank}
-                      custom={i}
-                      variants={fadeUp}
-                      initial="hidden"
-                      animate="visible"
-                      className="flex items-center justify-between rounded-xl px-3 py-2.5 bg-gray-50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span
-                          className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold tabular-nums flex-shrink-0"
-                          style={{
-                            background:
-                              entry.rank <= 3
-                                ? "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)"
-                                : "rgba(100,116,139,0.12)",
-                            boxShadow:
-                              entry.rank <= 3
-                                ? "0 0 10px rgba(59,130,246,0.2)"
-                                : "none",
-                            color: entry.rank <= 3 ? "#fff" : "#64748b",
-                          }}
-                        >
-                          {entry.rank}
-                        </span>
-                        <span className="text-sm font-medium text-gray-700">
-                          {entry.player}
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <p
-                          className="text-sm font-semibold tabular-nums text-blue-600"
-                        >
-                          +{entry.points}
-                        </p>
-                        <p className="text-xs text-gray-400 tabular-nums">
-                          {entry.time}
-                        </p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Early Bonus Banner */}
-              <div
-                className="rounded-2xl p-4"
-                style={{
-                  background: "rgba(37,99,235,0.05)",
-                  border: "1px solid rgba(59,130,246,0.15)",
-                }}
-              >
-                <p
-                  className="uppercase tracking-widest text-blue-600 mb-1"
-                  style={{ fontSize: "10px" }}
-                >
-                  Early Bonus
-                </p>
-                <p className="text-sm font-medium text-blue-600">
-                  Early Confirmation Bonus (before 7:30 AM)
-                </p>
-                <p className="text-xs text-blue-500/70 mt-0.5">
-                  6 players confirmed before 7:30 AM — +500 pts each
-                </p>
-              </div>
-            </motion.div>
           )}
+        </div>
+      </div>
 
-          {activeTab === "packing" && (
-            <motion.div
-              key="packing"
-              variants={tabContent}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="glass rounded-2xl p-4"
-            >
-              <p
-                className="uppercase tracking-widest text-gray-400 mb-3"
-                style={{ fontSize: "10px" }}
+      {/* Step 1 — Game type */}
+      <Section title="1. Pick the game" subtitle="Different games show different buttons">
+        <div className="grid grid-cols-2 gap-2.5">
+          {games.map((g) => {
+            const active = draft.game === g.id;
+            return (
+              <button
+                key={g.id}
+                onClick={() => setDraft((d) => ({ ...d, game: g.id }))}
+                className={`text-left rounded-xl border p-3 transition-all ${
+                  active
+                    ? "border-blue-500 bg-blue-50 shadow-sm shadow-blue-500/10"
+                    : "border-gray-200 bg-white hover:border-blue-200"
+                }`}
               >
-                Packing Points
-              </p>
-              <div className="flex flex-col gap-2">
-                {packingItems.map((item, i) => (
-                  <motion.div
-                    key={i}
-                    custom={i}
-                    variants={fadeUp}
-                    initial="hidden"
-                    animate="visible"
-                    className="flex items-center justify-between rounded-xl px-3 py-3 bg-gray-50"
+                <p className="text-sm font-bold text-gray-900">{g.name}</p>
+                <p className="text-[11px] text-gray-500">{g.subtitle}</p>
+                {active && (
+                  <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-blue-600">
+                    Selected
+                  </p>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </Section>
+
+      {/* Step 2 — Tap buttons */}
+      <AnimatePresence>
+        {draft.game && (
+          <motion.div
+            key="buttons"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25 }}
+          >
+            <Section title="2. Tap to add points" subtitle="Repeated taps accumulate (e.g. 2 goals = 2 taps)">
+              <div className="grid grid-cols-2 gap-2.5">
+                {buttons.map((b) => (
+                  <button
+                    key={b.id}
+                    onClick={() => tapButton(b)}
+                    className={`relative overflow-hidden rounded-xl border bg-gradient-to-br p-3 text-left transition-all active:scale-[0.97] ${toneClass[b.tone ?? "blue"]}`}
                   >
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">
-                        {item.task}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">{item.player}</p>
-                    </div>
-                    <span
-                      className="text-sm font-semibold tabular-nums"
-                      style={{ color: "#059669" }}
-                    >
-                      +{item.points}
-                    </span>
-                  </motion.div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide opacity-80">
+                      {b.label}
+                    </p>
+                    <p className="mt-1 font-[family-name:var(--font-display)] text-2xl font-black tabular-nums">
+                      +{b.points}
+                    </p>
+                    {b.repeatable && (
+                      <span className="absolute right-2 top-2 rounded-full bg-white/70 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-gray-500">
+                        Repeat
+                      </span>
+                    )}
+                  </button>
                 ))}
               </div>
-            </motion.div>
-          )}
+            </Section>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-          {activeTab === "game" && (
-            <motion.div
-              key="game"
-              variants={tabContent}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="flex flex-col gap-3"
-            >
-              {/* Match Result */}
-              <div className="glass rounded-2xl p-4">
-                <p
-                  className="uppercase tracking-widest text-gray-400 mb-3"
-                  style={{ fontSize: "10px" }}
+      {/* Step 3 — Order of arrival */}
+      {draft.game && (
+        <Section title="3. Order of arrival" subtitle="Self-declare — Coach confirms against the sheet">
+          <div className="grid grid-cols-4 gap-2">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((rank) => {
+              const active = draft.arrivalRank === rank;
+              return (
+                <button
+                  key={rank}
+                  onClick={() => setDraft((d) => ({ ...d, arrivalRank: active ? null : rank }))}
+                  className={`rounded-xl border py-2.5 text-center transition-all ${
+                    active
+                      ? "border-violet-500 bg-violet-50 text-violet-700 shadow-sm shadow-violet-500/10"
+                      : "border-gray-200 bg-white text-gray-700 hover:border-violet-200"
+                  }`}
                 >
-                  Fooba / Full Game
-                </p>
-                <div className="flex items-center justify-center gap-6 py-2">
-                  <div className="text-center flex-1">
-                    <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Team A</p>
-                    <p
-                      className="tabular-nums font-bold"
-                      style={{
-                        fontFamily: "var(--font-display, 'Playfair Display', serif)",
-                        fontSize: "52px",
-                        lineHeight: 1,
-                        color: "#2563eb",
-                      }}
-                    >
-                      3
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <span className="text-gray-400 font-medium text-sm">vs</span>
-                  </div>
-                  <div className="text-center flex-1">
-                    <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Team B</p>
-                    <p
-                      className="tabular-nums font-bold"
-                      style={{
-                        fontFamily: "var(--font-display, 'Playfair Display', serif)",
-                        fontSize: "52px",
-                        lineHeight: 1,
-                        color: "#94a3b8",
-                      }}
-                    >
-                      2
-                    </p>
-                  </div>
-                </div>
-                <div
-                  className="mt-3 rounded-xl p-2.5 text-center"
-                  style={{
-                    background: "rgba(5,150,105,0.06)",
-                    border: "1px solid rgba(5,150,105,0.15)",
-                  }}
-                >
-                  <span className="text-sm font-medium" style={{ color: "#059669" }}>
-                    Team A wins — +1,000 pts each
-                  </span>
-                </div>
-              </div>
+                  <p className="text-sm font-bold">{ordinal(rank)}</p>
+                  <p className="text-[10px] tabular-nums opacity-75">+{orderOfArrivalPoints[rank]}</p>
+                </button>
+              );
+            })}
+          </div>
+        </Section>
+      )}
 
-              {/* Player Events */}
-              <div className="glass rounded-2xl p-4">
-                <p
-                  className="uppercase tracking-widest text-gray-400 mb-3"
-                  style={{ fontSize: "10px" }}
-                >
-                  Player Events — Big Goal
-                </p>
-                <div className="flex flex-col gap-2">
-                  {playerEvents.map((stat, i) => (
-                    <motion.div
-                      key={i}
-                      custom={i}
-                      variants={fadeUp}
-                      initial="hidden"
-                      animate="visible"
-                      className="flex items-center justify-between rounded-xl px-3 py-2.5 bg-gray-50"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-base leading-none">{stat.icon}</span>
-                        <span className="text-sm font-medium text-gray-700">
-                          {stat.player}
-                        </span>
-                        <span
-                          className="rounded-full px-2 py-0.5 text-xs font-medium"
-                          style={{
-                            background: "rgba(37,99,235,0.07)",
-                            color: "#2563eb",
-                            border: "1px solid rgba(37,99,235,0.15)",
-                          }}
-                        >
-                          {stat.event}
-                        </span>
-                      </div>
-                      <span className="text-sm font-semibold tabular-nums text-blue-600">
-                        +{stat.points}
-                      </span>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Goals Conceded */}
-              <div
-                className="rounded-2xl p-4"
-                style={{
-                  background: "rgba(239,68,68,0.05)",
-                  border: "1px solid rgba(239,68,68,0.15)",
-                }}
+      {/* Step 4 — Other free-form */}
+      {draft.game && (
+        <Section title="4. Other points" subtitle="Free-form for one-off Coach awards (Coach to confirm format)">
+          <div className="rounded-2xl border border-gray-200 bg-white p-3 space-y-2">
+            <input
+              type="text"
+              value={otherLabel}
+              onChange={(e) => setOtherLabel(e.target.value)}
+              placeholder="Reason (e.g. extra reps)"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            />
+            <div className="flex gap-2">
+              <input
+                type="number"
+                inputMode="numeric"
+                value={otherPoints}
+                onChange={(e) => setOtherPoints(e.target.value)}
+                placeholder="Points"
+                className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm tabular-nums focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+              <button
+                onClick={addOther}
+                disabled={!otherPoints}
+                className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-800"
               >
-                <p
-                  className="uppercase tracking-widest mb-2 text-red-600"
-                  style={{ fontSize: "10px" }}
-                >
-                  Goals Conceded
-                </p>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">🥅</span>
-                    <span className="text-sm text-red-600">
-                      Crank (GK) — 2 conceded
-                    </span>
-                  </div>
-                  <span className="text-sm font-semibold tabular-nums text-red-600">
-                    −400
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Session Total — glow card */}
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          custom={3}
-          variants={fadeUp}
-          className="rounded-2xl p-5 relative overflow-hidden bg-white"
-          style={{
-            border: "1px solid rgba(37,99,235,0.15)",
-            boxShadow: "0 0 32px rgba(37,99,235,0.08), inset 0 1px 0 rgba(255,255,255,0.8)",
-          }}
-        >
-          {/* Glow blob */}
-          <div
-            className="absolute -top-8 -right-8 w-32 h-32 rounded-full pointer-events-none"
-            style={{
-              background: "radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)",
-            }}
-          />
-
-          <p
-            className="uppercase tracking-widest text-gray-400 mb-3 relative z-10"
-            style={{ fontSize: "10px" }}
-          >
-            Your Session Total
-          </p>
-
-          <div className="flex items-end justify-between relative z-10">
-            <div className="flex flex-col gap-1.5">
-              {[
-                { label: "Attendance", value: "1,200" },
-                { label: "Packing", value: "0" },
-                { label: "Game", value: "1,600" },
-              ].map(({ label, value }) => (
-                <div key={label} className="flex items-center gap-2">
-                  <span
-                    className="uppercase tracking-widest text-gray-400"
-                    style={{ fontSize: "10px", minWidth: "72px" }}
-                  >
-                    {label}
-                  </span>
-                  <span className="text-xs font-medium text-gray-500 tabular-nums">
-                    {value}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className="text-right">
-              <p
-                className="tabular-nums font-bold leading-none"
-                style={{
-                  fontFamily: "var(--font-display, 'Playfair Display', serif)",
-                  fontSize: "44px",
-                  color: "#2563eb",
-                  textShadow: "0 0 24px rgba(37,99,235,0.2)",
-                }}
-              >
-                2,800
-              </p>
-              <p
-                className="uppercase tracking-widest text-blue-600/60 mt-1"
-                style={{ fontSize: "10px" }}
-              >
-                Points
-              </p>
+                Add
+              </button>
             </div>
           </div>
-        </motion.div>
+        </Section>
+      )}
 
+      {/* Tap history */}
+      {draft.events.length > 0 && (
+        <Section title="Taps so far" subtitle="Tap × to remove">
+          <div className="rounded-xl border border-gray-100 bg-white divide-y divide-gray-100 overflow-hidden">
+            {draft.events.map((e) => (
+              <div key={e.id} className="flex items-center justify-between px-3.5 py-2.5">
+                <p className="text-sm text-gray-700">{e.label}</p>
+                <div className="flex items-center gap-3">
+                  <span className="font-[family-name:var(--font-display)] text-sm font-bold tabular-nums text-gray-900">
+                    {e.points >= 0 ? `+${e.points}` : e.points}
+                  </span>
+                  <button
+                    onClick={() => removeEvent(e.id)}
+                    className="text-gray-300 hover:text-rose-500 text-lg leading-none"
+                    aria-label="Remove"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Step 5 — Narration */}
+      {draft.game && (
+        <Section title="5. Narration (optional)" subtitle="Notes for the Coach — does not affect points">
+          <textarea
+            value={draft.narration}
+            onChange={(e) => setDraft((d) => ({ ...d, narration: e.target.value }))}
+            placeholder="e.g. left early at 7:25 to drop kid at school"
+            rows={3}
+            className="w-full rounded-2xl border border-gray-200 bg-white p-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          />
+        </Section>
+      )}
+
+      {/* Sticky submit bar */}
+      {draft.game && draft.events.length > 0 && (
+        <div className="fixed bottom-20 left-0 right-0 z-40 px-5">
+          <button
+            onClick={submit}
+            className="w-full rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 py-4 text-sm font-bold text-white shadow-xl shadow-blue-500/30 active:scale-[0.99]"
+          >
+            Submit {total.toLocaleString()} pts to Coach
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Section({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <div className="mb-2.5">
+        <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
+        {subtitle && <p className="text-[11px] text-gray-500">{subtitle}</p>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function ordinal(n: number) {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
+}
+
+function SubmittedView({ total, onNew }: { total: number; onNew: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center px-6 py-16 gap-6">
+      <motion.div
+        initial={{ scale: 0.85, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 250, damping: 18 }}
+        className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-500/30"
+      >
+        <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+        </svg>
+      </motion.div>
+      <div className="text-center">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">Sent</p>
+        <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-bold text-gray-900">
+          {total.toLocaleString()} pts to Coach
+        </h1>
+        <p className="mt-2 text-sm text-gray-500 max-w-xs">
+          Coach approves by 4 pm. You&rsquo;ll see the result in History.
+        </p>
+      </div>
+      <div className="flex flex-col gap-2 w-full max-w-xs">
+        <button
+          onClick={onNew}
+          className="w-full rounded-xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800"
+        >
+          Start new session
+        </button>
+        <Link
+          href="/mockups/my-submissions"
+          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50"
+        >
+          View submission
+        </Link>
       </div>
     </div>
   );

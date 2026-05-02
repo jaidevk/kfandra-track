@@ -36,17 +36,23 @@ export default function LoginMockup() {
           transition={{ duration: 0.5 }}
           className="flex flex-col items-center gap-3"
         >
-          <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 shadow-lg shadow-blue-500/20">
-            <span className="font-[family-name:var(--font-display)] text-3xl font-black text-white">
-              KF
-            </span>
+          <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white ring-1 ring-gray-200 shadow-lg shadow-blue-500/10">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/icons/kfandra-logo.png"
+              alt="KFANDRA"
+              className="h-14 w-14 object-contain"
+            />
           </div>
           <div className="flex flex-col items-center gap-1">
-            <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold text-gray-900 tracking-tight">
-              KFandra Track
+            <h1 className="font-[family-name:var(--font-display)] text-3xl font-black text-gray-900 tracking-tight">
+              KMMGAFDRA
             </h1>
-            <p className="text-[10px] uppercase tracking-widest text-gray-500 font-medium">
-              Working name &middot; KFANDRA to confirm
+            <p className="text-[10px] uppercase tracking-[0.3em] text-gray-500 font-semibold">
+              KUM-GAF-DRA
+            </p>
+            <p className="mt-1 text-[10px] uppercase tracking-widest text-gray-400 font-medium">
+              KFANDRA&rsquo;s Monthly Multi-Game &amp; Fitness Data Recording App
             </p>
           </div>
         </motion.div>

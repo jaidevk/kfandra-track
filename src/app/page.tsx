@@ -72,11 +72,14 @@ export default function Home() {
               ],
             }}
             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            className="flex h-24 w-24 items-center justify-center rounded-3xl bg-white/20 backdrop-blur-sm border border-white/30"
+            className="flex h-28 w-28 items-center justify-center rounded-3xl bg-white/95 backdrop-blur-sm border border-white/30 p-3"
           >
-            <span className="font-[family-name:var(--font-display)] text-4xl font-black text-white">
-              KF
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/icons/kfandra-logo.png"
+              alt="KFANDRA"
+              className="h-full w-full object-contain"
+            />
           </motion.div>
 
           <div className="flex flex-col items-center gap-2">
@@ -94,14 +97,28 @@ export default function Home() {
               transition={{ delay: 0.3, duration: 0.5 }}
               className="font-[family-name:var(--font-display)] text-5xl font-black text-white leading-none tracking-tight"
             >
-              KFandra
-              <br />
-              <span className="text-blue-200">Track</span>
+              KMMGAFDRA
             </motion.h1>
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
+              transition={{ delay: 0.4, duration: 0.5 }}
+              className="text-xs uppercase tracking-[0.4em] text-blue-200 font-semibold"
+            >
+              KUM-GAF-DRA
+            </motion.p>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               transition={{ delay: 0.5, duration: 0.5 }}
+              className="text-[11px] text-blue-100/70 max-w-[18rem] text-center"
+            >
+              KFANDRA&rsquo;s Monthly Multi-Game &amp; Fitness Data Recording App
+            </motion.p>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6, duration: 0.5 }}
               className="text-sm text-blue-100/60 italic"
             >
               Respect, Trust, Integrity, Passion &amp; Humility

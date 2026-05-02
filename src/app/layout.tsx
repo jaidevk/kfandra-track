@@ -15,9 +15,9 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "KFandra Track",
+  title: "KMMGAFDRA — KUM-GAF-DRA",
   description:
-    "MMG points & gym performance tracker for KFANDRA",
+    "KFANDRA's Monthly Multi-Game & Fitness Data Recording App",
   manifest: "/manifest.json",
 };
 

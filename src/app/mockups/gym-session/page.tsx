@@ -5,42 +5,63 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
 /**
- * Gym session entry — body part / equipment / weight (kg) / set·rep scheme.
- * Catalog source: Jaidev's GWW/GWtW routines sheet.
+ * Gym session entry — body part / equipment / weight / set·rep scheme.
+ * Catalog source: Jaidev's GWW/GWtW routines sheet, expanded with KFANDRA's
+ * round-2 feedback (Back, Forearms, Hamstrings, Glutes, Pecs, Stamina,
+ * Plank/Upper-body/Lower-body Variations).
+ *
+ * Weight steps: 2 kg / 5 lb. Per-row unit toggle.
+ * Optional body-weight + date entry at the top of the session.
  */
 
 type BodyPart =
-  | "Shoulders" | "Biceps" | "Triceps" | "Chest"
-  | "Thighs" | "Calves" | "Abs"
+  | "Shoulders" | "Biceps" | "Triceps" | "Chest/Pecs"
+  | "Back" | "Forearms"
+  | "Thighs" | "Hamstrings" | "Glutes" | "Calves" | "Abs"
   | "Press Ups" | "Reverse Zor" | "Zor"
   | "Baithaks" | "Lunges"
-  | "Full Burpees" | "Half Burpees" | "Sumo Walk";
+  | "Full Burpees" | "Half Burpees" | "Sumo Walk"
+  | "Stamina"
+  | "Plank Variations"
+  | "Upper Body Variations"
+  | "Lower Body Variations";
 
 type Equipment =
   | "Lbb" | "Sbb" | "Z-bar" | "Dumbbells"
   | "T-Bar" | "Dead-Lift" | "Weight plates"
   | "Resistance bands" | "None";
 
+type WeightUnit = "kg" | "lb";
+
 type ExerciseRow = {
   id: string;
   bodyPart: BodyPart;
   equipment: Equipment;
-  weightKg: number; // 0 if not applicable
-  scheme: string;   // sheet preset or custom
+  weight: number;       // 0 if not applicable
+  weightUnit: WeightUnit;
+  scheme: string;       // sheet preset or custom
   notes: string;
 };
 
 type Draft = {
   rows: ExerciseRow[];
+  bodyWeight: string;     // free-form so the player can type 78.5 etc.
+  bodyWeightUnit: WeightUnit;
+  bodyWeightDate: string; // ISO yyyy-mm-dd
   narration: string;
 };
 
 const bodyParts: BodyPart[] = [
-  "Shoulders", "Biceps", "Triceps", "Chest",
-  "Thighs", "Calves", "Abs",
+  "Shoulders", "Biceps", "Triceps", "Chest/Pecs",
+  "Back", "Forearms",
+  "Thighs", "Hamstrings", "Glutes", "Calves", "Abs",
   "Press Ups", "Reverse Zor", "Zor",
   "Baithaks", "Lunges",
   "Full Burpees", "Half Burpees", "Sumo Walk",
+  "Stamina",
+  "Plank Variations",
+  "Upper Body Variations",
+  "Lower Body Variations",
 ];
 
 const equipmentList: Equipment[] = [
@@ -64,24 +85,43 @@ const presetSchemes = [
 
 const bodyPartIcon: Record<BodyPart, string> = {
   "Shoulders": "💪", "Biceps": "💪", "Triceps": "💪",
-  "Chest": "🫀", "Thighs": "🦵", "Calves": "🦵",
-  "Abs": "🧱", "Press Ups": "📐", "Reverse Zor": "↩️",
-  "Zor": "↪️", "Baithaks": "🪑", "Lunges": "🚶",
+  "Chest/Pecs": "🫀", "Back": "🧍", "Forearms": "🤜",
+  "Thighs": "🦵", "Hamstrings": "🦵", "Glutes": "🍑",
+  "Calves": "🦵", "Abs": "🧱",
+  "Press Ups": "📐", "Reverse Zor": "↩️", "Zor": "↪️",
+  "Baithaks": "🪑", "Lunges": "🚶",
   "Full Burpees": "🔥", "Half Burpees": "🔥", "Sumo Walk": "🦍",
+  "Stamina": "🏃",
+  "Plank Variations": "🪵",
+  "Upper Body Variations": "🙆",
+  "Lower Body Variations": "🦿",
 };
 
-const DRAFT_KEY = "kfandra:mockup:gym-draft-v2";
+const DRAFT_KEY = "kfandra:mockup:gym-draft-v3";
 
-const emptyDraft: Draft = { rows: [], narration: "" };
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
+const emptyDraft: Draft = {
+  rows: [],
+  bodyWeight: "",
+  bodyWeightUnit: "kg",
+  bodyWeightDate: todayISO(),
+  narration: "",
+};
 
 const newRow = (id: string): ExerciseRow => ({
   id,
   bodyPart: "Shoulders",
   equipment: "None",
-  weightKg: 0,
+  weight: 0,
+  weightUnit: "kg",
   scheme: presetSchemes[0],
   notes: "",
 });
+
+function weightStep(unit: WeightUnit): number {
+  return unit === "kg" ? 2 : 5;
+}
 
 export default function GymSessionMockup() {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
@@ -140,7 +180,7 @@ export default function GymSessionMockup() {
   }
 
   function newSession() {
-    setDraft(emptyDraft);
+    setDraft({ ...emptyDraft, bodyWeightDate: todayISO() });
     if (typeof window !== "undefined") window.localStorage.removeItem(DRAFT_KEY);
     setSubmitted(false);
   }
@@ -174,6 +214,14 @@ export default function GymSessionMockup() {
         </div>
       </div>
 
+      {/* Body-weight log */}
+      <BodyWeightCard
+        weight={draft.bodyWeight}
+        unit={draft.bodyWeightUnit}
+        date={draft.bodyWeightDate}
+        onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
+      />
+
       {/* Logged rows */}
       {draft.rows.length > 0 && (
         <div className="space-y-2.5">
@@ -181,15 +229,15 @@ export default function GymSessionMockup() {
             <div key={r.id} className="rounded-2xl border border-gray-200 bg-white p-4">
               <div className="flex items-start justify-between gap-3">
                 <button onClick={() => openEditRow(r)} className="flex-1 min-w-0 text-left">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-lg">{bodyPartIcon[r.bodyPart]}</span>
                     <p className="text-sm font-bold text-gray-900">{r.bodyPart}</p>
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
                       · {r.equipment}
                     </span>
-                    {equipmentSupportsWeight(r.equipment) && r.weightKg > 0 && (
+                    {equipmentSupportsWeight(r.equipment) && r.weight > 0 && (
                       <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
-                        · {r.weightKg} kg
+                        · {r.weight} {r.weightUnit}
                       </span>
                     )}
                   </div>
@@ -270,6 +318,60 @@ export default function GymSessionMockup() {
   );
 }
 
+function BodyWeightCard({
+  weight,
+  unit,
+  date,
+  onChange,
+}: {
+  weight: string;
+  unit: WeightUnit;
+  date: string;
+  onChange: (patch: Partial<Draft>) => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-4">
+      <div className="flex items-baseline justify-between mb-2">
+        <h2 className="text-sm font-semibold text-gray-900">Body weight</h2>
+        <p className="text-[10px] uppercase tracking-wide text-gray-400">Optional</p>
+      </div>
+      <p className="text-[11px] text-gray-500 mb-3">
+        Note your weight today — KFANDRA tracks your trend.
+      </p>
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          inputMode="decimal"
+          step="0.1"
+          value={weight}
+          onChange={(e) => onChange({ bodyWeight: e.target.value })}
+          placeholder="—"
+          className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm tabular-nums focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+        />
+        <div className="flex shrink-0 rounded-xl bg-gray-100 p-1">
+          {(["kg", "lb"] as WeightUnit[]).map((u) => (
+            <button
+              key={u}
+              onClick={() => onChange({ bodyWeightUnit: u })}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                unit === u ? "bg-emerald-500 text-white" : "text-gray-500"
+              }`}
+            >
+              {u}
+            </button>
+          ))}
+        </div>
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => onChange({ bodyWeightDate: e.target.value })}
+          className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+        />
+      </div>
+    </div>
+  );
+}
+
 function ExerciseSheet({
   initial,
   onSave,
@@ -292,12 +394,19 @@ function ExerciseSheet({
     setR((x) => ({
       ...x,
       equipment: eq,
-      weightKg: equipmentSupportsWeight(eq) ? x.weightKg : 0,
+      weight: equipmentSupportsWeight(eq) ? x.weight : 0,
     }));
   }
 
-  function stepWeight(delta: number) {
-    setR((x) => ({ ...x, weightKg: Math.max(0, x.weightKg + delta) }));
+  function stepWeight(direction: 1 | -1) {
+    setR((x) => {
+      const step = weightStep(x.weightUnit);
+      return { ...x, weight: Math.max(0, x.weight + direction * step) };
+    });
+  }
+
+  function setUnit(unit: WeightUnit) {
+    setR((x) => (x.weightUnit === unit ? x : { ...x, weightUnit: unit }));
   }
 
   function pickScheme(s: string) {
@@ -385,25 +494,42 @@ function ExerciseSheet({
         {/* Weight */}
         {equipmentSupportsWeight(r.equipment) && (
           <>
-            <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-2">
-              3. Weight (10 kg steps)
-            </p>
+            <div className="mb-2 flex items-baseline justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                3. Weight ({weightStep(r.weightUnit)} {r.weightUnit} steps)
+              </p>
+              <div className="flex shrink-0 rounded-lg bg-gray-100 p-0.5">
+                {(["kg", "lb"] as WeightUnit[]).map((u) => (
+                  <button
+                    key={u}
+                    onClick={() => setUnit(u)}
+                    className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-colors ${
+                      r.weightUnit === u ? "bg-emerald-500 text-white" : "text-gray-500"
+                    }`}
+                  >
+                    {u}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="flex items-center gap-3 mb-4 rounded-xl border border-gray-200 bg-white p-3">
               <button
-                onClick={() => stepWeight(-10)}
-                disabled={r.weightKg <= 0}
+                onClick={() => stepWeight(-1)}
+                disabled={r.weight <= 0}
                 className="h-10 w-10 rounded-xl border border-gray-200 text-lg font-bold text-gray-600 disabled:opacity-30 hover:bg-gray-50"
               >
                 −
               </button>
               <div className="flex-1 text-center">
                 <p className="font-[family-name:var(--font-display)] text-3xl font-bold tabular-nums text-gray-900">
-                  {r.weightKg}
+                  {r.weight}
                 </p>
-                <p className="text-[10px] uppercase tracking-wide text-gray-400">kg</p>
+                <p className="text-[10px] uppercase tracking-wide text-gray-400">
+                  {r.weightUnit}
+                </p>
               </div>
               <button
-                onClick={() => stepWeight(10)}
+                onClick={() => stepWeight(1)}
                 className="h-10 w-10 rounded-xl border border-gray-200 text-lg font-bold text-gray-600 hover:bg-gray-50"
               >
                 +

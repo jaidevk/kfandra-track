@@ -1,7 +1,7 @@
 {
-  "name": "KFANDRA Helper",
-  "short_name": "KFANDRA",
-  "description": "MMG Points & KLCFESGR1 League Management",
+  "name": "KMMGAFDRA",
+  "short_name": "KMMGAFDRA",
+  "description": "KFANDRA's Monthly Multi-Game & Fitness Data Recording App (KUM-GAF-DRA)",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1d4ed8",
@@ -9,14 +9,16 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "/icons/kfandra-logo.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "/icons/kfandra-logo.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

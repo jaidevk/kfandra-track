@@ -46,3 +46,4 @@ supabase/.temp/
 .dolt/
 *.db
 .beads-credential-key
+tsconfig.tsbuildinfo

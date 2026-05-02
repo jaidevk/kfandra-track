@@ -50,19 +50,29 @@ export default function MockupsLayout({
       <header className="sticky top-0 z-50 bg-white border-b border-gray-200 px-5 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 text-xs font-bold text-white shadow-lg shadow-blue-500/20">
-                KF
+            <div className="relative shrink-0">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white ring-1 ring-gray-200">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/icons/kfandra-logo.png"
+                  alt="KFANDRA"
+                  className="h-7 w-7 object-contain"
+                />
               </div>
               <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 border-2 border-white" />
             </div>
-            <div>
-              <span className="text-base font-semibold tracking-tight text-gray-900">
-                KFandra Track
-              </span>
-              <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700 align-middle">
-                Mockup
-              </span>
+            <div className="leading-tight">
+              <div className="flex items-baseline gap-2">
+                <span className="font-[family-name:var(--font-display)] text-base font-bold tracking-tight text-gray-900">
+                  KMMGAFDRA
+                </span>
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700">
+                  Mockup
+                </span>
+              </div>
+              <p className="text-[9px] uppercase tracking-[0.2em] text-gray-400">
+                KUM-GAF-DRA
+              </p>
             </div>
           </div>
           <Link

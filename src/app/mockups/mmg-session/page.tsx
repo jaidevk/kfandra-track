@@ -21,13 +21,14 @@ type Participation = {
   arrivalOrder: number | null;
   unpacking: boolean | null;
   packingWeights: boolean | null;
-  packingKit: boolean | null;
-  confirmedBy8am: boolean | null;
+  packingKit: boolean | null; // "training material" / PTM
+  confirmedBy11am: boolean | null;
 };
 
 type GameType =
   | "football-short"
   | "rugby-short"
+  | "rugby-full"
   | "fooba-big-goal"
   | "fooba-rebound"
   | "three-and-in"
@@ -39,12 +40,21 @@ type Game = {
   id: string;
   type: GameType;
   result: Result;
+  // positive
   goals: number;
   tries: number;
   assists: number;
   preAssists: number;
   saves: number;
-  clearances: number;
+  goalLineSaves: number; // was "clearances"
+  reboundWall: number;
+  tackles: number;
+  // negative (penalties)
+  yellowCards: number;
+  redCards: number;
+  blueCards: number;
+  lateChallenges: number;
+  fouls: number;
 };
 
 type OtherRow = {
@@ -66,19 +76,14 @@ const POINTS = {
   won: 1000,
   drew: 100,
   lost: 0,
-  goal: 500,
-  try: 500,
-  assist: 200,
-  preAssist: 100,
-  save: 500,
-  clearance: 500,
   packingEvent: 500,    // placeholder — KFANDRA may adjust
-  confirmedBy8am: 500,  // placeholder
+  confirmedBy11am: 500, // placeholder
 } as const;
 
 const GAME_LABEL: Record<GameType, { name: string; emoji: string }> = {
   "football-short": { name: "Football short", emoji: "⚽" },
   "rugby-short": { name: "Rugby short", emoji: "🏉" },
+  "rugby-full": { name: "Rugby full", emoji: "🏉" },
   "fooba-big-goal": { name: "Fooba (Big Goal)", emoji: "🥅" },
   "fooba-rebound": { name: "Fooba (Rebound)", emoji: "🧱" },
   "three-and-in": { name: "3-and-in", emoji: "🎯" },
@@ -91,29 +96,84 @@ const RESULT_LABEL: Record<Result, string> = {
   lost: "Lost",
 };
 
-type StatKey = "goals" | "tries" | "assists" | "preAssists" | "saves" | "clearances";
+type StatKey =
+  | "goals" | "tries" | "assists" | "preAssists"
+  | "saves" | "goalLineSaves" | "reboundWall" | "tackles"
+  | "yellowCards" | "redCards" | "blueCards"
+  | "lateChallenges" | "fouls";
 
-const ALL_STATS: { key: StatKey; label: string; mult: number }[] = [
-  { key: "goals", label: "Goals", mult: POINTS.goal },
-  { key: "tries", label: "Tries", mult: POINTS.try },
-  { key: "assists", label: "Assists", mult: POINTS.assist },
-  { key: "preAssists", label: "Pre-assists", mult: POINTS.preAssist },
-  { key: "saves", label: "Saves", mult: POINTS.save },
-  { key: "clearances", label: "Clearances", mult: POINTS.clearance },
-];
+type StatDef = { key: StatKey; label: string; mult: number; negative?: boolean };
+
+// Default multipliers. Game-type overrides handled in `statMult`.
+const STAT_DEFS: Record<StatKey, StatDef> = {
+  goals:          { key: "goals",          label: "Goals",          mult: 500 },
+  tries:          { key: "tries",          label: "Tries",          mult: 500 },
+  assists:        { key: "assists",        label: "Assists",        mult: 200 },
+  preAssists:     { key: "preAssists",     label: "Pre-assists",    mult: 100 },
+  saves:          { key: "saves",          label: "Saves",          mult: 500 },
+  goalLineSaves:  { key: "goalLineSaves",  label: "Goal-line saves", mult: 500 },
+  reboundWall:    { key: "reboundWall",    label: "Rebound wall",   mult: 500 },
+  tackles:        { key: "tackles",        label: "Tackle",         mult: 200 },
+  yellowCards:    { key: "yellowCards",    label: "Yellow card",    mult: -100, negative: true },
+  redCards:       { key: "redCards",       label: "Red card",       mult: -500, negative: true },
+  blueCards:      { key: "blueCards",      label: "Blue card",      mult: -1000, negative: true },
+  lateChallenges: { key: "lateChallenges", label: "Late challenge", mult: -100, negative: true },
+  fouls:          { key: "fouls",          label: "Foul",           mult: -200, negative: true },
+};
+
+// In rugby variants the tackle is worth 500 (Touch/Normal).
+const STAT_MULT_OVERRIDE: Partial<Record<GameType, Partial<Record<StatKey, number>>>> = {
+  "rugby-short": { tackles: 500 },
+  "rugby-full":  { tackles: 500 },
+};
+
+function statMult(type: GameType, key: StatKey): number {
+  return STAT_MULT_OVERRIDE[type]?.[key] ?? STAT_DEFS[key].mult;
+}
+
+function statLabel(type: GameType, key: StatKey): string {
+  if (key === "tackles" && (type === "rugby-short" || type === "rugby-full")) {
+    return "Tackle (Touch/Normal)";
+  }
+  return STAT_DEFS[key].label;
+}
+
+const PENALTY_KEYS: StatKey[] = ["yellowCards", "redCards", "blueCards", "lateChallenges", "fouls"];
 
 // Which stats are relevant per game type. Hidden stats are zeroed
 // when the player changes type, so totals don't carry phantom points.
 const STATS_BY_TYPE: Record<GameType, StatKey[]> = {
-  "football-short": ["goals", "assists", "preAssists", "saves", "clearances"],
-  "fooba-big-goal": ["goals", "assists", "preAssists", "saves", "clearances"],
-  "fooba-rebound": ["goals", "assists", "preAssists", "saves", "clearances"],
-  "three-and-in": ["goals", "assists", "preAssists"],
-  "rugby-short": ["tries", "assists", "preAssists"],
-  other: ["goals", "tries", "assists", "preAssists", "saves", "clearances"],
+  "football-short": [
+    "goals", "assists", "preAssists", "saves", "goalLineSaves", "tackles",
+    ...PENALTY_KEYS,
+  ],
+  "fooba-big-goal": [
+    "goals", "assists", "preAssists", "saves", "goalLineSaves", "tackles",
+    ...PENALTY_KEYS,
+  ],
+  "fooba-rebound": [
+    "goals", "reboundWall", "assists", "preAssists", "saves", "goalLineSaves", "tackles",
+    ...PENALTY_KEYS,
+  ],
+  "three-and-in": [
+    "goals", "assists", "preAssists", "tackles",
+    ...PENALTY_KEYS,
+  ],
+  "rugby-short": [
+    "tries", "assists", "preAssists", "tackles",
+    ...PENALTY_KEYS,
+  ],
+  "rugby-full": [
+    "tries", "assists", "preAssists", "tackles",
+    ...PENALTY_KEYS,
+  ],
+  other: [
+    "goals", "tries", "assists", "preAssists", "saves", "goalLineSaves", "reboundWall", "tackles",
+    ...PENALTY_KEYS,
+  ],
 };
 
-const DRAFT_KEY = "kfandra:mockup:mmg-draft-v2";
+const DRAFT_KEY = "kfandra:mockup:mmg-draft-v3";
 
 const emptyParticipation: Participation = {
   confirmationOrder: null,
@@ -121,7 +181,7 @@ const emptyParticipation: Participation = {
   unpacking: null,
   packingWeights: null,
   packingKit: null,
-  confirmedBy8am: null,
+  confirmedBy11am: null,
 };
 
 const emptyDraft: Draft = {
@@ -140,21 +200,24 @@ const emptyGame = (id: string): Game => ({
   assists: 0,
   preAssists: 0,
   saves: 0,
-  clearances: 0,
+  goalLineSaves: 0,
+  reboundWall: 0,
+  tackles: 0,
+  yellowCards: 0,
+  redCards: 0,
+  blueCards: 0,
+  lateChallenges: 0,
+  fouls: 0,
 });
 
 // ─── Point helpers ─────────────────────────────────────────────────
 
 function gameTotal(g: Game): number {
-  return (
-    POINTS[g.result] +
-    g.goals * POINTS.goal +
-    g.tries * POINTS.try +
-    g.assists * POINTS.assist +
-    g.preAssists * POINTS.preAssist +
-    g.saves * POINTS.save +
-    g.clearances * POINTS.clearance
-  );
+  let t = POINTS[g.result];
+  for (const k of STATS_BY_TYPE[g.type]) {
+    t += g[k] * statMult(g.type, k);
+  }
+  return t;
 }
 
 function participationFixedTotal(p: Participation): number {
@@ -162,7 +225,7 @@ function participationFixedTotal(p: Participation): number {
   if (p.unpacking) t += POINTS.packingEvent;
   if (p.packingWeights) t += POINTS.packingEvent;
   if (p.packingKit) t += POINTS.packingEvent;
-  if (p.confirmedBy8am) t += POINTS.confirmedBy8am;
+  if (p.confirmedBy11am) t += POINTS.confirmedBy11am;
   return t;
 }
 
@@ -213,7 +276,7 @@ export default function MMGSessionMockup() {
       p.unpacking !== null &&
       p.packingWeights !== null &&
       p.packingKit !== null &&
-      p.confirmedBy8am !== null;
+      p.confirmedBy11am !== null;
     return {
       participation: participationDone,
       games: draft.games.length,
@@ -467,24 +530,24 @@ function ParticipationCard({
         onChange={(v) => onChange({ arrivalOrder: v })}
       />
       <YesNoRow
-        label="Present for unpacking?"
+        label="Were you present for unpacking?"
         value={p.unpacking}
         onChange={(v) => onChange({ unpacking: v })}
       />
       <YesNoRow
-        label="Present for packing weights?"
+        label="Were you present for packing weights?"
         value={p.packingWeights}
         onChange={(v) => onChange({ packingWeights: v })}
       />
       <YesNoRow
-        label="Present for packing kit?"
+        label="Were you present for packing the training material? (PTM)"
         value={p.packingKit}
         onChange={(v) => onChange({ packingKit: v })}
       />
       <YesNoRow
-        label="Confirmed by 8 am?"
-        value={p.confirmedBy8am}
-        onChange={(v) => onChange({ confirmedBy8am: v })}
+        label="Did you confirm by 11 am?"
+        value={p.confirmedBy11am}
+        onChange={(v) => onChange({ confirmedBy11am: v })}
       />
     </div>
   );
@@ -579,12 +642,13 @@ function PerformanceList({
         const total = gameTotal(g);
         const meta = GAME_LABEL[g.type];
         const stats: string[] = [];
-        if (g.goals) stats.push(`${g.goals} goal${g.goals > 1 ? "s" : ""}`);
-        if (g.tries) stats.push(`${g.tries} tr${g.tries > 1 ? "ies" : "y"}`);
-        if (g.assists) stats.push(`${g.assists} assist${g.assists > 1 ? "s" : ""}`);
-        if (g.preAssists) stats.push(`${g.preAssists} pre-assist${g.preAssists > 1 ? "s" : ""}`);
-        if (g.saves) stats.push(`${g.saves} save${g.saves > 1 ? "s" : ""}`);
-        if (g.clearances) stats.push(`${g.clearances} clearance${g.clearances > 1 ? "s" : ""}`);
+        const used = STATS_BY_TYPE[g.type];
+        for (const k of used) {
+          const n = g[k];
+          if (!n) continue;
+          const lbl = statLabel(g.type, k).toLowerCase();
+          stats.push(`${n} ${lbl}${n > 1 && !lbl.endsWith("s") ? "s" : ""}`);
+        }
         return (
           <div key={g.id} className="rounded-2xl border border-gray-200 bg-white p-4">
             <div className="flex items-start justify-between gap-3">
@@ -599,8 +663,13 @@ function PerformanceList({
                   {RESULT_LABEL[g.result]}
                   {stats.length > 0 ? ` · ${stats.join(", ")}` : ""}
                 </p>
-                <p className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold tabular-nums text-blue-600">
-                  +{total.toLocaleString()} pts
+                <p
+                  className={`mt-1 font-[family-name:var(--font-display)] text-xl font-bold tabular-nums ${
+                    total < 0 ? "text-rose-600" : "text-blue-600"
+                  }`}
+                >
+                  {total >= 0 ? "+" : ""}
+                  {total.toLocaleString()} pts
                 </p>
               </button>
               <button
@@ -695,16 +764,16 @@ function GameSheet({
     setG((x) => {
       const allowed = new Set(STATS_BY_TYPE[t]);
       const cleared: Game = { ...x, type: t };
-      for (const s of ALL_STATS) {
-        if (!allowed.has(s.key)) cleared[s.key] = 0;
+      for (const k of Object.keys(STAT_DEFS) as StatKey[]) {
+        if (!allowed.has(k)) cleared[k] = 0;
       }
       return cleared;
     });
   }
 
-  const stats = STATS_BY_TYPE[g.type]
-    .map((k) => ALL_STATS.find((s) => s.key === k)!)
-    .filter(Boolean);
+  const usedKeys = STATS_BY_TYPE[g.type];
+  const positiveStats = usedKeys.filter((k) => !STAT_DEFS[k].negative);
+  const penaltyStats = usedKeys.filter((k) => STAT_DEFS[k].negative);
 
   return (
     <motion.div
@@ -789,46 +858,65 @@ function GameSheet({
           })}
         </div>
 
-        {/* Stats */}
+        {/* Positive stats */}
         <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-2">
           Stats
         </p>
         <div className="space-y-2 mb-4">
-          {stats.map((s) => (
-            <div key={s.key} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-2.5">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900">{s.label}</p>
-                <p className="text-[10px] text-gray-500">
-                  ×{s.mult} = {(g[s.key] * s.mult).toLocaleString()}
-                </p>
-              </div>
-              <button
-                onClick={() => step(s.key, -1)}
-                disabled={g[s.key] === 0}
-                className="h-9 w-9 rounded-lg border border-gray-200 text-base font-bold text-gray-600 disabled:opacity-30 hover:bg-gray-50"
-              >
-                −
-              </button>
-              <p className="w-8 text-center font-[family-name:var(--font-display)] text-lg font-bold tabular-nums text-gray-900">
-                {g[s.key]}
-              </p>
-              <button
-                onClick={() => step(s.key, 1)}
-                className="h-9 w-9 rounded-lg border border-gray-200 text-base font-bold text-gray-600 hover:bg-gray-50"
-              >
-                +
-              </button>
-            </div>
+          {positiveStats.map((k) => (
+            <StatRow
+              key={k}
+              label={statLabel(g.type, k)}
+              mult={statMult(g.type, k)}
+              value={g[k]}
+              onStep={(d) => step(k, d)}
+            />
           ))}
         </div>
 
+        {/* Penalties */}
+        {penaltyStats.length > 0 && (
+          <>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-rose-600 mb-2">
+              Penalties (deductions)
+            </p>
+            <div className="space-y-2 mb-4">
+              {penaltyStats.map((k) => (
+                <StatRow
+                  key={k}
+                  label={statLabel(g.type, k)}
+                  mult={statMult(g.type, k)}
+                  value={g[k]}
+                  onStep={(d) => step(k, d)}
+                  negative
+                />
+              ))}
+            </div>
+          </>
+        )}
+
         {/* Total */}
-        <div className="rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 p-3 mb-4 flex items-center justify-between">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-blue-700">
+        <div
+          className={`rounded-xl p-3 mb-4 flex items-center justify-between ${
+            total < 0
+              ? "bg-gradient-to-br from-rose-50 to-rose-100"
+              : "bg-gradient-to-br from-blue-50 to-indigo-50"
+          }`}
+        >
+          <p
+            className={`text-[10px] font-bold uppercase tracking-wide ${
+              total < 0 ? "text-rose-700" : "text-blue-700"
+            }`}
+          >
             Game total
           </p>
-          <p className="font-[family-name:var(--font-display)] text-2xl font-bold tabular-nums text-blue-700">
-            +{total.toLocaleString()}
+          <p
+            className={`font-[family-name:var(--font-display)] text-2xl font-bold tabular-nums ${
+              total < 0 ? "text-rose-700" : "text-blue-700"
+            }`}
+          >
+            {total >= 0 ? "+" : ""}
+            {total.toLocaleString()}
           </p>
         </div>
 
@@ -857,6 +945,54 @@ function GameSheet({
         </div>
       </motion.div>
     </motion.div>
+  );
+}
+
+function StatRow({
+  label,
+  mult,
+  value,
+  onStep,
+  negative,
+}: {
+  label: string;
+  mult: number;
+  value: number;
+  onStep: (delta: number) => void;
+  negative?: boolean;
+}) {
+  const product = value * mult;
+  return (
+    <div
+      className={`flex items-center gap-3 rounded-xl border p-2.5 ${
+        negative ? "border-rose-100 bg-rose-50/40" : "border-gray-100 bg-white"
+      }`}
+    >
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-semibold ${negative ? "text-rose-800" : "text-gray-900"}`}>
+          {label}
+        </p>
+        <p className={`text-[10px] ${negative ? "text-rose-600" : "text-gray-500"}`}>
+          ×{mult} = {product.toLocaleString()}
+        </p>
+      </div>
+      <button
+        onClick={() => onStep(-1)}
+        disabled={value === 0}
+        className="h-9 w-9 rounded-lg border border-gray-200 text-base font-bold text-gray-600 disabled:opacity-30 hover:bg-gray-50"
+      >
+        −
+      </button>
+      <p className="w-8 text-center font-[family-name:var(--font-display)] text-lg font-bold tabular-nums text-gray-900">
+        {value}
+      </p>
+      <button
+        onClick={() => onStep(1)}
+        className="h-9 w-9 rounded-lg border border-gray-200 text-base font-bold text-gray-600 hover:bg-gray-50"
+      >
+        +
+      </button>
+    </div>
   );
 }
 

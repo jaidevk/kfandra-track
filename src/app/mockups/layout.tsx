@@ -61,18 +61,13 @@ export default function MockupsLayout({
               </div>
               <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 border-2 border-white" />
             </div>
-            <div className="leading-tight">
-              <div className="flex items-baseline gap-2">
-                <span className="font-[family-name:var(--font-display)] text-base font-bold tracking-tight text-gray-900">
-                  KMMGAFDRA
-                </span>
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700">
-                  Mockup
-                </span>
-              </div>
-              <p className="text-[9px] uppercase tracking-[0.2em] text-gray-400">
-                KUM-GAF-DRA
-              </p>
+            <div className="flex items-baseline gap-2">
+              <span className="font-[family-name:var(--font-display)] text-base font-bold tracking-tight text-gray-900">
+                KMMGAFDRA
+              </span>
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700">
+                Mockup
+              </span>
             </div>
           </div>
           <Link

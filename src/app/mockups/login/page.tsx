@@ -48,9 +48,6 @@ export default function LoginMockup() {
             <h1 className="font-[family-name:var(--font-display)] text-3xl font-black text-gray-900 tracking-tight">
               KMMGAFDRA
             </h1>
-            <p className="text-[10px] uppercase tracking-[0.3em] text-gray-500 font-semibold">
-              KUM-GAF-DRA
-            </p>
             <p className="mt-1 text-[10px] uppercase tracking-widest text-gray-400 font-medium">
               KFANDRA&rsquo;s Monthly Multi-Game &amp; Fitness Data Recording App
             </p>

@@ -15,7 +15,7 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "KMMGAFDRA — KUM-GAF-DRA",
+  title: "KMMGAFDRA",
   description:
     "KFANDRA's Monthly Multi-Game & Fitness Data Recording App",
   manifest: "/manifest.json",

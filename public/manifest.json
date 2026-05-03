@@ -1,7 +1,7 @@
 {
   "name": "KMMGAFDRA",
   "short_name": "KMMGAFDRA",
-  "description": "KFANDRA's Monthly Multi-Game & Fitness Data Recording App (KUM-GAF-DRA)",
+  "description": "KFANDRA's Monthly Multi-Game & Fitness Data Recording App",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1d4ed8",

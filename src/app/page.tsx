@@ -113,7 +113,7 @@ export default function Home() {
               transition={{ delay: 0.5, duration: 0.5 }}
               className="text-[11px] text-blue-100/70 max-w-[18rem] text-center"
             >
-              KFANDRA&rsquo;s Monthly Multi-Game &amp; Fitness Data Recording App
+              KFANDRA&rsquo;s Monthly Multi-Game, Fitness &amp; Diet Recording App
             </motion.p>
             <motion.p
               initial={{ opacity: 0 }}
@@ -131,37 +131,53 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.5 }}
-          className="grid grid-cols-2 gap-3 w-full"
+          className="grid grid-cols-3 gap-2.5 w-full"
         >
           <motion.div
             whileHover={{ y: -3, scale: 1.02 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            className="bg-white/20 backdrop-blur rounded-2xl p-4 text-left border border-white/30"
+            className="bg-white/20 backdrop-blur rounded-2xl p-3.5 text-left border border-white/30"
           >
-            <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 border border-white/30">
+            <div className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 border border-white/30">
               <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75l-2.489-2.489m0 0a3.375 3.375 0 10-4.773-4.773 3.375 3.375 0 004.773 4.773zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <h2 className="text-sm font-bold text-white mb-0.5">MMG</h2>
-            <p className="text-[11px] text-blue-100/70 leading-relaxed">
-              Tap-to-add points &middot; submit to KFANDRA
+            <p className="text-[10.5px] text-blue-100/70 leading-snug">
+              Tap entries &middot; per session
             </p>
           </motion.div>
 
           <motion.div
             whileHover={{ y: -3, scale: 1.02 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            className="bg-white/20 backdrop-blur rounded-2xl p-4 text-left border border-white/30"
+            className="bg-white/20 backdrop-blur rounded-2xl p-3.5 text-left border border-white/30"
           >
-            <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-400/30 border border-emerald-300/40">
+            <div className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-400/30 border border-emerald-300/40">
               <svg className="h-4 w-4 text-emerald-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3.75h-1.5a1.5 1.5 0 00-1.5 1.5v13.5a1.5 1.5 0 001.5 1.5h1.5m10.5-16.5h1.5a1.5 1.5 0 011.5 1.5v13.5a1.5 1.5 0 01-1.5 1.5h-1.5M6.75 12h10.5M9 7.5v9m6-9v9" />
               </svg>
             </div>
             <h2 className="text-sm font-bold text-white mb-0.5">Gym</h2>
-            <p className="text-[11px] text-blue-100/70 leading-relaxed">
-              Body part &rarr; sets &amp; reps &middot; submit to KFANDRA
+            <p className="text-[10.5px] text-blue-100/70 leading-snug">
+              Body part &middot; sets &amp; reps
+            </p>
+          </motion.div>
+
+          <motion.div
+            whileHover={{ y: -3, scale: 1.02 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="bg-white/20 backdrop-blur rounded-2xl p-3.5 text-left border border-white/30"
+          >
+            <div className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-amber-400/30 border border-amber-300/40">
+              <svg className="h-4 w-4 text-amber-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 15.75c-1.5-1-2.25-2.5-2.25-4.5 0-3.75-2.5-6.75-6.75-6.75S5.25 7.5 5.25 11.25c0 2-.75 3.5-2.25 4.5M6 15.75h12M9 18.75h6M10.5 21h3" />
+              </svg>
+            </div>
+            <h2 className="text-sm font-bold text-white mb-0.5">Diet</h2>
+            <p className="text-[10.5px] text-blue-100/70 leading-snug">
+              8 meals &middot; tap foods to log
             </p>
           </motion.div>
         </motion.div>

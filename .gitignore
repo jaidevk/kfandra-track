@@ -47,4 +47,3 @@ supabase/.temp/
 *.db
 .beads-credential-key
 tsconfig.tsbuildinfo
-issues.jsonl

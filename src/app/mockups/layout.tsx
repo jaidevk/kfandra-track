@@ -35,6 +35,16 @@ const tabs = [
       </svg>
     ),
   },
+  {
+    href: "/mockups/diet",
+    label: "Diet",
+    match: (p: string) => p.startsWith("/mockups/diet"),
+    icon: (active: boolean) => (
+      <svg className="w-5 h-5" fill={active ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 0 : 1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21 15.75c-1.5-1-2.25-2.5-2.25-4.5 0-3.75-2.5-6.75-6.75-6.75S5.25 7.5 5.25 11.25c0 2-.75 3.5-2.25 4.5M6 15.75h12M9 18.75h6M10.5 21h3" />
+      </svg>
+    ),
+  },
 ];
 
 export default function MockupsLayout({

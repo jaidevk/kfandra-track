@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
 
 /**
  * Gym session entry — body part / equipment / weight / set·rep scheme.
+ * Continuous-log model: every change autosaves. No submit, no approval.
+ * Player can reset the session to start fresh.
+ *
  * Catalog source: Jaidev's GWW/GWtW routines sheet, expanded with KFANDRA's
  * round-2 feedback (Back, Forearms, Hamstrings, Glutes, Pecs, Stamina,
  * Plank/Upper-body/Lower-body Variations).
@@ -126,7 +128,7 @@ function weightStep(unit: WeightUnit): number {
 export default function GymSessionMockup() {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [editing, setEditing] = useState<ExerciseRow | null>(null);
-  const [submitted, setSubmitted] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -142,6 +144,10 @@ export default function GymSessionMockup() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional UI "Saved" pulse on draft change
+    setSavedFlash(true);
+    const t = setTimeout(() => setSavedFlash(false), 1100);
+    return () => clearTimeout(t);
   }, [draft]);
 
   const exerciseCount = draft.rows.length;
@@ -174,43 +180,53 @@ export default function GymSessionMockup() {
     setEditing(null);
   }
 
-  function submit() {
-    if (exerciseCount === 0) return;
-    setSubmitted(true);
-  }
-
   function newSession() {
     setDraft({ ...emptyDraft, bodyWeightDate: todayISO() });
     if (typeof window !== "undefined") window.localStorage.removeItem(DRAFT_KEY);
-    setSubmitted(false);
-  }
-
-  if (submitted) {
-    return (
-      <SubmittedView count={exerciseCount} totalSets={totalSets} onNew={newSession} />
-    );
   }
 
   return (
     <div className="flex flex-col gap-5 p-5 pb-32">
       {/* Header card */}
       <div className="rounded-2xl bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-900 p-5 text-white shadow-lg shadow-emerald-500/20">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-200/80">
-          Gym session · today
-        </p>
-        <div className="mt-1 flex items-end gap-4">
+        <div className="flex items-start justify-between">
           <div>
-            <p className="font-[family-name:var(--font-display)] text-5xl font-black tabular-nums tracking-tight">
-              {exerciseCount}
-            </p>
-            <p className="text-[11px] text-emerald-200/60">exercises</p>
+            <div className="flex items-center gap-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-200/80">
+                Gym session · today
+              </p>
+              <span className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-emerald-200/60">
+                <span
+                  className={`inline-block h-1.5 w-1.5 rounded-full ${
+                    savedFlash ? "bg-emerald-300" : "bg-emerald-300/50"
+                  }`}
+                />
+                {savedFlash ? "Saved" : "Auto"}
+              </span>
+            </div>
+            <div className="mt-1 flex items-end gap-4">
+              <div>
+                <p className="font-[family-name:var(--font-display)] text-5xl font-black tabular-nums tracking-tight">
+                  {exerciseCount}
+                </p>
+                <p className="text-[11px] text-emerald-200/60">exercises</p>
+              </div>
+              <div className="border-l border-white/20 pl-4">
+                <p className="font-[family-name:var(--font-display)] text-3xl font-black tabular-nums tracking-tight">
+                  {totalSets}
+                </p>
+                <p className="text-[11px] text-emerald-200/60">est. sets</p>
+              </div>
+            </div>
           </div>
-          <div className="border-l border-white/20 pl-4">
-            <p className="font-[family-name:var(--font-display)] text-3xl font-black tabular-nums tracking-tight">
-              {totalSets}
-            </p>
-            <p className="text-[11px] text-emerald-200/60">est. sets</p>
-          </div>
+          {exerciseCount > 0 && (
+            <button
+              onClick={newSession}
+              className="rounded-lg bg-white/10 backdrop-blur px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-white/20"
+            >
+              Reset
+            </button>
+          )}
         </div>
       </div>
 
@@ -277,7 +293,7 @@ export default function GymSessionMockup() {
         <section>
           <h2 className="text-sm font-semibold text-gray-900">Narration (optional)</h2>
           <p className="text-[11px] text-gray-500 mb-2">
-            Notes for KFANDRA — does not affect points
+            Your reference — helps KFANDRA cross-check later
           </p>
           <textarea
             value={draft.narration}
@@ -289,16 +305,10 @@ export default function GymSessionMockup() {
         </section>
       )}
 
-      {/* Submit */}
       {draft.rows.length > 0 && (
-        <div className="fixed bottom-20 left-0 right-0 z-40 px-5">
-          <button
-            onClick={submit}
-            className="w-full rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 py-4 text-sm font-bold text-white shadow-xl shadow-emerald-500/30 active:scale-[0.99]"
-          >
-            Submit {exerciseCount} {exerciseCount === 1 ? "exercise" : "exercises"} to KFANDRA
-          </button>
-        </div>
+        <p className="text-center text-[11px] text-gray-400 italic">
+          Saved on this device. KFANDRA will collect data separately.
+        </p>
       )}
 
       {/* Edit / add sheet */}
@@ -622,54 +632,6 @@ function ExerciseSheet({
         </div>
       </motion.div>
     </motion.div>
-  );
-}
-
-function SubmittedView({
-  count,
-  totalSets,
-  onNew,
-}: {
-  count: number;
-  totalSets: number;
-  onNew: () => void;
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center px-6 py-16 gap-6">
-      <motion.div
-        initial={{ scale: 0.85, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 250, damping: 18 }}
-        className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-500/30"
-      >
-        <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-        </svg>
-      </motion.div>
-      <div className="text-center">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">Sent</p>
-        <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-bold text-gray-900">
-          {count} {count === 1 ? "exercise" : "exercises"}
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">
-          ~{totalSets} sets logged · awaiting KFANDRA
-        </p>
-      </div>
-      <div className="flex flex-col gap-2 w-full max-w-xs">
-        <button
-          onClick={onNew}
-          className="w-full rounded-xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800"
-        >
-          Start new session
-        </button>
-        <Link
-          href="/mockups/my-submissions"
-          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50"
-        >
-          View submission
-        </Link>
-      </div>
-    </div>
   );
 }
 

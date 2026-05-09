@@ -14,10 +14,50 @@ const fadeUp = {
 };
 
 const upcomingSessions = [
-  { day: "TUE", date: "28", month: "Apr", label: "Next" },
-  { day: "THU", date: "30", month: "Apr" },
-  { day: "SAT", date: "02", month: "May" },
+  { day: "TUE", date: "12", month: "May", label: "Next" },
+  { day: "THU", date: "14", month: "May" },
+  { day: "SAT", date: "16", month: "May" },
 ];
+
+type RecentEntry = {
+  type: "MMG" | "GYM" | "DIET";
+  title: string;
+  when: string;
+  detail: string;
+};
+
+const recentEntries: RecentEntry[] = [
+  {
+    type: "MMG",
+    title: "Fooba (Big Goal)",
+    when: "Today · 11:42 am",
+    detail: "2 goals · 1 assist · 2,200 pts",
+  },
+  {
+    type: "DIET",
+    title: "Breakfast",
+    when: "Today · 8:14 am",
+    detail: "Brown bread × 3 · Coffee × 1 · Banana × 1",
+  },
+  {
+    type: "GYM",
+    title: "Shoulders + Biceps",
+    when: "Yesterday · 6:20 am",
+    detail: "5 exercises · ~22 sets",
+  },
+  {
+    type: "DIET",
+    title: "Lunch",
+    when: "Yesterday · 1:05 pm",
+    detail: "Roti × 4 · Dal × 1 · Bhendi × 2 · Curd × 1",
+  },
+];
+
+const TYPE_STYLE: Record<RecentEntry["type"], { bg: string; text: string }> = {
+  MMG:  { bg: "bg-blue-50",    text: "text-blue-600" },
+  GYM:  { bg: "bg-emerald-50", text: "text-emerald-600" },
+  DIET: { bg: "bg-amber-50",   text: "text-amber-700" },
+};
 
 export default function MockupHome() {
   return (
@@ -37,12 +77,12 @@ export default function MockupHome() {
             Acid
           </h1>
           <p className="mt-2 text-sm text-blue-200/50 italic">
-            Tap a tile below to log today&rsquo;s session.
+            Tap a tile below to log today&rsquo;s data.
           </p>
         </div>
       </motion.div>
 
-      {/* Two-tile launchpad */}
+      {/* Three-tile launchpad */}
       <motion.div variants={fadeUp} className="grid grid-cols-1 gap-3">
         <Link
           href="/mockups/mmg-session"
@@ -61,7 +101,7 @@ export default function MockupHome() {
                 MMG Score
               </h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                Tap entries · submit to KFANDRA
+                Tap entries · saved as you go
               </p>
             </div>
             <svg className="w-5 h-5 shrink-0 text-gray-300 group-hover:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -87,10 +127,36 @@ export default function MockupHome() {
                 Gym Performance
               </h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                Pick body part &rarr; log sets &amp; reps &rarr; submit
+                Pick body part &rarr; log sets &amp; reps
               </p>
             </div>
             <svg className="w-5 h-5 shrink-0 text-gray-300 group-hover:text-emerald-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+          </div>
+        </Link>
+
+        <Link
+          href="/mockups/diet"
+          className="group relative overflow-hidden rounded-2xl bg-white border border-gray-100 shadow-sm hover:border-orange-200 hover:shadow-md transition-all p-5"
+        >
+          <div className="absolute right-0 top-0 h-24 w-24 -translate-y-6 translate-x-6 rounded-full bg-amber-50 group-hover:bg-amber-100 transition-colors" />
+          <div className="relative flex items-center gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/20">
+              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 15.75c-1.5-1-2.25-2.5-2.25-4.5 0-3.75-2.5-6.75-6.75-6.75S5.25 7.5 5.25 11.25c0 2-.75 3.5-2.25 4.5M6 15.75h12M9 18.75h6M10.5 21h3" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-orange-600">Tap to enter</p>
+              <h2 className="mt-0.5 font-[family-name:var(--font-display)] text-2xl font-bold text-gray-900">
+                Daily Diet
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                8 meal slots · tap foods to log
+              </p>
+            </div>
+            <svg className="w-5 h-5 shrink-0 text-gray-300 group-hover:text-orange-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
           </div>
@@ -127,48 +193,40 @@ export default function MockupHome() {
         </div>
       </motion.div>
 
-      {/* My recent submissions — read-only summary */}
+      {/* My recent activity — read-only, no approval status */}
       <motion.div variants={fadeUp}>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-            My recent submissions
+            My recent activity
           </h2>
           <Link href="/mockups/my-submissions" className="text-[10px] font-semibold uppercase tracking-wide text-blue-600 hover:text-blue-700">
             View all
           </Link>
         </div>
         <div className="bg-white rounded-xl overflow-hidden divide-y divide-gray-100 border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-3 px-4 py-3.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 text-xs font-bold">
-              MMG
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-700">Tue 28/4 &mdash; Fooba (Big Goal)</p>
-              <p className="text-[11px] text-gray-400">Submitted 11:42 am &middot; awaiting KFANDRA</p>
-            </div>
-            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">Pending</span>
-          </div>
-          <div className="flex items-center gap-3 px-4 py-3.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 text-xs font-bold">
-              GYM
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-700">Mon 27/4 &mdash; Shoulders + Biceps</p>
-              <p className="text-[11px] text-gray-400">Approved by KFANDRA &middot; 4:08 pm</p>
-            </div>
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">Approved</span>
-          </div>
-          <div className="flex items-center gap-3 px-4 py-3.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 text-xs font-bold">
-              MMG
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-700">Sat 25/4 &mdash; Short Game</p>
-              <p className="text-[11px] text-gray-400">KFANDRA edited 200 &rarr; 100 &middot; Approved</p>
-            </div>
-            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">Edited</span>
-          </div>
+          {recentEntries.map((entry, i) => {
+            const styles = TYPE_STYLE[entry.type];
+            return (
+              <div key={i} className="flex items-start gap-3 px-4 py-3">
+                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ${styles.bg} ${styles.text}`}>
+                  {entry.type}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="text-sm font-semibold text-gray-700 truncate">{entry.title}</p>
+                    <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                      {entry.when}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 truncate">{entry.detail}</p>
+                </div>
+              </div>
+            );
+          })}
         </div>
+        <p className="mt-2 text-center text-[10px] text-gray-400 italic">
+          Saved on this device. Send-to-Coach is handled separately.
+        </p>
       </motion.div>
     </motion.div>
   );

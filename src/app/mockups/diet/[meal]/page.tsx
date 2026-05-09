@@ -25,8 +25,9 @@ import {
 
 export default function DietMealMockup() {
   const params = useParams<{ meal: string }>();
-  const slot = getMealSlot(params.meal);
-  if (!slot) notFound();
+  const maybeSlot = getMealSlot(params.meal);
+  if (!maybeSlot) notFound();
+  const slot = maybeSlot;
 
   const dateKey = todayKey();
   const [day, setDay] = useState<DayLog>(blankDay(dateKey));

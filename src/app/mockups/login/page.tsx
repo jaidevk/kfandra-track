@@ -49,7 +49,7 @@ export default function LoginMockup() {
               KMMGAFDRA
             </h1>
             <p className="mt-1 text-[10px] uppercase tracking-widest text-gray-400 font-medium">
-              KFANDRA&rsquo;s Monthly Multi-Game &amp; Fitness Data Recording App
+              KFANDRA&rsquo;s Monthly Multi-Game, Fitness &amp; Diet Recording App
             </p>
           </div>
         </motion.div>

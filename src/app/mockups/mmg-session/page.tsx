@@ -2,14 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
 
 /**
  * MMG entry — 4 sections: Participation, Performance, Other, Narration.
- * Mockup-only: state held client-side, drafts in localStorage.
+ * Continuous-log model: every change autosaves to localStorage. No submit,
+ * no approval. Player can reset the session to start fresh.
  *
  * Confirmation order and arrival rank use a dynamic formula (N×100 down to 100)
- * so points are computed by KFANDRA at approval time. App captures rank only.
+ * so the final amount depends on attendance — captured at approval time.
  *
  * Per-stat point values are placeholders KFANDRA can adjust later.
  */
@@ -237,7 +237,7 @@ function othersTotal(rows: OtherRow[]): number {
 
 export default function MMGSessionMockup() {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
-  const [submitted, setSubmitted] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
   const [gameDraft, setGameDraft] = useState<Game | null>(null); // null = sheet closed
 
   useEffect(() => {
@@ -254,6 +254,10 @@ export default function MMGSessionMockup() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional UI "Saved" pulse on draft change
+    setSavedFlash(true);
+    const t = setTimeout(() => setSavedFlash(false), 1100);
+    return () => clearTimeout(t);
   }, [draft]);
 
   const visibleTotal = useMemo(
@@ -284,7 +288,7 @@ export default function MMGSessionMockup() {
     };
   }, [draft]);
 
-  const canSubmit =
+  const hasAnyEntry =
     sectionsFilled.participation || draft.games.length > 0 || draft.others.length > 0;
 
   function updateParticipation(patch: Partial<Participation>) {
@@ -335,19 +339,9 @@ export default function MMGSessionMockup() {
     setDraft((d) => ({ ...d, others: d.others.filter((o) => o.id !== id) }));
   }
 
-  function submit() {
-    if (!canSubmit) return;
-    setSubmitted(true);
-  }
-
   function newSession() {
     setDraft(emptyDraft);
     if (typeof window !== "undefined") window.localStorage.removeItem(DRAFT_KEY);
-    setSubmitted(false);
-  }
-
-  if (submitted) {
-    return <SubmittedView total={visibleTotal} hasDynamic={hasDynamicRank} onNew={newSession} />;
   }
 
   return (
@@ -356,13 +350,14 @@ export default function MMGSessionMockup() {
         total={visibleTotal}
         hasDynamic={hasDynamicRank}
         sectionsFilled={sectionsFilled}
-        onReset={() => setDraft(emptyDraft)}
+        savedFlash={savedFlash}
+        onReset={newSession}
       />
 
       <SectionHeading
         index={1}
         title="Participation"
-        subtitle="Once per session — locks after submit"
+        subtitle="Once per session — saved as you tap"
       />
       <ParticipationCard p={draft.participation} onChange={updateParticipation} />
 
@@ -393,7 +388,7 @@ export default function MMGSessionMockup() {
       <SectionHeading
         index={4}
         title="Narration"
-        subtitle="Optional — for KFANDRA's eyes only"
+        subtitle="Optional — your reference; helps KFANDRA cross-check later"
       />
       <textarea
         value={draft.narration}
@@ -403,16 +398,10 @@ export default function MMGSessionMockup() {
         className="w-full rounded-2xl border border-gray-200 bg-white p-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
       />
 
-      {canSubmit && (
-        <div className="fixed bottom-20 left-0 right-0 z-40 px-5">
-          <button
-            onClick={submit}
-            className="w-full rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 py-4 text-sm font-bold text-white shadow-xl shadow-blue-500/30 active:scale-[0.99]"
-          >
-            Submit {visibleTotal.toLocaleString()}
-            {hasDynamicRank ? "+ pts" : " pts"} to KFANDRA
-          </button>
-        </div>
+      {hasAnyEntry && (
+        <p className="text-center text-[11px] text-gray-400 italic">
+          Saved on this device. KFANDRA will collect data separately.
+        </p>
       )}
 
       <AnimatePresence>
@@ -442,20 +431,32 @@ function Scoreboard({
   total,
   hasDynamic,
   sectionsFilled,
+  savedFlash,
   onReset,
 }: {
   total: number;
   hasDynamic: boolean;
   sectionsFilled: { participation: boolean; games: number; others: number };
+  savedFlash: boolean;
   onReset: () => void;
 }) {
   return (
     <div className="rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-900 p-5 text-white shadow-lg shadow-blue-500/20">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-blue-200/80">
-            Running total
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-200/80">
+              Running total
+            </p>
+            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-blue-200/60">
+              <span
+                className={`inline-block h-1.5 w-1.5 rounded-full ${
+                  savedFlash ? "bg-emerald-300" : "bg-emerald-300/50"
+                }`}
+              />
+              {savedFlash ? "Saved" : "Auto"}
+            </span>
+          </div>
           <p className="mt-1 font-[family-name:var(--font-display)] text-5xl font-black tabular-nums tracking-tight">
             {total.toLocaleString()}
             {hasDynamic && (
@@ -996,52 +997,3 @@ function StatRow({
   );
 }
 
-function SubmittedView({
-  total,
-  hasDynamic,
-  onNew,
-}: {
-  total: number;
-  hasDynamic: boolean;
-  onNew: () => void;
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center px-6 py-16 gap-6">
-      <motion.div
-        initial={{ scale: 0.85, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 250, damping: 18 }}
-        className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-500/30"
-      >
-        <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-        </svg>
-      </motion.div>
-      <div className="text-center">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">Sent</p>
-        <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-bold text-gray-900">
-          {total.toLocaleString()}
-          {hasDynamic ? "+ pts" : " pts"} to KFANDRA
-        </h1>
-        <p className="mt-2 text-sm text-gray-500 max-w-xs">
-          KFANDRA approves by 4 pm.
-          {hasDynamic && " Arrival & confirmation points are added at approval."}
-        </p>
-      </div>
-      <div className="flex flex-col gap-2 w-full max-w-xs">
-        <button
-          onClick={onNew}
-          className="w-full rounded-xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800"
-        >
-          Start new session
-        </button>
-        <Link
-          href="/mockups/my-submissions"
-          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50"
-        >
-          View submission
-        </Link>
-      </div>
-    </div>
-  );
-}

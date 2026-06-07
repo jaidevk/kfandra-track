@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { saveDraft as saveLocalDraft } from "@/lib/drafts/storage";
 import { computeDraftPoints, type ScoringConfig } from "@/lib/mmg/scoring";
 import { STATS_BY_TYPE, isPenaltyStat } from "@/lib/mmg/catalog";
@@ -335,26 +335,25 @@ export default function MmgEntry({
         not an approval — you can still edit afterwards.
       </p>
 
-      <AnimatePresence>
-        {order && (
-          <OrderLadder order={order} playerName={playerName} />
-        )}
-      </AnimatePresence>
+      {order && <OrderLadder order={order} playerName={playerName} />}
 
       {/* ── Game editor sheet ──────────────────────────────────────── */}
-      <AnimatePresence>
-        {editing && (
-          <GameEditor
-            key={editing.id}
-            game={editing}
-            config={config}
-            gameTypes={gameTypes}
-            onSave={saveGame}
-            onDelete={draft.games.some((g) => g.id === editing.id) ? deleteGame : undefined}
-            onClose={() => setEditing(null)}
-          />
-        )}
-      </AnimatePresence>
+      {/* Mounted/unmounted directly (no AnimatePresence): framer-motion's
+          exit-removal does not unmount custom-component children in this
+          React 19 / Next 16 stack — even usePresence's safeToRemove is a
+          no-op — so an exit-animated overlay lingers at opacity 0 and keeps
+          intercepting clicks. We animate the sheet in and close it instantly. */}
+      {editing && (
+        <GameEditor
+          key={editing.id}
+          game={editing}
+          config={config}
+          gameTypes={gameTypes}
+          onSave={saveGame}
+          onDelete={draft.games.some((g) => g.id === editing.id) ? deleteGame : undefined}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>
   );
 }
@@ -561,14 +560,12 @@ function GameEditor({
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
       onClick={onClose}
     >
       <motion.div
         initial={{ y: 40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 40, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
         className="max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white p-5 sm:rounded-3xl"
       >
@@ -724,7 +721,6 @@ function OrderLadder({
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 8 }}
       className="rounded-2xl border border-gray-200 bg-white p-4"
     >
       <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">

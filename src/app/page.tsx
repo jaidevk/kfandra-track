@@ -136,33 +136,41 @@ export default function Home() {
           <motion.div
             whileHover={{ y: -3, scale: 1.02 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            className="bg-white/20 backdrop-blur rounded-2xl p-3.5 text-left border border-white/30"
           >
-            <div className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 border border-white/30">
-              <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75l-2.489-2.489m0 0a3.375 3.375 0 10-4.773-4.773 3.375 3.375 0 004.773 4.773zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h2 className="text-sm font-bold text-white mb-0.5">MMG</h2>
-            <p className="text-[10.5px] text-blue-100/70 leading-snug">
-              Tap entries &middot; per session
-            </p>
+            <Link
+              href="/mmg"
+              className="block bg-white/20 backdrop-blur rounded-2xl p-3.5 text-left border border-white/30"
+            >
+              <div className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 border border-white/30">
+                <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75l-2.489-2.489m0 0a3.375 3.375 0 10-4.773-4.773 3.375 3.375 0 004.773 4.773zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h2 className="text-sm font-bold text-white mb-0.5">MMG</h2>
+              <p className="text-[10.5px] text-blue-100/70 leading-snug">
+                Tap entries &middot; per session
+              </p>
+            </Link>
           </motion.div>
 
           <motion.div
             whileHover={{ y: -3, scale: 1.02 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            className="bg-white/20 backdrop-blur rounded-2xl p-3.5 text-left border border-white/30"
           >
-            <div className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-400/30 border border-emerald-300/40">
-              <svg className="h-4 w-4 text-emerald-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3.75h-1.5a1.5 1.5 0 00-1.5 1.5v13.5a1.5 1.5 0 001.5 1.5h1.5m10.5-16.5h1.5a1.5 1.5 0 011.5 1.5v13.5a1.5 1.5 0 01-1.5 1.5h-1.5M6.75 12h10.5M9 7.5v9m6-9v9" />
-              </svg>
-            </div>
-            <h2 className="text-sm font-bold text-white mb-0.5">Gym</h2>
-            <p className="text-[10.5px] text-blue-100/70 leading-snug">
-              Body part &middot; sets &amp; reps
-            </p>
+            <Link
+              href="/gym"
+              className="block bg-white/20 backdrop-blur rounded-2xl p-3.5 text-left border border-white/30"
+            >
+              <div className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-400/30 border border-emerald-300/40">
+                <svg className="h-4 w-4 text-emerald-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3.75h-1.5a1.5 1.5 0 00-1.5 1.5v13.5a1.5 1.5 0 001.5 1.5h1.5m10.5-16.5h1.5a1.5 1.5 0 011.5 1.5v13.5a1.5 1.5 0 01-1.5 1.5h-1.5M6.75 12h10.5M9 7.5v9m6-9v9" />
+                </svg>
+              </div>
+              <h2 className="text-sm font-bold text-white mb-0.5">Gym</h2>
+              <p className="text-[10.5px] text-blue-100/70 leading-snug">
+                Body part &middot; sets &amp; reps
+              </p>
+            </Link>
           </motion.div>
 
           <motion.div

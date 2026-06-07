@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Playfair_Display } from "next/font/google";
 import "./globals.css";
+import AnalyticsProvider from "./analytics-provider";
 
 const dmSans = DM_Sans({
   variable: "--font-body",
@@ -36,6 +37,7 @@ export default function RootLayout({
       className={`${dmSans.variable} ${playfair.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-[family-name:var(--font-body)]">
+        <AnalyticsProvider />
         {children}
       </body>
     </html>

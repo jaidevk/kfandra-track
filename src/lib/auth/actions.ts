@@ -14,7 +14,9 @@ import { setSessionCookie, clearSessionCookie } from "./cookie";
  * Shaped for React's useActionState: (prevState, formData) => AuthResult.
  */
 
-export type AuthResult = { ok: true } | { ok: false; error: string };
+export type AuthResult =
+  | { ok: true; playerId: string; role: string; isNew: boolean }
+  | { ok: false; error: string };
 
 const NAME_MAX = 40;
 // Deliberately generic so we never reveal whether a phone is registered.
@@ -84,7 +86,7 @@ export async function registerAction(
     role: created.role,
     name: created.display_name,
   });
-  return { ok: true };
+  return { ok: true, playerId: created.id, role: created.role, isNew: true };
 }
 
 export async function loginAction(
@@ -124,7 +126,7 @@ export async function loginAction(
     role: player.role,
     name: player.display_name,
   });
-  return { ok: true };
+  return { ok: true, playerId: player.id, role: player.role, isNew: false };
 }
 
 export async function logoutAction(): Promise<void> {

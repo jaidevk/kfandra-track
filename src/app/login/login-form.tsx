@@ -4,6 +4,11 @@ import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { loginAction, registerAction, type AuthResult } from "@/lib/auth/actions";
+import {
+  AnalyticsEvent,
+  capture,
+  identifyPlayer,
+} from "@/lib/observability/analytics";
 
 type Mode = "login" | "register";
 
@@ -22,10 +27,16 @@ export default function LoginForm({ next }: { next: string }) {
 
   // On success the session cookie is set server-side; navigate to `next`.
   useEffect(() => {
-    if (loginState?.ok || registerState?.ok) {
-      router.replace(next);
-      router.refresh();
-    }
+    const success = loginState?.ok ? loginState : registerState?.ok ? registerState : null;
+    if (!success) return;
+    // Tie this anonymous session to the player (opaque UUID, no PII) and
+    // record the auth event for funnel analysis.
+    identifyPlayer(success.playerId, success.role);
+    capture(
+      success.isNew ? AnalyticsEvent.Registered : AnalyticsEvent.LoggedIn,
+    );
+    router.replace(next);
+    router.refresh();
   }, [loginState, registerState, next, router]);
 
   const loginError = loginState && !loginState.ok ? loginState.error : null;

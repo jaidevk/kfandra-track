@@ -176,17 +176,21 @@ export default function Home() {
           <motion.div
             whileHover={{ y: -3, scale: 1.02 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            className="bg-white/20 backdrop-blur rounded-2xl p-3.5 text-left border border-white/30"
           >
-            <div className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-amber-400/30 border border-amber-300/40">
-              <svg className="h-4 w-4 text-amber-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 15.75c-1.5-1-2.25-2.5-2.25-4.5 0-3.75-2.5-6.75-6.75-6.75S5.25 7.5 5.25 11.25c0 2-.75 3.5-2.25 4.5M6 15.75h12M9 18.75h6M10.5 21h3" />
-              </svg>
-            </div>
-            <h2 className="text-sm font-bold text-white mb-0.5">Diet</h2>
-            <p className="text-[10.5px] text-blue-100/70 leading-snug">
-              8 meals &middot; tap foods to log
-            </p>
+            <Link
+              href="/diet"
+              className="block bg-white/20 backdrop-blur rounded-2xl p-3.5 text-left border border-white/30"
+            >
+              <div className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-amber-400/30 border border-amber-300/40">
+                <svg className="h-4 w-4 text-amber-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 15.75c-1.5-1-2.25-2.5-2.25-4.5 0-3.75-2.5-6.75-6.75-6.75S5.25 7.5 5.25 11.25c0 2-.75 3.5-2.25 4.5M6 15.75h12M9 18.75h6M10.5 21h3" />
+                </svg>
+              </div>
+              <h2 className="text-sm font-bold text-white mb-0.5">Diet</h2>
+              <p className="text-[10.5px] text-blue-100/70 leading-snug">
+                8 meals &middot; tap foods to log
+              </p>
+            </Link>
           </motion.div>
         </motion.div>
 

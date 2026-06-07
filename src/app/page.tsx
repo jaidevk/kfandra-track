@@ -194,55 +194,6 @@ export default function Home() {
           </motion.div>
         </motion.div>
 
-        {/* CTA Buttons */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8, duration: 0.5 }}
-          className="flex flex-col gap-3 w-full"
-        >
-          <Link href="/mockups" className="group block w-full">
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              animate={{
-                boxShadow: [
-                  "0 0 16px rgba(255,255,255,0.2), 0 4px 24px rgba(255,255,255,0.1)",
-                  "0 0 28px rgba(255,255,255,0.35), 0 4px 32px rgba(255,255,255,0.2)",
-                  "0 0 16px rgba(255,255,255,0.2), 0 4px 24px rgba(255,255,255,0.1)",
-                ],
-              }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              className="w-full rounded-2xl bg-white px-6 py-4 text-sm font-bold text-blue-700"
-            >
-              <span className="flex items-center justify-center gap-2">
-                View UI Mockups
-                <motion.svg
-                  animate={{ x: [0, 4, 0] }}
-                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-                </motion.svg>
-              </span>
-            </motion.div>
-          </Link>
-
-          <Link href="/mockups/login" className="block w-full">
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full rounded-2xl border border-white/[0.25] bg-white/[0.1] px-6 py-3.5 text-sm font-semibold text-white/80 text-center transition-all hover:bg-white/[0.18] hover:text-white hover:border-white/[0.4]"
-            >
-              Login Preview
-            </motion.div>
-          </Link>
-        </motion.div>
-
         {/* Footer label */}
         <motion.p
           initial={{ opacity: 0 }}

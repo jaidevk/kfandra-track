@@ -114,9 +114,13 @@ export function statValue(
   return config.statDefault[key] ?? 0;
 }
 
-/** Points for one game: result + each recorded stat. */
+/** Points for one game card: each result count × its value + each stat. */
 export function gameTotal(config: ScoringConfig, game: GameDraft): number {
-  let total = game.result ? config.result[game.result] ?? 0 : 0;
+  let total = 0;
+  for (const r of ["won", "drew", "lost"] as GameResult[]) {
+    const count = game.results[r];
+    if (count) total += count * (config.result[r] ?? 0);
+  }
   for (const [key, count] of Object.entries(game.stats)) {
     if (!count) continue;
     total += count * statValue(config, game.type, key as StatKey);

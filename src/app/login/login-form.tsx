@@ -156,7 +156,7 @@ export default function LoginForm({ next }: { next: string }) {
                   autoComplete="nickname"
                   required
                   maxLength={40}
-                  placeholder="Acid"
+                  placeholder="Your nickname"
                   className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
               </Field>

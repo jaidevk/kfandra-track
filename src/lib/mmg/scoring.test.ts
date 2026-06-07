@@ -80,10 +80,21 @@ describe("gameTotal", () => {
     const total = gameTotal(config, {
       id: "g1",
       type: "football-short",
-      result: "won",
+      results: { won: 1, drew: 0, lost: 0 },
       stats: { goals: 2, assists: 1 },
     });
     expect(total).toBe(2200);
+  });
+
+  it("multiplies result points by the win/draw/loss counts", () => {
+    // 3 won×1000 + 2 drew×100 + 1 lost×0 = 3200, + 4 goals×500 = 5200
+    const total = gameTotal(config, {
+      id: "g1b",
+      type: "football-short",
+      results: { won: 3, drew: 2, lost: 1 },
+      stats: { goals: 4 },
+    });
+    expect(total).toBe(5200);
   });
 
   it("rugby game charges 500 per tackle", () => {
@@ -91,7 +102,7 @@ describe("gameTotal", () => {
     const total = gameTotal(config, {
       id: "g2",
       type: "rugby-full",
-      result: "drew",
+      results: { won: 0, drew: 1, lost: 0 },
       stats: { tries: 3, tackles: 2 },
     });
     expect(total).toBe(2600);
@@ -102,17 +113,17 @@ describe("gameTotal", () => {
     const total = gameTotal(config, {
       id: "g3",
       type: "fooba-big-goal",
-      result: "won",
+      results: { won: 1, drew: 0, lost: 0 },
       stats: { goals: 1, goalConceded: 2, redCards: 1 },
     });
     expect(total).toBe(600);
   });
 
-  it("ignores zero/absent stats", () => {
+  it("ignores zero/absent stats and zero result counts", () => {
     const total = gameTotal(config, {
       id: "g4",
       type: "football-short",
-      result: "lost",
+      results: { won: 0, drew: 0, lost: 1 },
       stats: { goals: 0 },
     });
     expect(total).toBe(0); // lost = 0
@@ -131,8 +142,8 @@ describe("computeDraftPoints", () => {
         confirmedBy11am: true, // +500
       },
       games: [
-        { id: "g1", type: "football-short", result: "won", stats: { goals: 1 } }, // 1500
-        { id: "g2", type: "rugby-short", result: "lost", stats: { tackles: 1 } }, // 0 + 500
+        { id: "g1", type: "football-short", results: { won: 1, drew: 0, lost: 0 }, stats: { goals: 1 } }, // 1500
+        { id: "g2", type: "rugby-short", results: { won: 0, drew: 0, lost: 1 }, stats: { tackles: 1 } }, // 0 + 500
       ],
       others: [
         { id: "o1", description: "MOTM", points: "300" },

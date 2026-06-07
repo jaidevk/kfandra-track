@@ -666,27 +666,33 @@ export type Database = {
       submission_games: {
         Row: {
           created_at: string
+          drew_count: number
           game_type_id: string | null
           id: string
+          lost_count: number
           mmg_entry_id: string
-          result: "won" | "drew" | "lost" | null
           sort_order: number
+          won_count: number
         }
         Insert: {
           created_at?: string
+          drew_count?: number
           game_type_id?: string | null
           id?: string
+          lost_count?: number
           mmg_entry_id: string
-          result?: "won" | "drew" | "lost" | null
           sort_order?: number
+          won_count?: number
         }
         Update: {
           created_at?: string
+          drew_count?: number
           game_type_id?: string | null
           id?: string
+          lost_count?: number
           mmg_entry_id?: string
-          result?: "won" | "drew" | "lost" | null
           sort_order?: number
+          won_count?: number
         }
         Relationships: [
           {

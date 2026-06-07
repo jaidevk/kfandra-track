@@ -21,6 +21,17 @@ export type GameTypeKey =
 
 export type GameResult = "won" | "drew" | "lost";
 
+/** How many games of a type ended in each result (cumulative per card). */
+export interface GameResults {
+  won: number;
+  drew: number;
+  lost: number;
+}
+
+export function emptyResults(): GameResults {
+  return { won: 0, drew: 0, lost: 0 };
+}
+
 export type StatKey =
   | "goals"
   | "tries"
@@ -50,7 +61,8 @@ export interface GameDraft {
   /** Client-stable id (also the submission_games id when round-tripped). */
   id: string;
   type: GameTypeKey;
-  result: GameResult | null;
+  /** How many games of this type ended won/drew/lost (cumulative). */
+  results: GameResults;
   /** Sparse stat counts; absent or 0 means "not recorded". */
   stats: Partial<Record<StatKey, number>>;
 }
@@ -88,5 +100,5 @@ export function emptyDraft(): MmgDraft {
 }
 
 export function emptyGame(id: string): GameDraft {
-  return { id, type: "football-short", result: "won", stats: {} };
+  return { id, type: "football-short", results: emptyResults(), stats: {} };
 }

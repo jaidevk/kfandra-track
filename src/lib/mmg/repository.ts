@@ -2,7 +2,6 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type {
   GameDraft,
-  GameResult,
   GameTypeKey,
   MmgDraft,
   StatKey,
@@ -47,7 +46,7 @@ export async function loadMmgEntry(
   const [gamesRes, othersRes] = await Promise.all([
     admin
       .from("submission_games")
-      .select("id, game_type_id, result, sort_order")
+      .select("id, game_type_id, won_count, drew_count, lost_count, sort_order")
       .eq("mmg_entry_id", entry.id)
       .order("sort_order", { ascending: true }),
     admin
@@ -75,7 +74,11 @@ export async function loadMmgEntry(
   const games: GameDraft[] = gameRows.map((g) => ({
     id: g.id,
     type: (g.game_type_id ? maps.gameTypeKeyById[g.game_type_id] : "other") ?? "other",
-    result: (g.result as GameResult | null) ?? null,
+    results: {
+      won: g.won_count ?? 0,
+      drew: g.drew_count ?? 0,
+      lost: g.lost_count ?? 0,
+    },
     stats: statsByGame[g.id] ?? {},
   }));
 
@@ -148,7 +151,9 @@ export async function saveMmgEntry(
       .insert({
         mmg_entry_id: entry.id,
         game_type_id: maps.gameTypeIdByKey[g.type] ?? null,
-        result: g.result,
+        won_count: g.results.won,
+        drew_count: g.results.drew,
+        lost_count: g.results.lost,
         sort_order: i,
       })
       .select("id")

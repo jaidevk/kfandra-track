@@ -10,6 +10,7 @@ import {
   emptyGame,
   type GameDraft,
   type GameResult,
+  type GameResults,
   type GameTypeKey,
   type MmgDraft,
   type OtherRow,
@@ -55,6 +56,15 @@ function statLabel(type: GameTypeKey, key: StatKey): string {
     return "Tackle (Touch/Normal)";
   }
   return STAT_LABELS[key];
+}
+
+/** Compact "3W · 1D · 2L" summary; "—" when nothing recorded. */
+function resultSummary(r: GameResults): string {
+  const parts: string[] = [];
+  if (r.won) parts.push(`${r.won}W`);
+  if (r.drew) parts.push(`${r.drew}D`);
+  if (r.lost) parts.push(`${r.lost}L`);
+  return parts.length ? parts.join(" · ") : "—";
 }
 
 export default function MmgEntry({
@@ -245,7 +255,11 @@ export default function MmgEntry({
       />
 
       {/* ── 2. Performance ─────────────────────────────────────────── */}
-      <SectionHeading index={2} title="Performance" subtitle="One card per game played" />
+      <SectionHeading
+        index={2}
+        title="Performance"
+        subtitle="One card per game type · tally W/D/L"
+      />
       <div className="flex flex-col gap-3">
         {draft.games.map((g) => {
           const meta = labelByKey.get(g.type);
@@ -259,7 +273,7 @@ export default function MmgEntry({
               <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                 <span>{meta?.emoji}</span>
                 {meta?.name ?? g.type}
-                <span className="text-gray-400">· {g.result ? RESULT_LABELS[g.result] : "—"}</span>
+                <span className="text-gray-400">· {resultSummary(g.results)}</span>
               </span>
               <span className="tabular-nums text-sm font-bold text-blue-600">
                 {sub.toLocaleString()}
@@ -553,6 +567,12 @@ function GameEditor({
       return { ...prev, stats: { ...prev.stats, [key]: next } };
     });
 
+  const setResult = (r: GameResult, delta: number) =>
+    setG((prev) => ({
+      ...prev,
+      results: { ...prev.results, [r]: Math.max(0, prev.results[r] + delta) },
+    }));
+
   const positives = keys.filter((k) => !isPenaltyStat(k));
   const penalties = keys.filter((k) => isPenaltyStat(k));
 
@@ -596,23 +616,20 @@ function GameEditor({
           ))}
         </div>
 
-        {/* Result */}
+        {/* Result counts — how many games of this type ended each way */}
         <p className="mt-4 text-[10px] uppercase tracking-wide text-gray-500 font-semibold">
-          Result
+          Result · how many games
         </p>
-        <div className="mt-1.5 grid grid-cols-3 gap-2">
+        <div className="mt-1.5 flex flex-col gap-2">
           {(["won", "drew", "lost"] as GameResult[]).map((r) => (
-            <button
+            <StatStepper
               key={r}
-              onClick={() => setG((prev) => ({ ...prev, result: r }))}
-              className={`rounded-xl border px-3 py-2 text-sm font-semibold ${
-                g.result === r
-                  ? "border-blue-400 bg-blue-50 text-blue-800"
-                  : "border-gray-200 bg-white text-gray-700"
-              }`}
-            >
-              {RESULT_LABELS[r]}
-            </button>
+              label={RESULT_LABELS[r]}
+              points={config.result[r] ?? 0}
+              value={g.results[r]}
+              onAdd={() => setResult(r, 1)}
+              onSub={() => setResult(r, -1)}
+            />
           ))}
         </div>
 

@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseEnv, getServiceRoleKey } from "./env";
+import type { Database } from "./database.types";
 
 /**
  * Server-only admin client using the service-role key. Bypasses RLS, so
@@ -12,7 +13,7 @@ import { getSupabaseEnv, getServiceRoleKey } from "./env";
  */
 export function createAdminClient() {
   const { url } = getSupabaseEnv();
-  return createSupabaseClient(url, getServiceRoleKey(), {
+  return createSupabaseClient<Database>(url, getServiceRoleKey(), {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 }

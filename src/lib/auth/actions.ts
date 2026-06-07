@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logServerError } from "@/lib/observability/log";
 import { normalizePhone } from "./phone";
 import { isValidPin, hashPin, verifyPin } from "./pin";
 import { setSessionCookie, clearSessionCookie } from "./cookie";
@@ -48,6 +49,8 @@ export async function registerAction(
     .eq("phone", phone)
     .maybeSingle();
   if (lookupError) {
+    // No phone/PIN in context — keep PII out of logs.
+    logServerError("register.lookup_failed", lookupError);
     return { ok: false, error: "Something went wrong. Please try again." };
   }
   if (existing) {
@@ -72,6 +75,7 @@ export async function registerAction(
         error: "That number is already registered. Try signing in instead.",
       };
     }
+    logServerError("register.insert_failed", insertError ?? "no row returned");
     return { ok: false, error: "Could not create your account. Please try again." };
   }
 
@@ -102,7 +106,10 @@ export async function loginAction(
     .eq("phone", phone)
     .maybeSingle();
 
-  if (error) return { ok: false, error: "Something went wrong. Please try again." };
+  if (error) {
+    logServerError("login.lookup_failed", error);
+    return { ok: false, error: "Something went wrong. Please try again." };
+  }
   if (!player) return { ok: false, error: BAD_CREDENTIALS };
 
   const pinOk = await verifyPin(pin, player.pin_hash);

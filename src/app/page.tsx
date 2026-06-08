@@ -97,29 +97,22 @@ export default function Home() {
               transition={{ delay: 0.3, duration: 0.5 }}
               className="font-[family-name:var(--font-display)] text-5xl font-black text-white leading-none tracking-tight"
             >
-              KMMGAFDRA
+              The Jacaranda App
             </motion.h1>
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4, duration: 0.5 }}
-              className="text-xs uppercase tracking-[0.4em] text-blue-200 font-semibold"
+              className="text-[10px] text-blue-100/60 max-w-[18rem] text-center leading-snug"
             >
-              KUM-GAF-DRA
+              KMMGAFDRA &middot; KFANDRA&rsquo;s Monthly Multi-Game, Fitness &amp;
+              Diet Recording App
             </motion.p>
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5, duration: 0.5 }}
-              className="text-[11px] text-blue-100/70 max-w-[18rem] text-center"
-            >
-              KFANDRA&rsquo;s Monthly Multi-Game, Fitness &amp; Diet Recording App
-            </motion.p>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6, duration: 0.5 }}
-              className="text-sm text-blue-100/60 italic"
+              className="text-[10px] text-blue-100/50 italic"
             >
               Respect, Trust, Integrity, Passion &amp; Humility
             </motion.p>

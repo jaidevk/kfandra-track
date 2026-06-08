@@ -20,7 +20,7 @@ your browser's *Add to Home Screen* so it opens like a normal app.
 Enter your **phone number** and **PIN**, tap **Sign in**. You stay logged in
 for about two months, so you won't have to do this often.
 
-> Forgot your PIN? There's no self-reset yet — message a coach/admin and
+> Forgot your PIN? There's no self-reset yet — message your Sensei/admin and
 > they'll sort it out.
 
 ---
@@ -102,4 +102,4 @@ many. You can add a custom item if something isn't on the list. Diet is for
   time.
 - **One account per phone.** Your phone number is your login.
 
-Questions or something looks wrong? Tell a coach/admin.
+Questions or something looks wrong? Tell your Sensei/admin.

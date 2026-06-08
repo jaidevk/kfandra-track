@@ -74,10 +74,11 @@ export default function LoginForm({ next }: { next: string }) {
           </div>
           <div className="flex flex-col items-center gap-1">
             <h1 className="font-[family-name:var(--font-display)] text-3xl font-black text-gray-900 tracking-tight">
-              KMMGAFDRA
+              The Jacaranda App
             </h1>
-            <p className="mt-1 text-center text-[10px] uppercase tracking-widest text-gray-400 font-medium">
-              KFANDRA&rsquo;s Monthly Multi-Game, Fitness &amp; Diet Recording App
+            <p className="mt-1 text-center text-[10px] tracking-wide text-gray-400 font-medium">
+              KMMGAFDRA &middot; KFANDRA&rsquo;s Monthly Multi-Game, Fitness &amp;
+              Diet Recording App
             </p>
           </div>
         </motion.div>
@@ -115,7 +116,18 @@ export default function LoginForm({ next }: { next: string }) {
               <Field label="4-digit PIN">
                 <PinInput />
               </Field>
-              {loginError && <ErrorNote>{loginError}</ErrorNote>}
+              {loginError && (
+                <div className="space-y-2">
+                  <ErrorNote>{loginError}</ErrorNote>
+                  <button
+                    type="button"
+                    onClick={() => setMode("register")}
+                    className="block w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-[12px] font-semibold text-blue-700 hover:bg-blue-100"
+                  >
+                    New here? Create an account →
+                  </button>
+                </div>
+              )}
               <SubmitButton pending={loginPending}>Sign in</SubmitButton>
               <div className="flex items-center justify-between text-[11px]">
                 <button
@@ -123,7 +135,7 @@ export default function LoginForm({ next }: { next: string }) {
                   onClick={() => setMode("register")}
                   className="text-blue-600 font-semibold hover:text-blue-700"
                 >
-                  Create an account
+                  First time? Create an account
                 </button>
                 <span className="text-gray-400">SMS OTP coming in V2</span>
               </div>

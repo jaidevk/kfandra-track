@@ -1,7 +1,7 @@
 # KFANDRA Helper — Admin Guide
 
 How to view the data, change the rules, and operate the app. This guide is for
-staff (super_admin / coach / admin). Keep it internal.
+staff (super_admin / Sensei / admin). Keep it internal.
 
 > **Never paste secrets anywhere.** The Supabase `service_role` key, the
 > database password, and `SESSION_SECRET` are secrets. This guide tells you
@@ -86,7 +86,10 @@ Open `players` in the Table Editor.
 - **Roles** (column `role`): `super_admin` > `coach` > `admin` > `user`. The
   first three are "staff" and unlock elevated database access via row-level
   security. New registrations default to `user`. To promote someone, change
-  their `role`.
+  their `role`. **Note on terminology:** the club calls the head coach the
+  **Sensei** — that is the `coach` role value in the database. The stored value
+  stays `coach` (changing the enum would touch the schema and code); only the
+  word we *show* people is "Sensei".
 - **Disable an account:** set `is_active` to `false`. They stay in the DB but
   can no longer log in (and are logged out on their next page load). Re-enable
   by setting it back to `true`. Prefer this over deleting.

@@ -15,6 +15,7 @@ import { exerciseCount, totalSets, hasWeight } from "@/lib/gym/summary";
 import { loadGymLogAction, saveGymLogAction } from "@/lib/gym/actions";
 import { dateLabel, todayKey } from "@/lib/gym/dates";
 import type { GymCatalog } from "@/lib/gym/config";
+import { AnalyticsEvent, capture } from "@/lib/observability/analytics";
 
 type SyncStatus = "idle" | "saving" | "saved" | "error";
 
@@ -100,6 +101,7 @@ export default function GymEntry({
 
   // ── Draft mutators (all route through mutate → marks saving) ─────────────
   const saveExercise = (r: ExerciseRow) => {
+    const isNew = !draft.rows.some((x) => x.id === r.id);
     mutate((d) => {
       const exists = d.rows.some((x) => x.id === r.id);
       return {
@@ -108,6 +110,11 @@ export default function GymEntry({
       };
     });
     setEditing(null);
+    capture(AnalyticsEvent.GymExerciseLogged, {
+      body_part: r.bodyPart,
+      equipment: r.equipment ?? null,
+      is_new: isNew,
+    });
   };
   const deleteExercise = (id: string) => {
     mutate((d) => ({ ...d, rows: d.rows.filter((r) => r.id !== id) }));

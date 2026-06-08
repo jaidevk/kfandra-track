@@ -26,6 +26,7 @@ import {
 } from "@/lib/diet/summary";
 import { saveDietLogAction } from "@/lib/diet/actions";
 import { dateLabel } from "@/lib/diet/dates";
+import { AnalyticsEvent, capture } from "@/lib/observability/analytics";
 
 type SyncStatus = "idle" | "saving" | "saved" | "error";
 
@@ -169,12 +170,18 @@ export default function DietEntry({
           foodById={foodById}
           status={status}
           onBack={() => setOpenSlot(null)}
-          onTap={(foodKey) => mutate((d) => tapFood(d, openMeal.key, foodKey))}
+          onTap={(foodKey) => {
+            mutate((d) => tapFood(d, openMeal.key, foodKey));
+            capture(AnalyticsEvent.DietMealLogged, { slot: openMeal.key, source: "catalog" });
+          }}
           onAdjust={(id, delta) =>
             mutate((d) => adjustLogged(d, openMeal.key, id, delta))
           }
           onRemove={(id) => mutate((d) => removeLogged(d, openMeal.key, id))}
-          onAddCustom={(c) => mutate((d) => addCustomItem(d, openMeal.key, c))}
+          onAddCustom={(c) => {
+            mutate((d) => addCustomItem(d, openMeal.key, c));
+            capture(AnalyticsEvent.DietMealLogged, { slot: openMeal.key, source: "custom" });
+          }}
           onToggleSkip={() =>
             mutate((d) =>
               setSkipped(d, openMeal.key, !getMeal(d, openMeal.key).skipped),

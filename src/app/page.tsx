@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { strings } from "@/content/strings";
+import { AnalyticsEvent, capture } from "@/lib/observability/analytics";
 
 export default function Home() {
   const { brand, home } = strings;
@@ -133,6 +134,7 @@ export default function Home() {
           >
             <Link
               href="/mmg"
+              onClick={() => capture(AnalyticsEvent.ModeOpened, { mode: "mmg" })}
               className="block bg-white/20 backdrop-blur rounded-2xl p-3.5 text-left border border-white/30"
             >
               <div className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 border border-white/30">
@@ -155,6 +157,7 @@ export default function Home() {
           >
             <Link
               href="/gym"
+              onClick={() => capture(AnalyticsEvent.ModeOpened, { mode: "gym" })}
               className="block bg-white/20 backdrop-blur rounded-2xl p-3.5 text-left border border-white/30"
             >
               <div className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-400/30 border border-emerald-300/40">
@@ -177,6 +180,7 @@ export default function Home() {
           >
             <Link
               href="/diet"
+              onClick={() => capture(AnalyticsEvent.ModeOpened, { mode: "diet" })}
               className="block bg-white/20 backdrop-blur rounded-2xl p-3.5 text-left border border-white/30"
             >
               <div className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-amber-400/30 border border-amber-300/40">

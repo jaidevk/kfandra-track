@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logServerError } from "@/lib/observability/log";
+import { captureServerEvent } from "@/lib/posthog-server";
 import { normalizePhone } from "./phone";
 import { isValidPin, hashPin, verifyPin } from "./pin";
 import { setSessionCookie, clearSessionCookie } from "./cookie";
@@ -86,6 +87,16 @@ export async function registerAction(
     role: created.role,
     name: created.display_name,
   });
+
+  // Server-side is the source of truth for this event (the client only
+  // identifies, to avoid double-counting). Best-effort: never blocks/breaks reg.
+  await captureServerEvent(
+    created.id,
+    "player_registered",
+    { source: "server" },
+    { role: created.role },
+  );
+
   return { ok: true, playerId: created.id, role: created.role, isNew: true };
 }
 
@@ -126,6 +137,15 @@ export async function loginAction(
     role: player.role,
     name: player.display_name,
   });
+
+  // Source of truth for the login event (client only identifies — no dupes).
+  await captureServerEvent(
+    player.id,
+    "player_logged_in",
+    { source: "server" },
+    { role: player.role },
+  );
+
   return { ok: true, playerId: player.id, role: player.role, isNew: false };
 }
 

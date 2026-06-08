@@ -25,6 +25,7 @@ import {
 import type { GameTypeOption } from "@/lib/mmg/config";
 import type { SessionRow } from "@/lib/mmg/sessions";
 import type { SessionOrderResult } from "@/lib/mmg/order";
+import { AnalyticsEvent, capture } from "@/lib/observability/analytics";
 
 type SyncStatus = "idle" | "saving" | "saved" | "error";
 
@@ -188,6 +189,11 @@ export default function MmgEntry({
     if (res.ok) {
       setStatus("saved");
       setOrder(res.data.order);
+      capture(AnalyticsEvent.MmgSessionFinalized, {
+        session_id: session.id,
+        total_points: breakdown.total,
+        game_count: draft.games.length,
+      });
     } else {
       setStatus("error");
     }

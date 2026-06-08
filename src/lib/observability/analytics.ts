@@ -46,18 +46,21 @@ export function initAnalytics(): void {
   if (!apiKey) return;
 
   posthog.init(apiKey, {
-    api_host:
-      process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
+    api_host: "/ingest",
+    ui_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+    defaults: "2026-01-30",
     // We capture pageviews manually on route change (App Router has no full
     // page reloads), so disable the automatic one to avoid duplicates.
     capture_pageview: false,
     capture_pageleave: true,
+    capture_exceptions: true,
     autocapture: true,
     persistence: "localStorage+cookie",
     // Respect privacy: session replay masks all inputs by default; keep it.
     session_recording: {
       maskAllInputs: true,
     },
+    debug: process.env.NODE_ENV === "development",
   });
   initialized = true;
 }

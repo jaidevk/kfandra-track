@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { istTodayKey } from "@/lib/dates/ist";
 
 /**
  * Session helpers. Training sessions fall on every Tue/Thu/Sat. Rather than
@@ -108,14 +109,23 @@ export async function listRecentSessions(limit = 12): Promise<SessionRow[]> {
   return (data as SessionRow[]) ?? [];
 }
 
-/** The most recent session day on or before `from` (defaults to today). */
+/**
+ * The most recent session day on or before today, in IST. Returns today's key
+ * when today is itself a Tue/Thu/Sat session day; otherwise walks back to the
+ * latest past session day (so back-logging Thursday's session on Friday just
+ * opens Thursday, editable). `from` is for test injection only.
+ */
 export function mostRecentSessionDay(from: Date = new Date()): string {
-  const d = new Date(from.getFullYear(), from.getMonth(), from.getDate(), 12);
+  const startKey = istTodayKey(from);
+  // Build the cursor at local noon so day-stepping and toDateKey() are
+  // timezone-stable (we only ever read its weekday and Y/M/D, never the clock).
+  const [y, m, d] = startKey.split("-").map(Number);
+  const cursor = new Date(y, m - 1, d, 12, 0, 0);
   for (let i = 0; i < 7; i++) {
-    const key = toDateKey(d);
+    const key = toDateKey(cursor);
     if (isSessionDay(key)) return key;
-    d.setDate(d.getDate() - 1);
+    cursor.setDate(cursor.getDate() - 1);
   }
   // Unreachable (every 7-day window contains a session day), but keep types happy.
-  return toDateKey(from);
+  return startKey;
 }

@@ -1,7 +1,9 @@
 /**
  * Date helpers for Gym logs. Unlike MMG sessions (Tue/Thu/Sat only), gym logs
- * can fall on any calendar day, so these are plain local-date utilities.
+ * can fall on any calendar day, so these are plain date-key utilities.
  */
+
+import { istTodayKey } from "@/lib/dates/ist";
 
 /** Format a Date as a local YYYY-MM-DD (no timezone shift). */
 export function toDateKey(d: Date): string {
@@ -11,9 +13,9 @@ export function toDateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-/** Today as a local YYYY-MM-DD. */
+/** Today as a YYYY-MM-DD, anchored to IST (Asia/Kolkata) on server and client. */
 export function todayKey(from: Date = new Date()): string {
-  return toDateKey(from);
+  return istTodayKey(from);
 }
 
 /** Validate a YYYY-MM-DD string into a real calendar date. */

@@ -1,4 +1,4 @@
-# KFANDRA App — Player Guide
+# The Jacaranda App — Player Guide
 
 A quick guide to logging your sessions, gym work, and diet. Everything you
 enter **saves automatically** — there's no "submit" button to remember.

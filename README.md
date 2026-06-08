@@ -8,7 +8,8 @@ Supabase (PostgreSQL), and hosted on Vercel.
 ## Guides
 
 - **[Player usage guide](docs/usage-guide.md)** — how to register and log
-  sessions, gym, and diet. Shareable with members.
+  sessions, gym, and diet. Shareable with members. A print/share-ready
+  **[PDF](docs/usage-guide.pdf)** is generated from it via `npm run docs:pdf`.
 - **[Admin guide](docs/admin-guide.md)** — view the database, edit scoring and
   catalogues, manage players/roles, env vars, and deploys. Internal/staff.
 

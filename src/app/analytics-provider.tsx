@@ -8,7 +8,7 @@ import { initAnalytics, capturePageview } from "@/lib/observability/analytics";
 /**
  * Initializes PostHog once on mount and emits a manual pageview on every App
  * Router navigation (there are no full page reloads to trigger autocapture's
- * pageview). All of this is a no-op when NEXT_PUBLIC_POSTHOG_KEY is unset.
+ * pageview). All of this is a no-op when NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN is unset.
  *
  * Init is purely client-side (no cookie/session read), so wrapping the root
  * layout does NOT force pages to render dynamically — the static marketing

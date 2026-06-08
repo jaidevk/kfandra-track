@@ -6,7 +6,7 @@
  * phone number or PIN. Input values are masked by PostHog's session-replay
  * defaults (maskAllInputs), and the PIN field is type=password.
  *
- * Everything here is a safe no-op when NEXT_PUBLIC_POSTHOG_KEY is unset (e.g.
+ * Everything here is a safe no-op when NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN is unset (e.g.
  * in CI, local dev, or before the project is provisioned), so the app builds
  * and runs identically with or without analytics configured.
  */
@@ -32,7 +32,7 @@ type Props = Record<string, string | number | boolean | null | undefined>;
 let initialized = false;
 
 function key(): string | undefined {
-  return process.env.NEXT_PUBLIC_POSTHOG_KEY;
+  return process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
 }
 
 /**

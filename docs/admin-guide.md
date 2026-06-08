@@ -186,7 +186,7 @@ or the dashboard's Redeploy button).
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public client key | Low |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server admin key (bypasses RLS) | **YES** |
 | `SESSION_SECRET` | Signs login cookies | **YES** |
-| `NEXT_PUBLIC_POSTHOG_KEY` | Product analytics (optional) | Low |
+| `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` | Product analytics (optional) | Low |
 | `NEXT_PUBLIC_POSTHOG_HOST` | PostHog host (optional) | No |
 
 **Rotating Supabase keys:** copy the value from Supabase → Project Settings →
@@ -210,7 +210,7 @@ URL — a mismatch causes "Invalid API key" errors on every data operation.
 - **Errors / server logs:** Vercel → project → **Logs** (Functions). Server-side
   failures are logged with a `[jacaranda:error]` tag plus the underlying cause,
   so problems are diagnosable instead of silent.
-- **Product analytics:** PostHog (once `NEXT_PUBLIC_POSTHOG_KEY` is set). Shows
+- **Product analytics:** PostHog (once `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` is set). Shows
   page views, funnels (landing → register → mode usage), and session replays to
   find where players get stuck. Players are keyed by an anonymous id — **no
   phone numbers or PINs** are sent to analytics.

@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { strings } from "@/content/strings";
 
 export default function Home() {
+  const { brand, home } = strings;
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-blue-600 via-blue-700 to-indigo-900 px-6 py-16">
       {/* Background gradient layers */}
@@ -89,7 +91,7 @@ export default function Home() {
               transition={{ delay: 0.2, duration: 0.5 }}
               className="text-[10px] uppercase tracking-widest text-blue-100/70 font-semibold"
             >
-              KFANDRA
+              {brand.eyebrow}
             </motion.p>
             <motion.h1
               initial={{ opacity: 0, y: 12 }}
@@ -97,7 +99,7 @@ export default function Home() {
               transition={{ delay: 0.3, duration: 0.5 }}
               className="font-[family-name:var(--font-display)] text-5xl font-black text-white leading-none tracking-tight"
             >
-              The Jacaranda App
+              {brand.appName}
             </motion.h1>
             <motion.p
               initial={{ opacity: 0 }}
@@ -105,8 +107,7 @@ export default function Home() {
               transition={{ delay: 0.4, duration: 0.5 }}
               className="text-[10px] text-blue-100/60 max-w-[18rem] text-center leading-snug"
             >
-              KMMGAFDRA &middot; KFANDRA&rsquo;s Monthly Multi-Game, Fitness &amp;
-              Diet Recording App
+              {brand.expansion}
             </motion.p>
             <motion.p
               initial={{ opacity: 0 }}
@@ -114,7 +115,7 @@ export default function Home() {
               transition={{ delay: 0.5, duration: 0.5 }}
               className="text-[10px] text-blue-100/50 italic"
             >
-              Respect, Trust, Integrity, Passion &amp; Humility
+              {brand.motto}
             </motion.p>
           </div>
         </motion.div>
@@ -139,9 +140,11 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75l-2.489-2.489m0 0a3.375 3.375 0 10-4.773-4.773 3.375 3.375 0 004.773 4.773zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h2 className="text-sm font-bold text-white mb-0.5">MMG</h2>
+              <h2 className="text-sm font-bold text-white mb-0.5">
+                {home.mmg.title}
+              </h2>
               <p className="text-[10.5px] text-blue-100/70 leading-snug">
-                Tap entries &middot; per session
+                {home.mmg.subtitle}
               </p>
             </Link>
           </motion.div>
@@ -159,9 +162,11 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3.75h-1.5a1.5 1.5 0 00-1.5 1.5v13.5a1.5 1.5 0 001.5 1.5h1.5m10.5-16.5h1.5a1.5 1.5 0 011.5 1.5v13.5a1.5 1.5 0 01-1.5 1.5h-1.5M6.75 12h10.5M9 7.5v9m6-9v9" />
                 </svg>
               </div>
-              <h2 className="text-sm font-bold text-white mb-0.5">Gym</h2>
+              <h2 className="text-sm font-bold text-white mb-0.5">
+                {home.gym.title}
+              </h2>
               <p className="text-[10.5px] text-blue-100/70 leading-snug">
-                Body part &middot; sets &amp; reps
+                {home.gym.subtitle}
               </p>
             </Link>
           </motion.div>
@@ -179,9 +184,11 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 15.75c-1.5-1-2.25-2.5-2.25-4.5 0-3.75-2.5-6.75-6.75-6.75S5.25 7.5 5.25 11.25c0 2-.75 3.5-2.25 4.5M6 15.75h12M9 18.75h6M10.5 21h3" />
                 </svg>
               </div>
-              <h2 className="text-sm font-bold text-white mb-0.5">Diet</h2>
+              <h2 className="text-sm font-bold text-white mb-0.5">
+                {home.diet.title}
+              </h2>
               <p className="text-[10.5px] text-blue-100/70 leading-snug">
-                8 meals &middot; tap foods to log
+                {home.diet.subtitle}
               </p>
             </Link>
           </motion.div>
@@ -194,7 +201,7 @@ export default function Home() {
           transition={{ delay: 1.0, duration: 0.6 }}
           className="text-[10px] uppercase tracking-widest text-blue-100/50 font-medium"
         >
-          KFANDRA · Est. 2000 · Pune, India
+          {brand.footer}
         </motion.p>
       </main>
     </div>

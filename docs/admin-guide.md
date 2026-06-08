@@ -243,3 +243,62 @@ URL — a mismatch causes "Invalid API key" errors on every data operation.
 | Lock someone out | Set `players.is_active = false` |
 | See why something errored | Vercel → Logs (look for `[jacaranda:error]`) |
 | Apply a schema change | Developer merges a migration, then `npx supabase db push` |
+| Change the words on a screen | Edit `src/content/strings.ts`, commit, push (§11) |
+
+---
+
+## 11. Editing the words on screen (display strings)
+
+The headings, button labels, and small print on the **home** and **sign-in**
+screens are **not** hard-coded in among the program logic — they live in one
+plain file you can edit:
+
+```
+src/content/strings.ts
+```
+
+Open it and you'll see labelled text grouped by screen, e.g.:
+
+```ts
+brand: {
+  appName: "The Jacaranda App",
+  motto: "Respect, Trust, Integrity, Passion & Humility",
+  ...
+},
+home: {
+  mmg: { title: "MMG", subtitle: "Tap entries · per session" },
+  ...
+},
+```
+
+**To change a word:** edit only the text **inside the quotes**. Keep the quotes
+and the commas. Don't rename the labels on the left (e.g. `appName:`) — the app
+looks them up by those names. Then:
+
+```bash
+git add src/content/strings.ts
+git commit -m "Reword the home screen"
+git push          # the site rebuilds & redeploys automatically (a few minutes)
+```
+
+> **Why a file and not the database?** Screen copy is versioned with the code so
+> a bad edit is easy to roll back, and a typo can't take the site down at
+> runtime. The trade-off is that a change needs a commit + the automatic
+> redeploy, not an instant Table-Editor save.
+
+### What lives where — the full config map
+
+Not everything is in that strings file. Here's where each kind of setting lives:
+
+| You want to change… | Where | Takes effect |
+|---|---|---|
+| Screen headings / labels / button text | `src/content/strings.ts` (§11) | After commit + auto-redeploy |
+| Points / scoring values | `point_rules` table (§4b) | Immediately (next score calc) |
+| Game types | `game_types` table (§4c) | Immediately |
+| Diet meal slots & food list | `meal_slots`, `food_catalog` (§4d) | Immediately |
+| Gym exercises | `gym_catalog` (§4e) | Immediately |
+| Server-shown login errors | `src/lib/auth/actions.ts` | After commit + auto-redeploy |
+| Generic key/value settings | `app_config` table | Immediately |
+
+Rule of thumb: **lists and numbers** are database tables you edit live;
+**fixed screen wording** is the strings file you edit-and-redeploy.

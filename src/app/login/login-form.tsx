@@ -9,8 +9,11 @@ import {
   capture,
   identifyPlayer,
 } from "@/lib/observability/analytics";
+import { strings } from "@/content/strings";
 
 type Mode = "login" | "register";
+
+const { brand, login: t } = strings;
 
 export default function LoginForm({ next }: { next: string }) {
   const router = useRouter();
@@ -74,11 +77,10 @@ export default function LoginForm({ next }: { next: string }) {
           </div>
           <div className="flex flex-col items-center gap-1">
             <h1 className="font-[family-name:var(--font-display)] text-3xl font-black text-gray-900 tracking-tight">
-              The Jacaranda App
+              {brand.appName}
             </h1>
             <p className="mt-1 text-center text-[10px] tracking-wide text-gray-400 font-medium">
-              KMMGAFDRA &middot; KFANDRA&rsquo;s Monthly Multi-Game, Fitness &amp;
-              Diet Recording App
+              {brand.expansion}
             </p>
           </div>
         </motion.div>
@@ -96,24 +98,24 @@ export default function LoginForm({ next }: { next: string }) {
             >
               <div>
                 <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">
-                  Sign in
+                  {t.signInEyebrow}
                 </p>
                 <h2 className="mt-1 text-base font-bold text-gray-900">
-                  Phone &amp; 4-digit PIN
+                  {t.signInHeading}
                 </h2>
               </div>
-              <Field label="Phone number">
+              <Field label={t.phoneLabel}>
                 <input
                   name="phone"
                   type="tel"
                   inputMode="tel"
                   autoComplete="tel"
                   required
-                  placeholder="98xxxxxxxx"
+                  placeholder={t.phonePlaceholder}
                   className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm tabular-nums focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
               </Field>
-              <Field label="4-digit PIN">
+              <Field label={t.pinLabel}>
                 <PinInput />
               </Field>
               {loginError && (
@@ -124,20 +126,20 @@ export default function LoginForm({ next }: { next: string }) {
                     onClick={() => setMode("register")}
                     className="block w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-[12px] font-semibold text-blue-700 hover:bg-blue-100"
                   >
-                    New here? Create an account →
+                    {t.failedSignInNudge}
                   </button>
                 </div>
               )}
-              <SubmitButton pending={loginPending}>Sign in</SubmitButton>
+              <SubmitButton pending={loginPending}>{t.signInButton}</SubmitButton>
               <div className="flex items-center justify-between text-[11px]">
                 <button
                   type="button"
                   onClick={() => setMode("register")}
                   className="text-blue-600 font-semibold hover:text-blue-700"
                 >
-                  First time? Create an account
+                  {t.firstTimeLink}
                 </button>
-                <span className="text-gray-400">SMS OTP coming in V2</span>
+                <span className="text-gray-400">{t.otpNote}</span>
               </div>
             </motion.form>
           ) : (
@@ -152,59 +154,57 @@ export default function LoginForm({ next }: { next: string }) {
             >
               <div>
                 <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">
-                  Register
+                  {t.registerEyebrow}
                 </p>
                 <h2 className="mt-1 text-base font-bold text-gray-900">
-                  Create your account
+                  {t.registerHeading}
                 </h2>
                 <p className="mt-1 text-[11px] text-gray-500">
-                  No approval needed — you&rsquo;re in as soon as you register.
+                  {t.registerNote}
                 </p>
               </div>
-              <Field label="Name (player nickname)">
+              <Field label={t.nameLabel}>
                 <input
                   name="name"
                   type="text"
                   autoComplete="nickname"
                   required
                   maxLength={40}
-                  placeholder="Your nickname"
+                  placeholder={t.namePlaceholder}
                   className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
               </Field>
-              <Field label="Phone number">
+              <Field label={t.phoneLabel}>
                 <input
                   name="phone"
                   type="tel"
                   inputMode="tel"
                   autoComplete="tel"
                   required
-                  placeholder="98xxxxxxxx"
+                  placeholder={t.phonePlaceholder}
                   className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm tabular-nums focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
               </Field>
-              <Field label="Choose a 4-digit PIN">
+              <Field label={t.choosePinLabel}>
                 <PinInput />
               </Field>
               {registerError && <ErrorNote>{registerError}</ErrorNote>}
-              <SubmitButton pending={registerPending}>Create account</SubmitButton>
+              <SubmitButton pending={registerPending}>{t.createAccountButton}</SubmitButton>
               <button
                 type="button"
                 onClick={() => setMode("login")}
                 className="block w-full text-[11px] text-gray-500 hover:text-gray-700 font-semibold"
               >
-                ← Back to sign-in
+                {t.backToSignIn}
               </button>
             </motion.form>
           )}
         </AnimatePresence>
 
         <p className="text-center text-[10px] text-gray-400 italic">
-          &ldquo;Respect, Trust, Integrity, Passion &amp; Humility&rdquo;
+          &ldquo;{brand.motto}&rdquo;
           <br />
-          <span className="not-italic tracking-wide">
-            KFANDRA &middot; Est. 2000 &middot; Pune, India
-          </span>
+          <span className="not-italic tracking-wide">{brand.footer}</span>
         </p>
       </div>
     </div>
@@ -264,7 +264,7 @@ function SubmitButton({
       disabled={pending}
       className="block w-full rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition-all hover:from-blue-500 hover:to-blue-400 active:scale-[0.98] disabled:opacity-60"
     >
-      {pending ? "Please wait…" : children}
+      {pending ? t.pleaseWait : children}
     </button>
   );
 }

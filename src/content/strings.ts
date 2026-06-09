@@ -27,7 +27,7 @@ export const strings = {
   /** Club + app branding shown across the app. */
   brand: {
     /** Big title on the home and login screens. */
-    appName: "The Jacaranda App",
+    appName: "Jacaranda App",
     /** Tiny line under the title: the long form of the name. */
     expansion:
       "KMMGAFDRA · KFANDRA’s Monthly Multi-Game, Fitness & Diet Recording App",

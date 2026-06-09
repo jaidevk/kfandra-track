@@ -131,11 +131,12 @@ export default function Home() {
           <motion.div
             whileHover={{ y: -3, scale: 1.02 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="h-full"
           >
             <Link
               href="/mmg"
               onClick={() => capture(AnalyticsEvent.ModeOpened, { mode: "mmg" })}
-              className="block bg-white/20 backdrop-blur rounded-2xl p-3.5 text-left border border-white/30"
+              className="flex h-full flex-col bg-white/20 backdrop-blur rounded-2xl p-3.5 text-left border border-white/30"
             >
               <div className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 border border-white/30">
                 <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -154,11 +155,12 @@ export default function Home() {
           <motion.div
             whileHover={{ y: -3, scale: 1.02 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="h-full"
           >
             <Link
               href="/gym"
               onClick={() => capture(AnalyticsEvent.ModeOpened, { mode: "gym" })}
-              className="block bg-white/20 backdrop-blur rounded-2xl p-3.5 text-left border border-white/30"
+              className="flex h-full flex-col bg-white/20 backdrop-blur rounded-2xl p-3.5 text-left border border-white/30"
             >
               <div className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-400/30 border border-emerald-300/40">
                 <svg className="h-4 w-4 text-emerald-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -177,11 +179,12 @@ export default function Home() {
           <motion.div
             whileHover={{ y: -3, scale: 1.02 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="h-full"
           >
             <Link
               href="/diet"
               onClick={() => capture(AnalyticsEvent.ModeOpened, { mode: "diet" })}
-              className="block bg-white/20 backdrop-blur rounded-2xl p-3.5 text-left border border-white/30"
+              className="flex h-full flex-col bg-white/20 backdrop-blur rounded-2xl p-3.5 text-left border border-white/30"
             >
               <div className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-amber-400/30 border border-amber-300/40">
                 <svg className="h-4 w-4 text-amber-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

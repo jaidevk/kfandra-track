@@ -20,7 +20,7 @@ your browser's *Add to Home Screen* so it opens like a normal app.
 Enter your **phone number** and **PIN**, tap **Sign in**. You stay logged in
 for about two months, so you won't have to do this often.
 
-> Forgot your PIN? There's no self-reset yet — message your Sensei/admin and
+> Forgot your PIN? There's no self-reset yet — message KFANDRA/admin and
 > they'll sort it out.
 
 ---
@@ -65,7 +65,8 @@ into your session total. Everything is cumulative: 3 wins = 3× the win points,
 
 ### 3) Other (free-form)
 Anything not covered above — add a description and a points value (can be
-negative). E.g. "Man of the match +300".
+negative). E.g. a skill you used to entertain — "Shibobho +300" or
+"Ardiles flick +300".
 
 ### 4) Narration (optional)
 A few words on how the session went.
@@ -102,4 +103,10 @@ many. You can add a custom item if something isn't on the list. Diet is for
   time.
 - **One account per phone.** Your phone number is your login.
 
-Questions or something looks wrong? Tell your Sensei/admin.
+Questions or something looks wrong? Tell KFANDRA/admin.
+
+---
+
+> **Private — KFANDRA members only.** This guide and the Jacaranda App are for
+> the private use of KFANDRA members. Please don't share either outside the club
+> without prior permission from KFANDRA.

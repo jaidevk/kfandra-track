@@ -22,6 +22,12 @@ const docs = join(here, "..", "docs");
 const mdPath = join(docs, "usage-guide.md");
 const pdfPath = join(docs, "usage-guide.pdf");
 
+// Inline the club logo as a data URI so it travels with the temp HTML (no
+// dependency on a file path resolving from Chrome's sandbox). It's placed with
+// `position: fixed`, which headless Chrome repaints on every printed page.
+const logoPath = join(here, "..", "public", "icons", "kfandra-logo.png");
+const logoUri = `data:image/png;base64,${readFileSync(logoPath).toString("base64")}`;
+
 const CHROME_CANDIDATES = [
   process.env.CHROME_BIN,
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
@@ -53,7 +59,7 @@ const html = `<!doctype html>
 <meta charset="utf-8" />
 <title>The Jacaranda App — Player Guide</title>
 <style>
-  @page { size: A4; margin: 18mm 16mm; }
+  @page { size: A4; margin: 14mm 16mm 16mm; }
   * { box-sizing: border-box; }
   body {
     font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -83,10 +89,31 @@ const html = `<!doctype html>
   blockquote p { margin: 2pt 0; }
   a { color: #1d4ed8; text-decoration: none; }
   h2, h3, li { page-break-inside: avoid; }
+  /* Repeating letterhead. Wrapping the document in a table makes the THEAD
+     reprint at the top of every printed page, with body content flowing below
+     it -- so the club logo appears on each page and never overlaps text. */
+  table.sheet { width: 100%; border-collapse: collapse; }
+  thead { display: table-header-group; }
+  .sheet-header th {
+    padding: 0 0 7pt; border-bottom: 1px solid #e5e7eb;
+  }
+  .sheet-header img {
+    height: 11mm; width: auto; display: block; margin-left: auto;
+  }
+  .sheet-body td { padding-top: 12pt; vertical-align: top; }
+  /* The first heading sits right under the header rule -- trim its top gap. */
+  .sheet-body td > :first-child { margin-top: 0; }
 </style>
 </head>
 <body>
-${body}
+<table class="sheet">
+  <thead class="sheet-header">
+    <tr><th><img src="${logoUri}" alt="KFANDRA" /></th></tr>
+  </thead>
+  <tbody class="sheet-body">
+    <tr><td>${body}</td></tr>
+  </tbody>
+</table>
 </body>
 </html>`;
 

@@ -1,4 +1,4 @@
-import { strings } from "./strings";
+import { strings, type AppStrings } from "./strings";
 
 /** Recursively enumerate dot-paths to every string leaf. */
 function collect(obj: unknown, prefix = ""): string[] {
@@ -32,4 +32,16 @@ export function setByPath<T>(obj: T, path: string, value: string): T {
   for (let i = 0; i < keys.length - 1; i++) cur = cur[keys[i]] as Record<string, unknown>;
   cur[keys[keys.length - 1]] = value;
   return clone as T;
+}
+
+/** Pure: apply a {path: value} map onto a copy of the defaults. */
+export function applyOverrides(
+  base: AppStrings,
+  overrides: Record<string, string>,
+): AppStrings {
+  let out = base;
+  for (const [path, value] of Object.entries(overrides)) {
+    if (typeof getByPath(out, path) === "string") out = setByPath(out, path, value);
+  }
+  return out;
 }

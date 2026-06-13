@@ -24,8 +24,8 @@ import {
   loggedMealCount,
   totalUnits,
 } from "@/lib/diet/summary";
-import { saveDietLogAction } from "@/lib/diet/actions";
-import { dateLabel } from "@/lib/diet/dates";
+import { loadDietLogAction, saveDietLogAction } from "@/lib/diet/actions";
+import { dateLabel, todayKey } from "@/lib/diet/dates";
 import { AnalyticsEvent, capture } from "@/lib/observability/analytics";
 
 type SyncStatus = "idle" | "saving" | "saved" | "error";
@@ -114,9 +114,10 @@ export default function DietEntry({
   initialDraft: DietDraft;
   catalog: DietCatalog;
 }) {
-  const [dateKey] = useState<string>(initialDate);
+  const [dateKey, setDateKey] = useState<string>(initialDate);
   const [draft, setDraft] = useState<DietDraft>(initialDraft);
   const [status, setStatus] = useState<SyncStatus>("idle");
+  const [switching, setSwitching] = useState(false);
   const [openSlot, setOpenSlot] = useState<string | null>(null); // null = hub
 
   const foodById = useMemo(() => indexFoods(catalog), [catalog]);
@@ -158,6 +159,20 @@ export default function DietEntry({
     setDraft(updater);
   }, []);
 
+  /** Switch the logged day, loading that day's draft (mirrors Gym). */
+  const switchDate = useCallback(async (nextDate: string) => {
+    if (!nextDate) return;
+    setSwitching(true);
+    const res = await loadDietLogAction(nextDate);
+    if (res.ok) {
+      skipSave.current = true; // loading isn't an edit
+      setDateKey(nextDate);
+      setDraft(res.data.draft);
+      setStatus("idle");
+    }
+    setSwitching(false);
+  }, []);
+
   const openMeal = catalog.slots.find((s) => s.key === openSlot) ?? null;
 
   return (
@@ -192,6 +207,8 @@ export default function DietEntry({
         <DietHub
           playerName={playerName}
           dateKey={dateKey}
+          switching={switching}
+          onSwitchDate={switchDate}
           draft={draft}
           slots={catalog.slots}
           foodById={foodById}
@@ -214,6 +231,8 @@ export default function DietEntry({
 function DietHub({
   playerName,
   dateKey,
+  switching,
+  onSwitchDate,
   draft,
   slots,
   foodById,
@@ -226,6 +245,8 @@ function DietHub({
 }: {
   playerName: string;
   dateKey: string;
+  switching: boolean;
+  onSwitchDate: (nextDate: string) => void;
   draft: DietDraft;
   slots: MealSlotInfo[];
   foodById: Record<string, FoodItemInfo>;
@@ -238,6 +259,7 @@ function DietHub({
 }) {
   const totalItems = dayTotalUnits(draft);
   const touched = loggedMealCount(draft);
+  const isToday = dateKey === todayKey();
 
   return (
     <div className="flex flex-col gap-5 p-5 pb-32">
@@ -251,15 +273,24 @@ function DietHub({
               </p>
               <SyncBadge status={status} />
             </div>
+            <input
+              type="date"
+              value={dateKey}
+              max={todayKey()}
+              onChange={(e) => onSwitchDate(e.target.value)}
+              disabled={switching}
+              className="mt-1 rounded-lg bg-white/10 px-2 py-0.5 text-sm font-bold text-white backdrop-blur focus:outline-none focus:ring-2 focus:ring-white/30 [color-scheme:dark]"
+            />
             <p className="mt-1 text-[11px] text-amber-100/70">
-              {dateLabel(dateKey)} · today
+              {dateLabel(dateKey)}
+              {isToday ? " · today" : ""}
             </p>
             <div className="mt-3 flex items-end gap-4">
               <div>
                 <p className="font-[family-name:var(--font-display)] text-5xl font-black tabular-nums tracking-tight">
                   {totalItems}
                 </p>
-                <p className="text-[11px] text-amber-100/70">items today</p>
+                <p className="text-[11px] text-amber-100/70">items logged</p>
               </div>
               <div className="border-l border-white/20 pl-4">
                 <p className="font-[family-name:var(--font-display)] text-3xl font-black tabular-nums tracking-tight">

@@ -88,10 +88,11 @@ per day and isn't scored — it's your training record.
 
 ## 5. Diet — what you ate
 
-Open **Diet** to see **today's meals** laid out by time of day. For each meal,
-**tap the foods** you ate to log them; tap again / use the steppers to set how
-many. You can add a custom item if something isn't on the list. Diet is for
-**today only** and saves automatically — no scoring, just a record.
+Open **Diet** to see the day's meals laid out by time of day. **Pick the date**
+at the top (it opens on today, and you can go back to log an earlier day you
+missed). For each meal, **tap the foods** you ate to log them; tap again / use
+the steppers to set how many. You can add a custom item if something isn't on
+the list. Diet saves automatically — no scoring, just a record.
 
 ---
 

@@ -3,10 +3,7 @@ import { strings } from "@/content/strings";
 
 export default function AdminDashboard() {
   const { admin } = strings;
-  const cards = [
-    { href: "/admin/submissions", ...admin.submissionsCard },
-    { href: "/admin/labels", ...admin.labelsCard },
-  ];
+  const cards = [{ href: "/admin/submissions", ...admin.submissionsCard }];
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {cards.map((c) => (

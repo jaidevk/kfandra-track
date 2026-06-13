@@ -19,8 +19,11 @@ import { marked } from "marked";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const docs = join(here, "..", "docs");
-const mdPath = join(docs, "usage-guide.md");
-const pdfPath = join(docs, "usage-guide.pdf");
+// Which doc to render: `node build-usage-pdf.mjs <name>` -> docs/<name>.{md,pdf}.
+// Defaults to the player usage guide for backwards compatibility.
+const docName = process.argv[2] || "usage-guide";
+const mdPath = join(docs, `${docName}.md`);
+const pdfPath = join(docs, `${docName}.pdf`);
 
 // Inline the club logo as a data URI so it travels with the temp HTML (no
 // dependency on a file path resolving from Chrome's sandbox). It's placed with
@@ -57,7 +60,7 @@ const html = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>The Jacaranda App — Player Guide</title>
+<title>KFANDRA — ${docName}</title>
 <style>
   @page { size: A4; margin: 14mm 16mm 16mm; }
   * { box-sizing: border-box; }
@@ -118,7 +121,7 @@ const html = `<!doctype html>
 </html>`;
 
 const tmp = mkdtempSync(join(tmpdir(), "jacaranda-pdf-"));
-const htmlPath = join(tmp, "usage-guide.html");
+const htmlPath = join(tmp, `${docName}.html`);
 writeFileSync(htmlPath, html, "utf8");
 
 try {

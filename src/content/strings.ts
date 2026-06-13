@@ -78,6 +78,15 @@ export const strings = {
     otpNote: "SMS OTP coming in V2",
     pleaseWait: "Please wait…",
   },
+
+  /** Admin section chrome (staff-only screens). */
+  admin: {
+    title: "Admin",
+    subtitle: "KFANDRA staff only",
+    submissionsCard: { title: "Submissions", subtitle: "View by date or player" },
+    labelsCard: { title: "Labels", subtitle: "Edit on-screen wording" },
+    backToApp: "← Back to app",
+  },
 } as const;
 
 export type AppStrings = typeof strings;

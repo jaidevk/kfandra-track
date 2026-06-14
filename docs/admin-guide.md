@@ -34,7 +34,8 @@ Open **MMG** to review session points, two ways:
 - **By date** → pick a session. You'll see **every current player** with their
   **Arrival**, **Confirm**, **Games**, and **Total** points, and a greyed
   **"not submitted"** marker for anyone missing. The top line shows how many
-  submitted. (KFANDRA — the coach — is excluded; the coach doesn't earn points.)
+  submitted. (KFANDRA is excluded — KFANDRA runs the sessions and doesn't earn
+  points.)
 - **By player** → pick a name to see that player's MMG sessions.
 
 > **Total = Arrival + Confirm + Games.** Arrival/Confirm are the order-of-arrival

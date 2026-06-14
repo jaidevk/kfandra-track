@@ -6,7 +6,7 @@ export type CurrentPlayer = {
   id: string;
   phone: string;
   displayName: string;
-  role: "super_admin" | "coach" | "admin" | "user";
+  role: "super_admin" | "kfandra" | "admin" | "user";
 };
 
 /**

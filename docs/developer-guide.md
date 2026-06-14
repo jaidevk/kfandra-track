@@ -85,12 +85,13 @@ touching production.
 
 Open `players` in the Table Editor.
 
-- **Roles** (column `role`): `super_admin` > `coach` > `admin` > `user`. The
+- **Roles** (column `role`): `super_admin` > `kfandra` > `admin` > `user`. The
   first three are "staff" and unlock elevated database access via row-level
   security. New registrations default to `user`. To promote someone, change
-  their `role`. The `coach` value is a literal database enum kept for KFANDRA
-  staff; changing the enum name would touch the schema and code, so leave it as
-  `coach` even though the app refers to everyone as KFANDRA staff.
+  their `role`. The **`kfandra`** role is the head coach / club account: it has
+  staff access **and** is excluded from MMG order points (KFANDRA runs the
+  sessions and doesn't compete, so it never counts toward arrival/confirmation
+  points or the `N` denominator).
 - **Disable an account:** set `is_active` to `false`. They stay in the DB but
   can no longer log in (and are logged out on their next page load). Re-enable
   by setting it back to `true`. Prefer this over deleting.

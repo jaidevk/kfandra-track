@@ -27,10 +27,11 @@ export async function computeSessionOrderPoints(
     .select("player_id, confirmation_order, arrival_order, players(display_name, role)")
     .eq("session_id", sessionId);
 
-  // The coach runs sessions; they do not compete for order points, so they are
-  // excluded from the ladder entirely (no points AND not counted in N/Nc).
+  // KFANDRA (the 'kfandra' role) runs sessions and does not compete for order
+  // points, so they are excluded from the ladder entirely (no points AND not
+  // counted in N/Nc).
   const rows = (entries ?? []).filter(
-    (r) => (r.players as { role?: string } | null)?.role !== "coach",
+    (r) => (r.players as { role?: string } | null)?.role !== "kfandra",
   );
 
   const orderInput: OrderEntry[] = rows.map((r) => ({

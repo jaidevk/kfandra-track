@@ -561,7 +561,7 @@ export type Database = {
           is_active: boolean
           phone: string
           pin_hash: string
-          role: "super_admin" | "coach" | "admin" | "user"
+          role: "super_admin" | "kfandra" | "admin" | "user"
           updated_at: string
         }
         Insert: {
@@ -571,7 +571,7 @@ export type Database = {
           is_active?: boolean
           phone: string
           pin_hash: string
-          role?: "super_admin" | "coach" | "admin" | "user"
+          role?: "super_admin" | "kfandra" | "admin" | "user"
           updated_at?: string
         }
         Update: {
@@ -581,7 +581,7 @@ export type Database = {
           is_active?: boolean
           phone?: string
           pin_hash?: string
-          role?: "super_admin" | "coach" | "admin" | "user"
+          role?: "super_admin" | "kfandra" | "admin" | "user"
           updated_at?: string
         }
         Relationships: []

@@ -14,7 +14,7 @@ import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 export type SessionPayload = {
   /** players.id */
   playerId: string;
-  role: "super_admin" | "coach" | "admin" | "user";
+  role: "super_admin" | "kfandra" | "admin" | "user";
   name: string;
 };
 
@@ -67,7 +67,7 @@ function toSessionPayload(payload: JWTPayload): SessionPayload | null {
   if (typeof playerId !== "string") return null;
   if (
     role !== "super_admin" &&
-    role !== "coach" &&
+    role !== "kfandra" &&
     role !== "admin" &&
     role !== "user"
   ) {

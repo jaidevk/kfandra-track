@@ -2,7 +2,7 @@ import type { CurrentPlayer } from "./current-user";
 
 export type Role = CurrentPlayer["role"];
 
-const STAFF: ReadonlySet<Role> = new Set(["super_admin", "coach", "admin"]);
+const STAFF: ReadonlySet<Role> = new Set(["super_admin", "kfandra", "admin"]);
 
 /** Can view the admin section. */
 export function isStaffRole(role: Role): boolean {

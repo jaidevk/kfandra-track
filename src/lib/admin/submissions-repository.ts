@@ -14,14 +14,14 @@ import {
 
 export type { PlayerRef, SessionRow, OrderPts } from "./submissions-rows";
 
-/** Active players, excluding the coach (who does not earn MMG points). */
+/** Active players, excluding KFANDRA (the 'kfandra' role earns no MMG points). */
 export async function listPlayers(): Promise<PlayerRef[]> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("players")
     .select("id, display_name")
     .eq("is_active", true)
-    .neq("role", "coach")
+    .neq("role", "kfandra")
     .order("display_name");
   return (data ?? []).map((p) => ({ id: p.id, displayName: p.display_name }));
 }
@@ -38,7 +38,7 @@ export async function listSessions(): Promise<SessionRef[]> {
 }
 
 /**
- * Every active player (coach excluded) for a session with their order points,
+ * Every active player (KFANDRA excluded) for a session with their order points,
  * self-scored games points, grand total, and submitted flag.
  */
 export async function getSessionSubmissions(sessionId: string): Promise<SessionRow[]> {

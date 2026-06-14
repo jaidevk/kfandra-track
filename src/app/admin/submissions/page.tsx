@@ -93,8 +93,8 @@ async function ByDate({ sessionId }: { sessionId: string }) {
           {session ? fmtDate(session.date) : "Session"}
         </h2>
         <p className="text-[11px] text-gray-500">
-          {submittedCount} of {rows.length} players submitted · points shown are
-          order-of-arrival + confirmation
+          {submittedCount} of {rows.length} players submitted · Total = arrival +
+          confirmation + games (games, stats, packing &amp; other points)
         </p>
       </div>
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
@@ -104,6 +104,7 @@ async function ByDate({ sessionId }: { sessionId: string }) {
               <th className="px-3 py-2 text-left font-semibold">Player</th>
               <th className="px-3 py-2 text-right font-semibold">Arrival</th>
               <th className="px-3 py-2 text-right font-semibold">Confirm</th>
+              <th className="px-3 py-2 text-right font-semibold">Games</th>
               <th className="px-3 py-2 text-right font-semibold">Total</th>
             </tr>
           </thead>
@@ -120,6 +121,7 @@ async function ByDate({ sessionId }: { sessionId: string }) {
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">{r.arrivalPoints}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{r.confirmationPoints}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{r.gamesPoints}</td>
                 <td className="px-3 py-2 text-right font-semibold tabular-nums">{r.total}</td>
               </tr>
             ))}

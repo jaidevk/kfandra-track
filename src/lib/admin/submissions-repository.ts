@@ -1,6 +1,10 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { computeSessionOrderPoints } from "@/lib/mmg/order";
+import { loadScoringConfig } from "@/lib/mmg/config";
+import { loadMmgEntry } from "@/lib/mmg/repository";
+import { computeDraftPoints } from "@/lib/mmg/scoring";
+import type { GameTypeKey } from "@/lib/mmg/types";
 import {
   toSessionRows,
   type PlayerRef,
@@ -10,12 +14,14 @@ import {
 
 export type { PlayerRef, SessionRow, OrderPts } from "./submissions-rows";
 
+/** Active players, excluding the coach (who does not earn MMG points). */
 export async function listPlayers(): Promise<PlayerRef[]> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("players")
     .select("id, display_name")
     .eq("is_active", true)
+    .neq("role", "coach")
     .order("display_name");
   return (data ?? []).map((p) => ({ id: p.id, displayName: p.display_name }));
 }
@@ -31,21 +37,41 @@ export async function listSessions(): Promise<SessionRef[]> {
   return (data ?? []).map((s) => ({ id: s.id, date: s.session_date, label: s.label }));
 }
 
-/** All active players for a session with their order points + submitted flag. */
+/**
+ * Every active player (coach excluded) for a session with their order points,
+ * self-scored games points, grand total, and submitted flag.
+ */
 export async function getSessionSubmissions(sessionId: string): Promise<SessionRow[]> {
   const admin = createAdminClient();
-  const [players, order, entries] = await Promise.all([
+  const [players, order, entries, loaded] = await Promise.all([
     listPlayers(),
     computeSessionOrderPoints(sessionId),
     admin.from("mmg_entries").select("player_id").eq("session_id", sessionId),
+    loadScoringConfig(),
   ]);
+
   const submittedIds = (entries.data ?? []).map((e) => e.player_id);
   const orderPts: OrderPts[] = order.map((o) => ({
     playerId: o.playerId,
     arrivalPoints: o.arrivalPoints,
     confirmationPoints: o.confirmationPoints,
   }));
-  const rows = toSessionRows(players, orderPts, submittedIds);
+
+  // Self-scored points (games + stats + packing + other) per roster submitter.
+  const gameTypeKeyById: Record<string, GameTypeKey> = {};
+  for (const g of loaded.gameTypes) gameTypeKeyById[g.id] = g.key;
+  const rosterIds = new Set(players.map((p) => p.id));
+  const selfPointsById: Record<string, number> = {};
+  await Promise.all(
+    submittedIds
+      .filter((id) => rosterIds.has(id))
+      .map(async (id) => {
+        const draft = await loadMmgEntry(id, sessionId, { gameTypeKeyById });
+        selfPointsById[id] = computeDraftPoints(loaded.config, draft).total;
+      }),
+  );
+
+  const rows = toSessionRows(players, orderPts, submittedIds, selfPointsById);
   // Submitted first, then by total descending.
   return rows.sort(
     (a, b) => Number(b.submitted) - Number(a.submitted) || b.total - a.total,

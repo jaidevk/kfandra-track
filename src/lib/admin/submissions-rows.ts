@@ -6,6 +6,9 @@ export type SessionRow = {
   submitted: boolean;
   arrivalPoints: number;
   confirmationPoints: number;
+  /** Self-scored points: games + stats + packing/participation + other rows. */
+  gamesPoints: number;
+  /** Grand total: order ladder (arrival + confirmation) + self-scored. */
   total: number;
 };
 
@@ -16,14 +19,17 @@ export type OrderPts = {
 };
 
 /**
- * Pure: join every active player to their session order points, flagging who
- * submitted. Non-submitters (and submitters who never recorded an arrival rank)
- * show 0 points so Coach can see the full roster, including who is missing.
+ * Pure: join every active player to their session points, flagging who
+ * submitted. Order points come from the ladder; `selfPointsById` carries each
+ * submitter's self-scored total (games/participation/other). Non-submitters
+ * show 0 across the board so Coach can see the full roster, including who is
+ * missing.
  */
 export function toSessionRows(
   players: PlayerRef[],
   order: OrderPts[],
   submittedIds: string[],
+  selfPointsById: Record<string, number> = {},
 ): SessionRow[] {
   const byId = new Map(order.map((o) => [o.playerId, o]));
   const submitted = new Set(submittedIds);
@@ -31,13 +37,15 @@ export function toSessionRows(
     const o = byId.get(p.id);
     const arrivalPoints = o?.arrivalPoints ?? 0;
     const confirmationPoints = o?.confirmationPoints ?? 0;
+    const gamesPoints = selfPointsById[p.id] ?? 0;
     return {
       playerId: p.id,
       displayName: p.displayName,
       submitted: submitted.has(p.id),
       arrivalPoints,
       confirmationPoints,
-      total: arrivalPoints + confirmationPoints,
+      gamesPoints,
+      total: arrivalPoints + confirmationPoints + gamesPoints,
     };
   });
 }

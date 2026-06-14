@@ -8,30 +8,36 @@ const players = [
 ];
 
 describe("toSessionRows", () => {
-  it("joins players to order points, defaulting missing to zero and summing the total", () => {
+  it("sums order points + self-scored games into the grand total", () => {
     const order = [{ playerId: "a", arrivalPoints: 300, confirmationPoints: 200 }];
-    const rows = toSessionRows(players, order, ["a"]);
+    const rows = toSessionRows(players, order, ["a"], { a: 1500 });
     const abe = rows.find((r) => r.playerId === "a")!;
-    const baz = rows.find((r) => r.playerId === "b")!;
     expect(abe).toMatchObject({
       submitted: true,
       arrivalPoints: 300,
       confirmationPoints: 200,
-      total: 500,
+      gamesPoints: 1500,
+      total: 2000,
     });
+  });
+
+  it("defaults missing players to zero across all columns", () => {
+    const rows = toSessionRows(players, [], [], {});
+    const baz = rows.find((r) => r.playerId === "b")!;
     expect(baz).toMatchObject({
       submitted: false,
       arrivalPoints: 0,
       confirmationPoints: 0,
+      gamesPoints: 0,
       total: 0,
     });
   });
 
-  it("flags submitted players who earned no order points (submitted but no arrival rank)", () => {
-    // 'c' submitted an entry but recorded no arrival rank, so earns 0 order points.
-    const rows = toSessionRows(players, [], ["c"]);
+  it("counts games-only submitters (no order points) toward their total", () => {
+    // 'c' submitted, earned no order points, but logged games worth 1000.
+    const rows = toSessionRows(players, [], ["c"], { c: 1000 });
     const crank = rows.find((r) => r.playerId === "c")!;
     expect(crank.submitted).toBe(true);
-    expect(crank.total).toBe(0);
+    expect(crank.total).toBe(1000);
   });
 });

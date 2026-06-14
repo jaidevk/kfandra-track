@@ -5,6 +5,7 @@ export default function AdminDashboard() {
   const { admin } = strings;
   const cards = [
     { href: "/admin/submissions", ...admin.submissionsCard },
+    { href: "/admin/activity", ...admin.activityCard },
     { href: "/admin/config", ...admin.configCard },
   ];
   return (

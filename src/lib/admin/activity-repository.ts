@@ -91,79 +91,68 @@ export async function getPlayerDiet(playerId: string): Promise<DietDay[]> {
   }));
 }
 
-/* ── By-date overview (all players' gym + diet on one day) ──────────────── */
+/* ── By-date overviews (all players on one day, per type) ───────────────── */
 
-/** Distinct dates anyone logged gym or diet, newest first. */
-export async function listActivityDates(): Promise<string[]> {
+async function listDates(table: "gym_logs" | "diet_logs"): Promise<string[]> {
   const admin = createAdminClient();
-  const [g, d] = await Promise.all([
-    admin.from("gym_logs").select("log_date"),
-    admin.from("diet_logs").select("log_date"),
-  ]);
-  const set = new Set<string>();
-  for (const r of g.data ?? []) set.add(r.log_date);
-  for (const r of d.data ?? []) set.add(r.log_date);
-  return [...set].sort().reverse();
+  const { data } = await admin.from(table).select("log_date");
+  return [...new Set((data ?? []).map((r) => r.log_date))].sort().reverse();
 }
 
-export type DayActivityRow = {
+export const listGymDates = () => listDates("gym_logs");
+export const listDietDates = () => listDates("diet_logs");
+
+async function activePlayerNames(): Promise<Map<string, string>> {
+  const admin = createAdminClient();
+  const { data } = await admin.from("players").select("id, display_name").eq("is_active", true);
+  return new Map((data ?? []).map((p) => [p.id, p.display_name]));
+}
+
+export type GymDayRow = {
   playerId: string;
   displayName: string;
-  gym: boolean;
-  gymExercises: number;
+  exercises: number;
   bodyWeight: number | null;
-  diet: boolean;
-  mealsLogged: number;
 };
 
-/** Each player who logged gym or diet on `date`, with a summary. */
-export async function getDateActivity(date: string): Promise<DayActivityRow[]> {
+/** Each player who logged gym on `date`, with a summary. */
+export async function getGymDay(date: string): Promise<GymDayRow[]> {
   const admin = createAdminClient();
-  const [gymRes, dietRes, playersRes] = await Promise.all([
+  const [res, names] = await Promise.all([
     admin
       .from("gym_logs")
       .select("player_id, body_weight, gym_log_exercises(id)")
       .eq("log_date", date),
-    admin
-      .from("diet_logs")
-      .select("player_id, diet_log_meals(id)")
-      .eq("log_date", date),
-    admin.from("players").select("id, display_name").eq("is_active", true),
+    activePlayerNames(),
   ]);
+  return (res.data ?? [])
+    .map((r) => ({
+      playerId: r.player_id,
+      displayName: names.get(r.player_id) ?? "Unknown",
+      exercises: ((r.gym_log_exercises as unknown[]) ?? []).length,
+      bodyWeight: r.body_weight as number | null,
+    }))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
 
-  const nameById = new Map(
-    (playersRes.data ?? []).map((p) => [p.id, p.display_name]),
-  );
-  const gymByPlayer = new Map(
-    (gymRes.data ?? []).map((r) => [
-      r.player_id,
-      {
-        exercises: ((r.gym_log_exercises as unknown[]) ?? []).length,
-        bodyWeight: r.body_weight as number | null,
-      },
-    ]),
-  );
-  const dietByPlayer = new Map(
-    (dietRes.data ?? []).map((r) => [
-      r.player_id,
-      { meals: ((r.diet_log_meals as unknown[]) ?? []).length },
-    ]),
-  );
+export type DietDayRow = {
+  playerId: string;
+  displayName: string;
+  meals: number;
+};
 
-  const ids = new Set([...gymByPlayer.keys(), ...dietByPlayer.keys()]);
-  return [...ids]
-    .map((id) => {
-      const gym = gymByPlayer.get(id);
-      const diet = dietByPlayer.get(id);
-      return {
-        playerId: id,
-        displayName: nameById.get(id) ?? "Unknown",
-        gym: !!gym,
-        gymExercises: gym?.exercises ?? 0,
-        bodyWeight: gym?.bodyWeight ?? null,
-        diet: !!diet,
-        mealsLogged: diet?.meals ?? 0,
-      };
-    })
+/** Each player who logged diet on `date`, with a summary. */
+export async function getDietDay(date: string): Promise<DietDayRow[]> {
+  const admin = createAdminClient();
+  const [res, names] = await Promise.all([
+    admin.from("diet_logs").select("player_id, diet_log_meals(id)").eq("log_date", date),
+    activePlayerNames(),
+  ]);
+  return (res.data ?? [])
+    .map((r) => ({
+      playerId: r.player_id,
+      displayName: names.get(r.player_id) ?? "Unknown",
+      meals: ((r.diet_log_meals as unknown[]) ?? []).length,
+    }))
     .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }

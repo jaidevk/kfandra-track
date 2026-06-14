@@ -83,10 +83,12 @@ export const strings = {
   admin: {
     title: "Admin",
     subtitle: "KFANDRA staff only",
-    submissionsCard: { title: "Submissions", subtitle: "View by date or player" },
-    activityCard: { title: "Gym & Diet", subtitle: "Review daily logs" },
+    mmgCard: { title: "MMG", subtitle: "Submissions by date or player" },
+    gymCard: { title: "Gym", subtitle: "Review daily logs" },
+    dietCard: { title: "Diet", subtitle: "Review daily logs" },
     configCard: { title: "Scoring", subtitle: "Edit points & game names" },
     backToApp: "← Back to app",
+    home: "Admin",
   },
 } as const;
 

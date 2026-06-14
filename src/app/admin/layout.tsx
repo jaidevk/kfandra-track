@@ -12,7 +12,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
             {admin.subtitle}
           </p>
-          <h1 className="text-xl font-bold text-gray-900">{admin.title}</h1>
+          <Link href="/admin" className="text-xl font-bold text-gray-900 hover:underline">
+            {admin.title}
+          </Link>
         </div>
         <div className="text-right text-[11px] text-gray-500">
           <p className="font-semibold text-gray-700">{player.displayName}</p>

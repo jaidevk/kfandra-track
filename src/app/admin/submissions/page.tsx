@@ -99,9 +99,9 @@ async function ByDate({ sessionId }: { sessionId: string }) {
           confirmation + games (games, stats, packing &amp; other points)
         </p>
       </div>
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <div className="overflow-hidden rounded-xl border border-gray-300 bg-white">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500">
+          <thead className="bg-blue-100 text-[11px] uppercase tracking-wide text-blue-900">
             <tr>
               <th className="px-3 py-2 text-left font-semibold">Player</th>
               <th className="px-3 py-2 text-right font-semibold">Arrival</th>
@@ -110,9 +110,16 @@ async function ByDate({ sessionId }: { sessionId: string }) {
               <th className="px-3 py-2 text-right font-semibold">Total</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-gray-200">
             {rows.map((r) => (
-              <tr key={r.playerId} className={r.submitted ? "" : "text-gray-300"}>
+              <tr
+                key={r.playerId}
+                className={
+                  r.submitted
+                    ? "text-gray-800 odd:bg-white even:bg-slate-100"
+                    : "text-gray-400 odd:bg-white even:bg-slate-100"
+                }
+              >
                 <td className="px-3 py-2">
                   {r.displayName}
                   {!r.submitted && (
@@ -124,7 +131,9 @@ async function ByDate({ sessionId }: { sessionId: string }) {
                 <td className="px-3 py-2 text-right tabular-nums">{r.arrivalPoints}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{r.confirmationPoints}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{r.gamesPoints}</td>
-                <td className="px-3 py-2 text-right font-semibold tabular-nums">{r.total}</td>
+                <td className="px-3 py-2 text-right font-bold tabular-nums text-gray-900">
+                  {r.total}
+                </td>
               </tr>
             ))}
           </tbody>

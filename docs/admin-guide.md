@@ -38,11 +38,19 @@ Open **MMG** to review session points, two ways:
   points.)
 - **By player** → pick a name to see that player's MMG sessions.
 
-> **Total = Arrival + Confirm + Games.** Arrival/Confirm are the order-of-arrival
-> and confirmation ladders (they rise as more players submit). Games is the
-> self-scored part (goals, assists, packing, etc.).
+> **Total = Arrival + Confirm + Games.** Games is the self-scored part (goals,
+> assists, packing, etc.). Arrival/Confirm are the order-of-arrival and
+> confirmation ladders.
+>
+> **How Arrival/Confirm points work — important:** these points depend on **how
+> many players attended** the session. The top value is the number of players who
+> turned up, so a player's order points are **provisional** and **keep changing
+> as more players submit** — they are only final once **everyone** who attended
+> has logged their session. (Arriving 1st is worth more when 10 attended than
+> when 5 did.) This is intentional: the app cannot know the order points until it
+> knows the full attendance, which only happens after all submissions are in.
 
-There's also a **"Sync this month to Google Sheet"** button here — see §6.
+There's also a **"Sync this month to Google Sheet"** button here — see §7.
 
 ## 4. Gym
 

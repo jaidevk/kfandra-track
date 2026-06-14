@@ -1,55 +1,90 @@
 # KFANDRA Admin Guide
 
-A short guide for KFANDRA staff to the in-app **Admin** section. No technical
-knowledge needed — you do everything from inside the app. It is **view-only**
-for now: you can see what players have submitted, by session date and by player.
+A guide for KFANDRA staff to the in-app **Admin** section. No technical
+knowledge needed — you do everything from inside the app.
 
-> Technical tasks — changing point values, managing players, deploying — live in
-> a separate **Developer Guide** (`developer-guide.md`) for the developer.
+> Developer tasks (managing players, environment, deployment) live in a separate
+> **Developer Guide** (`developer-guide.md`).
 
 ---
 
 ## 1. Who can open it
 
 Only **KFANDRA staff** accounts can open the Admin area. A normal player who
-tries to open it is simply sent back to the home screen. If you need staff
-access, ask the developer to set it once.
+tries is sent back to the home screen. If you need staff access, ask the
+developer to set it once.
 
-## 2. Opening the Admin section
+## 2. Getting to the Admin section
 
-1. Sign in to the app as usual (phone number + 4-digit PIN).
-2. Go to **`/admin`** on the app address — e.g.
-   **https://kfandra-track.vercel.app/admin**. Tip: bookmark it or use *Add to
-   Home Screen* so it's one tap away.
+When you're signed in as staff, an **Admin →** button appears on the **home
+screen** (below the MMG / Gym / Diet cards). Tap it — no need to type any web
+address.
 
-You'll land on the **Admin** dashboard with a **Submissions** card. Tap it.
+The Admin dashboard has **four cards**: **MMG**, **Gym**, **Diet**, and
+**Scoring**.
 
-## 3. View submissions by date
+> On every Admin page, the **"Admin"** heading (top-left) takes you back to the
+> Admin dashboard, and **"← Back to app"** (top-right) returns you to the normal
+> app.
 
-Choose **By date → a session date**. For that session you'll see:
+## 3. MMG
 
-- **every current player** (not just those who logged in),
-- their **Arrival** and **Confirm** points (order-of-arrival and
-  order-of-confirmation) and their **Total**,
-- a greyed **"not submitted"** marker for anyone who hasn't logged that session.
+Open **MMG** to review session points, two ways:
 
-The line at the top tells you how many submitted, e.g.
-*"1 of 2 players submitted."*
+- **By date** → pick a session. You'll see **every current player** with their
+  **Arrival**, **Confirm**, **Games**, and **Total** points, and a greyed
+  **"not submitted"** marker for anyone missing. The top line shows how many
+  submitted. (KFANDRA — the coach — is excluded; the coach doesn't earn points.)
+- **By player** → pick a name to see that player's MMG sessions.
 
-> These are the **order points only** — they depend on who showed up, so they go
-> up as more players submit. They are not the player's whole MMG score.
+> **Total = Arrival + Confirm + Games.** Arrival/Confirm are the order-of-arrival
+> and confirmation ladders (they rise as more players submit). Games is the
+> self-scored part (goals, assists, packing, etc.).
 
-## 4. View submissions by player
+There's also a **"Sync this month to Google Sheet"** button here — see §6.
 
-Choose **By player → a name**. You'll see that player's **MMG sessions** (the
-date, their confirmation/arrival number, and how many games they logged), plus
-how many **gym** and **diet** days they've recorded.
+## 4. Gym
 
-## 5. What you cannot do here yet
+Open **Gym** (daily logs — not scored, just a record):
 
-The Admin section is **view-only** for now. Changing point values, editing the
-words on screen, or managing players is still done by the developer (see the
-**Developer Guide**). In-app editing is planned for a later update.
+- **By date** → pick a day to see everyone who logged gym, with exercise counts
+  and body weight; tap a name to drill in.
+- **By player** → pick a name to see every gym entry (exercises, sets/reps, body
+  weight).
+
+## 5. Diet
+
+Open **Diet** (daily logs — not scored):
+
+- **By date** → pick a day to see everyone who logged diet; tap a name to drill in.
+- **By player** → pick a name to see every diet day (meals + the foods logged).
+
+## 6. Scoring
+
+Open **Scoring** to change values yourself (takes effect the next time a score
+is computed):
+
+- **Game type names** — rename any game type (e.g. "Football short").
+- **Point values** — edit any value: game results (win/draw/loss), highlights
+  (goals, assists, saves, cards…), participation bonuses, the order-of-arrival
+  base, and per-game overrides (e.g. Rugby tackle). Type the new number, tap
+  **Save**.
+
+> The **names of highlights** (e.g. "Goals") are still set by the developer for
+> now — you can edit their point *values* here, just not their labels.
+
+## 7. Google Sheet sync
+
+The app writes a player × session points grid into the club's export sheet — a
+tab per month (e.g. **`Jun 2026`**). It syncs **automatically** whenever a player
+finalizes a session, so you normally don't need to do anything. To force a
+refresh, use the **"Sync this month to Google Sheet"** button on the **MMG** page.
+
+## 8. What the developer still handles
+
+Promoting staff, deactivating players, resetting a PIN, adding/removing game
+types, editing the food/gym catalogues, and highlight *names* are done by the
+developer (see the **Developer Guide**).
 
 ---
 

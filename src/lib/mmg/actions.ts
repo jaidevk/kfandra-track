@@ -5,6 +5,7 @@ import { getOrCreateSession } from "./sessions";
 import { loadScoringConfig } from "./config";
 import { loadMmgEntry, saveMmgEntry } from "./repository";
 import { computeSessionOrderPoints, type SessionOrderResult } from "./order";
+import { exportSessionMonthBestEffort } from "@/lib/sheets/export";
 import type { GameTypeKey, MmgDraft } from "./types";
 
 /**
@@ -77,6 +78,8 @@ export async function finalizeMmgSessionAction(
   try {
     await saveMmgEntry(player.id, sessionId, draft, { gameTypeIdByKey });
     const order = await computeSessionOrderPoints(sessionId);
+    // Best-effort mirror to Google Sheets — never fails the finalize.
+    await exportSessionMonthBestEffort(sessionId);
     return { ok: true, data: { order } };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Finalize failed." };

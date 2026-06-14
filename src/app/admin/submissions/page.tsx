@@ -5,6 +5,7 @@ import {
   getSessionSubmissions,
   getPlayerSubmissions,
 } from "@/lib/admin/submissions-repository";
+import SyncButton from "./sync-button";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,7 @@ async function Index() {
   const [sessions, players] = await Promise.all([listSessions(), listPlayers()]);
   return (
     <div className="space-y-6">
+      <SyncButton />
       <section>
         <h2 className="mb-2 text-sm font-bold text-gray-900">By date</h2>
         {sessions.length === 0 ? (

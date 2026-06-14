@@ -84,7 +84,7 @@ export const strings = {
     title: "Admin",
     subtitle: "KFANDRA staff only",
     submissionsCard: { title: "Submissions", subtitle: "View by date or player" },
-    labelsCard: { title: "Labels", subtitle: "Edit on-screen wording" },
+    configCard: { title: "Scoring", subtitle: "Edit points & game names" },
     backToApp: "← Back to app",
   },
 } as const;

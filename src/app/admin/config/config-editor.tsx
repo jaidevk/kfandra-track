@@ -33,7 +33,7 @@ export default function ConfigEditor({
 
   return (
     <div className="space-y-6">
-      <Link href="/admin" className="text-[12px] text-gray-500 hover:underline">
+      <Link href="/admin" className="text-[12px] text-gray-600 hover:underline">
         ← Admin
       </Link>
 
@@ -50,12 +50,12 @@ export default function ConfigEditor({
       {/* Point values — defaults grouped by scope */}
       <section>
         <h2 className="mb-1 text-sm font-bold text-gray-900">Point values</h2>
-        <p className="mb-2 text-[11px] text-gray-500">
+        <p className="mb-2 text-[11px] text-gray-600">
           Editing a value takes effect immediately the next time a score is computed.
         </p>
         {defaultsByScope.map((group) => (
           <div key={group.scope} className="mb-4">
-            <h3 className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-gray-500">
+            <h3 className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-gray-600">
               {group.title}
             </h3>
             <div className="space-y-2">
@@ -71,12 +71,12 @@ export default function ConfigEditor({
       {Object.keys(overridesByGame).length > 0 && (
         <section>
           <h2 className="mb-1 text-sm font-bold text-gray-900">Per-game overrides</h2>
-          <p className="mb-2 text-[11px] text-gray-500">
+          <p className="mb-2 text-[11px] text-gray-600">
             These values apply only to the named game type, replacing the default.
           </p>
           {Object.entries(overridesByGame).map(([game, rs]) => (
             <div key={game} className="mb-4">
-              <h3 className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-gray-500">
+              <h3 className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-gray-600">
                 {game}
               </h3>
               <div className="space-y-2">
@@ -117,7 +117,7 @@ function PointsRow({ rule }: { rule: PointRuleRow }) {
   return (
     <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2">
       <span className="flex-1 text-sm text-gray-800">{rule.label}</span>
-      {msg && <span className="text-[11px] text-gray-400">{msg}</span>}
+      {msg && <span className="text-[11px] text-gray-600">{msg}</span>}
       <input
         type="number"
         value={value}
@@ -167,7 +167,7 @@ function NameRow({ gameType }: { gameType: GameTypeRow }) {
         disabled={busy}
         className="min-w-0 flex-1 rounded-lg border border-gray-200 px-2 py-1 text-sm focus:border-gray-400 focus:outline-none"
       />
-      {msg && <span className="text-[11px] text-gray-400">{msg}</span>}
+      {msg && <span className="text-[11px] text-gray-600">{msg}</span>}
       <button
         onClick={save}
         disabled={busy || !dirty}

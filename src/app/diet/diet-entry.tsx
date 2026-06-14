@@ -356,23 +356,23 @@ function DietHub({
                 <div className="min-w-0 flex-1 pr-12">
                   <div className="flex flex-wrap items-baseline gap-2">
                     <p className="text-[15px] font-bold text-gray-900">{slot.name}</p>
-                    <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-gray-600">
                       {slot.windowLabel}
                     </p>
                   </div>
                   {meal?.skipped ? (
-                    <p className="mt-1 text-sm italic text-gray-500">Marked as skipped</p>
+                    <p className="mt-1 text-sm italic text-gray-600">Marked as skipped</p>
                   ) : itemCount > 0 ? (
                     <p className="mt-1 line-clamp-2 text-sm text-gray-700">{summary}</p>
                   ) : (
-                    <p className="mt-1 text-sm italic text-gray-400">Not logged yet</p>
+                    <p className="mt-1 text-sm italic text-gray-600">Not logged yet</p>
                   )}
                 </div>
               </button>
 
               {/* Skipped toggle row */}
               <div className="flex items-center justify-between border-t border-gray-100 px-4 py-2">
-                <p className="text-[11px] text-gray-400">
+                <p className="text-[11px] text-gray-600">
                   {itemCount > 0
                     ? `${itemCount} ${itemCount === 1 ? "item" : "items"} logged`
                     : isLogged
@@ -384,7 +384,7 @@ function DietHub({
                   className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors ${
                     meal?.skipped
                       ? "bg-gray-700 text-white"
-                      : "text-gray-500 hover:bg-gray-100"
+                      : "text-gray-600 hover:bg-gray-100"
                   }`}
                 >
                   {meal?.skipped ? "Unskip" : "Skipped"}
@@ -398,7 +398,7 @@ function DietHub({
       {/* Day narration */}
       <section>
         <h2 className="text-sm font-semibold text-gray-900">Narration (optional)</h2>
-        <p className="mb-2 text-[11px] text-gray-500">
+        <p className="mb-2 text-[11px] text-gray-600">
           Your reference — helps KFANDRA cross-check later
         </p>
         <textarea
@@ -410,7 +410,7 @@ function DietHub({
         />
       </section>
 
-      <p className="text-center text-[11px] italic text-gray-400">
+      <p className="text-center text-[11px] italic text-gray-600">
         Diet tracking is not scored — KFANDRA reviews it separately.
       </p>
     </div>
@@ -467,7 +467,7 @@ function MealDetail({
           <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold leading-tight text-gray-900">
             {slot.emoji ?? "🍽️"} {slot.name}
           </h1>
-          <p className="text-[11px] text-gray-500">
+          <p className="text-[11px] text-gray-600">
             {slot.windowLabel} · informational only
           </p>
         </div>
@@ -480,7 +480,7 @@ function MealDetail({
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-bold text-gray-900">Marked as skipped</p>
-              <p className="mt-1 text-[11px] text-gray-500">
+              <p className="mt-1 text-[11px] text-gray-600">
                 KFANDRA sees this as an intentional skip, not a forgotten log.
               </p>
             </div>
@@ -497,12 +497,12 @@ function MealDetail({
       {/* Logged so far */}
       {!meal.skipped && (
         <section>
-          <h2 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-500">
+          <h2 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-600">
             Logged so far
           </h2>
           {meal.items.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-4 py-6 text-center">
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-gray-600">
                 Nothing logged yet. Tap an item below to add it.
               </p>
             </div>
@@ -544,7 +544,7 @@ function MealDetail({
       {/* Catalog */}
       {!meal.skipped && (
         <section>
-          <h2 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-500">
+          <h2 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-600">
             Tap to add
           </h2>
           <div className="space-y-4">
@@ -567,7 +567,7 @@ function MealDetail({
                         <p className="text-[12px] font-semibold leading-tight text-gray-900">
                           {item.name}
                         </p>
-                        <p className="text-[10px] leading-tight text-gray-500">
+                        <p className="text-[10px] leading-tight text-gray-600">
                           {item.unit}
                           {item.unitDetail ? ` · ${item.unitDetail}` : ""}
                         </p>
@@ -585,7 +585,7 @@ function MealDetail({
       {!meal.skipped && meal.items.length === 0 && (
         <button
           onClick={onToggleSkip}
-          className="rounded-xl border border-gray-200 bg-white py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500 hover:bg-gray-50"
+          className="rounded-xl border border-gray-200 bg-white py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-600 hover:bg-gray-50"
         >
           Skip this meal
         </button>
@@ -629,7 +629,7 @@ function SyncBadge({ status, dark }: { status: SyncStatus; dark?: boolean }) {
     // Compact dot variant for the (light) meal-detail header.
     const flash = status === "saved" || status === "saving";
     return (
-      <div className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-gray-400">
+      <div className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-gray-600">
         <span
           className={`inline-block h-1.5 w-1.5 rounded-full transition-colors ${
             status === "error"
@@ -695,12 +695,12 @@ function LoggedRow({
             </span>
           )}
         </p>
-        <p className="text-xs text-gray-500">{unit}</p>
+        <p className="text-xs text-gray-600">{unit}</p>
         <p className="min-w-[2.5ch] text-right font-[family-name:var(--font-display)] text-lg font-bold tabular-nums text-orange-600">
           × {item.count}
         </p>
         <svg
-          className={`h-4 w-4 text-gray-300 transition-transform ${open ? "rotate-90" : ""}`}
+          className={`h-4 w-4 text-gray-500 transition-transform ${open ? "rotate-90" : ""}`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -735,7 +735,7 @@ function LoggedRow({
             Remove
           </button>
           {item.customNotes && (
-            <p className="ml-2 truncate text-[11px] italic text-gray-500">
+            <p className="ml-2 truncate text-[11px] italic text-gray-600">
               “{item.customNotes}”
             </p>
           )}
@@ -774,12 +774,12 @@ function CustomItemSheet({
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-gray-200" />
         <h3 className="mb-1 text-base font-bold text-gray-900">Add a custom item</h3>
-        <p className="mb-4 text-[11px] text-gray-500">
+        <p className="mb-4 text-[11px] text-gray-600">
           Anything not in the list. KFANDRA can promote frequently-used customs
           into the catalog later.
         </p>
 
-        <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+        <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-600">
           What did you eat?
         </p>
         <input
@@ -793,7 +793,7 @@ function CustomItemSheet({
 
         <div className="mb-4 grid grid-cols-2 gap-3">
           <div>
-            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-600">
               Quantity
             </p>
             <div className="flex items-center gap-2">
@@ -815,7 +815,7 @@ function CustomItemSheet({
             </div>
           </div>
           <div>
-            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-600">
               Unit
             </p>
             <select
@@ -832,7 +832,7 @@ function CustomItemSheet({
           </div>
         </div>
 
-        <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+        <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-600">
           Notes (optional)
         </p>
         <input

@@ -202,7 +202,7 @@ export default function GymEntry({
                     <span className="text-lg">{iconByBodyPart.get(r.bodyPart) ?? "🏋️"}</span>
                     <p className="text-sm font-bold text-gray-900">{r.bodyPart}</p>
                     {r.equipment && r.equipment !== "None" && (
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-600">
                         · {r.equipment}
                       </span>
                     )}
@@ -214,12 +214,12 @@ export default function GymEntry({
                   </div>
                   {r.scheme && <p className="mt-1 text-sm text-gray-700">{r.scheme}</p>}
                   {r.notes && (
-                    <p className="mt-0.5 text-[11px] italic text-gray-500">{r.notes}</p>
+                    <p className="mt-0.5 text-[11px] italic text-gray-600">{r.notes}</p>
                   )}
                 </button>
                 <button
                   onClick={() => deleteExercise(r.id)}
-                  className="px-1 text-lg leading-none text-gray-300 hover:text-rose-500"
+                  className="px-1 text-lg leading-none text-gray-500 hover:text-rose-500"
                   aria-label="Remove"
                 >
                   ×
@@ -237,7 +237,7 @@ export default function GymEntry({
         + Add exercise
       </button>
       {draft.rows.length === 0 && (
-        <p className="-mt-2 text-center text-xs text-gray-400">
+        <p className="-mt-2 text-center text-xs text-gray-600">
           Tap to log your first exercise
         </p>
       )}
@@ -246,7 +246,7 @@ export default function GymEntry({
       {draft.rows.length > 0 && (
         <section>
           <h2 className="text-sm font-semibold text-gray-900">Narration (optional)</h2>
-          <p className="mb-2 text-[11px] text-gray-500">
+          <p className="mb-2 text-[11px] text-gray-600">
             Your reference — helps KFANDRA cross-check later
           </p>
           <textarea
@@ -259,7 +259,7 @@ export default function GymEntry({
         </section>
       )}
 
-      <p className="text-center text-[11px] italic text-gray-400">
+      <p className="text-center text-[11px] italic text-gray-600">
         Gym tracking is not scored — KFANDRA reviews it separately.
       </p>
 
@@ -325,9 +325,9 @@ function BodyWeightCard({
     <div className="rounded-2xl border border-gray-200 bg-white p-4">
       <div className="mb-2 flex items-baseline justify-between">
         <h2 className="text-sm font-semibold text-gray-900">Body weight</h2>
-        <p className="text-[10px] uppercase tracking-wide text-gray-400">Optional</p>
+        <p className="text-[10px] uppercase tracking-wide text-gray-600">Optional</p>
       </div>
-      <p className="mb-3 text-[11px] text-gray-500">
+      <p className="mb-3 text-[11px] text-gray-600">
         Note your weight today — KFANDRA tracks your trend.
       </p>
       <div className="flex items-center gap-2">
@@ -347,7 +347,7 @@ function BodyWeightCard({
               key={u}
               onClick={() => onChange({ bodyWeightUnit: u })}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                unit === u ? "bg-emerald-500 text-white" : "text-gray-500"
+                unit === u ? "bg-emerald-500 text-white" : "text-gray-600"
               }`}
             >
               {u}
@@ -419,12 +419,12 @@ function ExerciseSheet({
         <h3 className="mb-1 text-base font-bold text-gray-900">
           {onDelete ? "Edit exercise" : "Add exercise"}
         </h3>
-        <p className="mb-4 text-[11px] text-gray-500">
+        <p className="mb-4 text-[11px] text-gray-600">
           From the GWW/GWtW catalog. KFANDRA can promote new schemes later.
         </p>
 
         {/* Body part */}
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-600">
           1. Body part / movement
         </p>
         <div className="mb-4 grid grid-cols-2 gap-2">
@@ -448,7 +448,7 @@ function ExerciseSheet({
         </div>
 
         {/* Equipment */}
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-600">
           2. Equipment
         </p>
         <div className="mb-4 grid grid-cols-3 gap-2">
@@ -474,7 +474,7 @@ function ExerciseSheet({
         {supportsWeight && (
           <>
             <div className="mb-2 flex items-baseline justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-gray-600">
                 {weightSectionNo} Weight ({weightStep(r.weightUnit)} {r.weightUnit} steps)
               </p>
               <div className="flex shrink-0 rounded-lg bg-gray-100 p-0.5">
@@ -483,7 +483,7 @@ function ExerciseSheet({
                     key={u}
                     onClick={() => setR((x) => ({ ...x, weightUnit: u }))}
                     className={`rounded-md px-2.5 py-1 text-[10px] font-semibold transition-colors ${
-                      r.weightUnit === u ? "bg-emerald-500 text-white" : "text-gray-500"
+                      r.weightUnit === u ? "bg-emerald-500 text-white" : "text-gray-600"
                     }`}
                   >
                     {u}
@@ -503,7 +503,7 @@ function ExerciseSheet({
                 <p className="font-[family-name:var(--font-display)] text-3xl font-bold tabular-nums text-gray-900">
                   {r.weight}
                 </p>
-                <p className="text-[10px] uppercase tracking-wide text-gray-400">
+                <p className="text-[10px] uppercase tracking-wide text-gray-600">
                   {r.weightUnit}
                 </p>
               </div>
@@ -518,7 +518,7 @@ function ExerciseSheet({
         )}
 
         {/* Scheme */}
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-600">
           {schemeNo} Set / rep scheme
         </p>
         <div className="mb-2 grid grid-cols-1 gap-2">
@@ -561,7 +561,7 @@ function ExerciseSheet({
         {!usingCustom && <div className="mb-4" />}
 
         {/* Notes */}
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-600">
           {notesNo} Notes (optional)
         </p>
         <input

@@ -23,7 +23,7 @@ export default function SyncButton() {
       >
         {busy ? "Syncing…" : "Sync this month to Google Sheet"}
       </button>
-      {msg && <span className="text-[11px] text-gray-500">{msg}</span>}
+      {msg && <span className="text-[11px] text-gray-600">{msg}</span>}
     </div>
   );
 }

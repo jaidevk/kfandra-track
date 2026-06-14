@@ -18,7 +18,7 @@ export default function AdminDashboard() {
           className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm hover:border-gray-300"
         >
           <h2 className="text-base font-bold text-gray-900">{c.title}</h2>
-          <p className="mt-1 text-sm text-gray-500">{c.subtitle}</p>
+          <p className="mt-1 text-sm text-gray-600">{c.subtitle}</p>
         </Link>
       ))}
     </div>

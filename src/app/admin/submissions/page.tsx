@@ -39,7 +39,7 @@ async function Index() {
       <section>
         <h2 className="mb-2 text-sm font-bold text-gray-900">By date</h2>
         {sessions.length === 0 ? (
-          <p className="text-sm text-gray-400">No sessions yet.</p>
+          <p className="text-sm text-gray-600">No sessions yet.</p>
         ) : (
           <ul className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
             {sessions.map((s) => (
@@ -49,7 +49,7 @@ async function Index() {
                   className="flex items-center justify-between px-4 py-2.5 text-sm hover:bg-gray-50"
                 >
                   <span className="font-medium text-gray-900">{fmtDate(s.date)}</span>
-                  {s.label && <span className="text-[11px] text-gray-400">{s.label}</span>}
+                  {s.label && <span className="text-[11px] text-gray-600">{s.label}</span>}
                 </Link>
               </li>
             ))}
@@ -60,7 +60,7 @@ async function Index() {
       <section>
         <h2 className="mb-2 text-sm font-bold text-gray-900">By player</h2>
         {players.length === 0 ? (
-          <p className="text-sm text-gray-400">No players yet.</p>
+          <p className="text-sm text-gray-600">No players yet.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {players.map((p) => (
@@ -94,7 +94,7 @@ async function ByDate({ sessionId }: { sessionId: string }) {
         <h2 className="text-lg font-bold text-gray-900">
           {session ? fmtDate(session.date) : "Session"}
         </h2>
-        <p className="text-[11px] text-gray-500">
+        <p className="text-[11px] text-gray-600">
           {submittedCount} of {rows.length} players submitted · Total = arrival +
           confirmation + games (games, stats, packing &amp; other points)
         </p>
@@ -117,7 +117,7 @@ async function ByDate({ sessionId }: { sessionId: string }) {
                 className={
                   r.submitted
                     ? "text-gray-800 odd:bg-white even:bg-slate-100"
-                    : "text-gray-400 odd:bg-white even:bg-slate-100"
+                    : "text-gray-600 odd:bg-white even:bg-slate-100"
                 }
               >
                 <td className="px-3 py-2">
@@ -155,18 +155,18 @@ async function ByPlayer({ playerId }: { playerId: string }) {
       <BackLink />
       <div>
         <h2 className="text-lg font-bold text-gray-900">{player?.displayName ?? "Player"}</h2>
-        <p className="text-[11px] text-gray-500">
+        <p className="text-[11px] text-gray-600">
           {data.mmg.length} MMG sessions · {data.gymDays} gym days · {data.dietDays} diet days
         </p>
       </div>
 
       <h3 className="text-sm font-bold text-gray-900">MMG sessions</h3>
       {data.mmg.length === 0 ? (
-        <p className="text-sm text-gray-400">No MMG submissions.</p>
+        <p className="text-sm text-gray-600">No MMG submissions.</p>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <div className="overflow-hidden rounded-xl border border-gray-300 bg-white">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500">
+            <thead className="bg-blue-100 text-[11px] uppercase tracking-wide text-blue-900">
               <tr>
                 <th className="px-3 py-2 text-left font-semibold">Date</th>
                 <th className="px-3 py-2 text-right font-semibold">Confirm #</th>
@@ -174,10 +174,10 @@ async function ByPlayer({ playerId }: { playerId: string }) {
                 <th className="px-3 py-2 text-right font-semibold">Games</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-200">
               {data.mmg.map((e) => (
-                <tr key={e.sessionId}>
-                  <td className="px-3 py-2">{fmtDate(e.date)}</td>
+                <tr key={e.sessionId} className="text-gray-800 odd:bg-white even:bg-slate-100">
+                  <td className="px-3 py-2 font-medium text-gray-900">{fmtDate(e.date)}</td>
                   <td className="px-3 py-2 text-right tabular-nums">
                     {e.confirmationOrder ?? "—"}
                   </td>
@@ -195,7 +195,7 @@ async function ByPlayer({ playerId }: { playerId: string }) {
 
 function BackLink() {
   return (
-    <Link href="/admin/submissions" className="text-[12px] text-gray-500 hover:underline">
+    <Link href="/admin/submissions" className="text-[12px] text-gray-600 hover:underline">
       ← All submissions
     </Link>
   );

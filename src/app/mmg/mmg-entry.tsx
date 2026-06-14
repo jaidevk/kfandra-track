@@ -206,7 +206,7 @@ export default function MmgEntry({
       <div className="glass rounded-2xl p-5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">
+            <p className="text-[10px] uppercase tracking-widest text-gray-600 font-semibold">
               MMG session · {playerName}
             </p>
             <select
@@ -227,19 +227,19 @@ export default function MmgEntry({
 
         <div className="mt-4 flex items-end justify-between">
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">
+            <p className="text-[10px] uppercase tracking-widest text-gray-600 font-semibold">
               Your points so far
             </p>
             <p className="font-[family-name:var(--font-display)] text-4xl font-black tabular-nums text-gray-900">
               {breakdown.total.toLocaleString()}
             </p>
-            <p className="mt-1 text-[11px] text-gray-400">
+            <p className="mt-1 text-[11px] text-gray-600">
               + order-of-arrival points after the session settles
             </p>
           </div>
           <button
             onClick={resetSession}
-            className="rounded-lg px-2 py-1 text-[11px] font-semibold text-gray-400 hover:text-red-500"
+            className="rounded-lg px-2 py-1 text-[11px] font-semibold text-gray-600 hover:text-red-500"
           >
             Reset
           </button>
@@ -279,7 +279,7 @@ export default function MmgEntry({
               <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                 <span>{meta?.emoji}</span>
                 {meta?.name ?? g.type}
-                <span className="text-gray-400">· {resultSummary(g.results)}</span>
+                <span className="text-gray-600">· {resultSummary(g.results)}</span>
               </span>
               <span className="tabular-nums text-sm font-bold text-blue-600">
                 {sub.toLocaleString()}
@@ -289,7 +289,7 @@ export default function MmgEntry({
         })}
         <button
           onClick={() => setEditing(emptyGame(`g-${Date.now()}`))}
-          className="rounded-2xl border-2 border-dashed border-gray-300 px-4 py-3 text-sm font-semibold text-gray-500 hover:border-blue-300 hover:text-blue-600"
+          className="rounded-2xl border-2 border-dashed border-gray-300 px-4 py-3 text-sm font-semibold text-gray-600 hover:border-blue-300 hover:text-blue-600"
         >
           + Add a game
         </button>
@@ -317,7 +317,7 @@ export default function MmgEntry({
             />
             <button
               onClick={() => removeOther(o.id)}
-              className="px-2 text-gray-400 hover:text-red-500"
+              className="px-2 text-gray-600 hover:text-red-500"
               aria-label="Remove row"
             >
               ✕
@@ -350,7 +350,7 @@ export default function MmgEntry({
       >
         {finalizing ? "Finalizing…" : "Finalize session"}
       </button>
-      <p className="-mt-2 text-center text-[11px] text-gray-400">
+      <p className="-mt-2 text-center text-[11px] text-gray-600">
         Finalize flushes your entry and shows the order-of-arrival points. It is
         not an approval — you can still edit afterwards.
       </p>
@@ -383,7 +383,7 @@ export default function MmgEntry({
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-xl bg-gray-50 px-2 py-2">
-      <p className="text-[9px] uppercase tracking-wide text-gray-400 font-semibold">{label}</p>
+      <p className="text-[9px] uppercase tracking-wide text-gray-600 font-semibold">{label}</p>
       <p className="tabular-nums text-sm font-bold text-gray-800">{value.toLocaleString()}</p>
     </div>
   );
@@ -404,7 +404,7 @@ function SyncBadge({ status, switching }: { status: SyncStatus; switching: boole
       ? "text-amber-600"
       : status === "saved"
         ? "text-green-600"
-        : "text-gray-400";
+        : "text-gray-600";
   return <span className={`text-[11px] font-semibold ${color}`}>{label}</span>;
 }
 
@@ -423,7 +423,7 @@ function SectionHeading({
         {index}
       </span>
       <h2 className="text-base font-bold text-gray-900">{title}</h2>
-      <span className="text-[11px] text-gray-400">{subtitle}</span>
+      <span className="text-[11px] text-gray-600">{subtitle}</span>
     </div>
   );
 }
@@ -439,7 +439,7 @@ function NumberField({
 }) {
   return (
     <label className="block">
-      <span className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">
+      <span className="text-[10px] uppercase tracking-wide text-gray-600 font-semibold">
         {label}
       </span>
       <input
@@ -478,7 +478,7 @@ function Toggle({
     >
       <span className="font-medium">{label}</span>
       <span className="flex items-center gap-2">
-        <span className="tabular-nums text-[11px] font-semibold text-gray-400">
+        <span className="tabular-nums text-[11px] font-semibold text-gray-600">
           +{points}
         </span>
         <span
@@ -516,7 +516,7 @@ function ParticipationCard({
           onChange={(v) => onChange({ arrivalOrder: v })}
         />
       </div>
-      <p className="-mt-1 text-[11px] text-gray-400">
+      <p className="-mt-1 text-[11px] text-gray-600">
         Your place in line — points scale with how many show up.
       </p>
       <div className="grid grid-cols-1 gap-2">
@@ -597,13 +597,13 @@ function GameEditor({
       >
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-base font-bold text-gray-900">Game details</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-gray-600 hover:text-gray-600">
             ✕
           </button>
         </div>
 
         {/* Game type */}
-        <p className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">
+        <p className="text-[10px] uppercase tracking-wide text-gray-600 font-semibold">
           Game type
         </p>
         <div className="mt-1.5 grid grid-cols-2 gap-2">
@@ -623,7 +623,7 @@ function GameEditor({
         </div>
 
         {/* Result counts — how many games of this type ended each way */}
-        <p className="mt-4 text-[10px] uppercase tracking-wide text-gray-500 font-semibold">
+        <p className="mt-4 text-[10px] uppercase tracking-wide text-gray-600 font-semibold">
           Result · how many games
         </p>
         <div className="mt-1.5 flex flex-col gap-2">
@@ -706,7 +706,7 @@ function StatStepper({
     <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-2">
       <div className="min-w-0">
         <p className="truncate text-sm font-medium text-gray-800">{label}</p>
-        <p className="tabular-nums text-[11px] text-gray-400">
+        <p className="tabular-nums text-[11px] text-gray-600">
           {points > 0 ? "+" : ""}
           {points} each
         </p>
@@ -746,7 +746,7 @@ function OrderLadder({
       animate={{ opacity: 1, y: 0 }}
       className="rounded-2xl border border-gray-200 bg-white p-4"
     >
-      <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">
+      <p className="text-[10px] uppercase tracking-widest text-gray-600 font-semibold">
         Order-of-arrival points (provisional · {order.length} arrived)
       </p>
       <div className="mt-2 flex flex-col gap-1">
@@ -765,7 +765,7 @@ function OrderLadder({
           </div>
         ))}
         {sorted.length === 0 && (
-          <p className="text-[12px] text-gray-400">
+          <p className="text-[12px] text-gray-600">
             No arrivals recorded yet — fill in arrival order to score.
           </p>
         )}

@@ -31,7 +31,7 @@ export default async function GymPage({
 
 function BackLink() {
   return (
-    <Link href="/admin/gym" className="text-[12px] text-gray-500 hover:underline">
+    <Link href="/admin/gym" className="text-[12px] text-gray-600 hover:underline">
       ← All gym logs
     </Link>
   );
@@ -43,12 +43,12 @@ async function Index() {
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-bold text-gray-900">Gym</h2>
-        <p className="text-[11px] text-gray-500">Daily logs — not scored, just a record.</p>
+        <p className="text-[11px] text-gray-600">Daily logs — not scored, just a record.</p>
       </div>
       <section>
         <h3 className="mb-2 text-sm font-bold text-gray-900">By date</h3>
         {dates.length === 0 ? (
-          <p className="text-sm text-gray-400">No gym logs yet.</p>
+          <p className="text-sm text-gray-600">No gym logs yet.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {dates.map((d) => (
@@ -88,30 +88,30 @@ async function ByDate({ date }: { date: string }) {
       <BackLink />
       <h2 className="text-lg font-bold text-gray-900">{fmtDate(date)}</h2>
       {rows.length === 0 ? (
-        <p className="text-sm text-gray-400">No gym logs on this day.</p>
+        <p className="text-sm text-gray-600">No gym logs on this day.</p>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <div className="overflow-hidden rounded-xl border border-gray-300 bg-white">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500">
+            <thead className="bg-emerald-100 text-[11px] uppercase tracking-wide text-emerald-900">
               <tr>
                 <th className="px-3 py-2 text-left font-semibold">Player</th>
                 <th className="px-3 py-2 text-left font-semibold">Exercises</th>
                 <th className="px-3 py-2 text-right font-semibold">Body weight</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-200">
               {rows.map((r) => (
-                <tr key={r.playerId}>
+                <tr key={r.playerId} className="text-gray-800 odd:bg-white even:bg-slate-100">
                   <td className="px-3 py-2">
                     <Link
                       href={`/admin/gym?player=${r.playerId}`}
-                      className="font-medium text-gray-900 hover:underline"
+                      className="font-semibold text-gray-900 hover:underline"
                     >
                       {r.displayName}
                     </Link>
                   </td>
-                  <td className="px-3 py-2 text-gray-600">{r.exercises}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-gray-600">
+                  <td className="px-3 py-2">{r.exercises}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">
                     {r.bodyWeight != null ? `${r.bodyWeight}kg` : "—"}
                   </td>
                 </tr>
@@ -132,7 +132,7 @@ async function ByPlayer({ playerId }: { playerId: string }) {
       <BackLink />
       <h2 className="text-lg font-bold text-gray-900">{name} · Gym ({gym.length})</h2>
       {gym.length === 0 ? (
-        <p className="text-sm text-gray-400">No gym logs.</p>
+        <p className="text-sm text-gray-600">No gym logs.</p>
       ) : (
         <div className="space-y-2">
           {gym.map((g) => (
@@ -140,11 +140,11 @@ async function ByPlayer({ playerId }: { playerId: string }) {
               <div className="flex items-baseline justify-between">
                 <p className="text-sm font-semibold text-gray-900">{fmtDate(g.date)}</p>
                 {g.bodyWeight != null && (
-                  <p className="text-[11px] text-gray-500">{g.bodyWeight} {g.unit}</p>
+                  <p className="text-[11px] text-gray-600">{g.bodyWeight} {g.unit}</p>
                 )}
               </div>
               {g.exercises.length === 0 ? (
-                <p className="mt-1 text-[12px] italic text-gray-400">No exercises recorded.</p>
+                <p className="mt-1 text-[12px] italic text-gray-600">No exercises recorded.</p>
               ) : (
                 <ul className="mt-1.5 space-y-1">
                   {g.exercises.map((e, i) => (
@@ -159,7 +159,7 @@ async function ByPlayer({ playerId }: { playerId: string }) {
                 </ul>
               )}
               {g.narration && (
-                <p className="mt-1.5 text-[12px] italic text-gray-500">“{g.narration}”</p>
+                <p className="mt-1.5 text-[12px] italic text-gray-600">“{g.narration}”</p>
               )}
             </div>
           ))}

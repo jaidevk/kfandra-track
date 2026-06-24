@@ -1,7 +1,9 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Json } from "@/lib/supabase/database.types";
 import type { ExerciseRow, GymDraft, WeightUnit } from "./types";
 import { emptyDraft } from "./types";
+import { buildSchemeSummary } from "./summary";
 
 /**
  * Persistence for a single player's gym log for one day (continuous log). The
@@ -28,7 +30,7 @@ export async function loadGymLog(
 
   const { data: exRows } = await admin
     .from("gym_log_exercises")
-    .select("id, body_part, equipment, weight, weight_unit, scheme, notes, sort_order")
+    .select("id, body_part, equipment, weight, weight_unit, scheme, sets, notes, sort_order")
     .eq("gym_log_id", log.id)
     .order("sort_order", { ascending: true });
 
@@ -36,8 +38,14 @@ export async function loadGymLog(
     id: r.id,
     bodyPart: r.body_part,
     equipment: r.equipment,
-    weight: r.weight ?? 0,
     weightUnit: (r.weight_unit as WeightUnit) ?? "kg",
+    sets: Array.isArray(r.sets)
+      ? (r.sets as Array<{ reps?: number; weight?: number }>).map((s) => ({
+          reps: typeof s.reps === "number" ? s.reps : 0,
+          weight: typeof s.weight === "number" ? s.weight : 0,
+        }))
+      : [],
+    // Legacy rows (no sets yet) keep their old scheme text for display.
     scheme: r.scheme ?? "",
     notes: r.notes ?? "",
   }));
@@ -90,18 +98,20 @@ export async function saveGymLog(
   await admin.from("gym_log_exercises").delete().eq("gym_log_id", log.id);
 
   const exerciseRows = draft.rows
+    // Skip rows with no body part or no sets (nothing was performed).
+    .filter((r) => r.bodyPart.length > 0 && r.sets.length > 0)
     .map((r, i) => ({
       gym_log_id: log.id,
       body_part: r.bodyPart,
       equipment: r.equipment,
-      weight: r.weight > 0 ? r.weight : null,
+      // Per-exercise weight is superseded by per-set weights; left null.
+      weight: null,
       weight_unit: r.weightUnit,
-      scheme: r.scheme.trim() || null,
+      scheme: buildSchemeSummary(r) || null,
+      sets: r.sets as unknown as Json,
       notes: r.notes.trim() || null,
       sort_order: i,
-    }))
-    // Skip blank rows (no body part is meaningless to store).
-    .filter((r) => r.body_part.length > 0);
+    }));
 
   if (exerciseRows.length > 0) {
     const { error: exErr } = await admin

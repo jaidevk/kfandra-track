@@ -346,6 +346,7 @@ export type Database = {
           id: string
           notes: string | null
           scheme: string | null
+          sets: Json
           sort_order: number
           weight: number | null
           weight_unit: "kg" | "lb"
@@ -358,6 +359,7 @@ export type Database = {
           id?: string
           notes?: string | null
           scheme?: string | null
+          sets?: Json
           sort_order?: number
           weight?: number | null
           weight_unit?: "kg" | "lb"
@@ -370,6 +372,7 @@ export type Database = {
           id?: string
           notes?: string | null
           scheme?: string | null
+          sets?: Json
           sort_order?: number
           weight?: number | null
           weight_unit?: "kg" | "lb"

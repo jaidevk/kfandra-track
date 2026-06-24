@@ -507,7 +507,7 @@ function ExerciseSheet({
           {onDelete ? "Edit exercise" : "Add exercise"}
         </h3>
         <p className="mb-4 text-[11px] text-gray-600">
-          From the GWW/GWtW catalog. KFANDRA can promote new schemes later.
+          From the GWW/GWtW movement & equipment catalog.
         </p>
 
         {/* Body part */}

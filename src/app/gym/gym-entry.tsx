@@ -8,10 +8,21 @@ import {
   newExercise,
   weightStep,
   type ExerciseRow,
+  type ExerciseSet,
   type GymDraft,
   type WeightUnit,
 } from "@/lib/gym/types";
-import { exerciseCount, totalSets, hasWeight } from "@/lib/gym/summary";
+import {
+  addSet,
+  removeSet,
+  stepReps,
+  stepSetWeight,
+  repsDelta,
+  weightDelta,
+  MIN_SETS,
+  MAX_SETS,
+} from "@/lib/gym/sets";
+import { exerciseCount, totalSets, buildSchemeSummary } from "@/lib/gym/summary";
 import { loadGymLogAction, saveGymLogAction } from "@/lib/gym/actions";
 import { dateLabel, todayKey } from "@/lib/gym/dates";
 import type { GymCatalog } from "@/lib/gym/config";
@@ -43,11 +54,8 @@ export default function GymEntry({
   }, [catalog.bodyParts]);
 
   const defaults = useMemo(
-    () => ({
-      bodyPart: catalog.bodyParts[0]?.value ?? "Shoulders",
-      scheme: catalog.schemes[0] ?? "",
-    }),
-    [catalog.bodyParts, catalog.schemes],
+    () => ({ bodyPart: catalog.bodyParts[0]?.value ?? "Shoulders" }),
+    [catalog.bodyParts],
   );
 
   const count = exerciseCount(draft);
@@ -163,7 +171,7 @@ export default function GymEntry({
                 <p className="font-[family-name:var(--font-display)] text-3xl font-black tabular-nums tracking-tight">
                   {sets}
                 </p>
-                <p className="text-[11px] text-emerald-200/60">est. sets</p>
+                <p className="text-[11px] text-emerald-200/60">sets</p>
               </div>
             </div>
           </div>
@@ -206,13 +214,13 @@ export default function GymEntry({
                         · {r.equipment}
                       </span>
                     )}
-                    {hasWeight(r) && (
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
-                        · {r.weight} {r.weightUnit}
-                      </span>
-                    )}
                   </div>
-                  {r.scheme && <p className="mt-1 text-sm text-gray-700">{r.scheme}</p>}
+                  {(() => {
+                    const summary = r.sets.length > 0 ? buildSchemeSummary(r) : r.scheme;
+                    return summary ? (
+                      <p className="mt-1 text-sm text-gray-700">{summary}</p>
+                    ) : null;
+                  })()}
                   {r.notes && (
                     <p className="mt-0.5 text-[11px] italic text-gray-600">{r.notes}</p>
                   )}
@@ -359,6 +367,88 @@ function BodyWeightCard({
   );
 }
 
+function fmtDelta(d: number): string {
+  return d > 0 ? `+${d}` : `−${Math.abs(d)}`;
+}
+
+function SetRow({
+  index,
+  set,
+  unit,
+  supportsWeight,
+  repsD,
+  weightD,
+  onStepReps,
+  onStepWeight,
+}: {
+  index: number;
+  set: ExerciseSet;
+  unit: WeightUnit;
+  supportsWeight: boolean;
+  repsD: number | null;
+  weightD: number | null;
+  onStepReps: (dir: 1 | -1) => void;
+  onStepWeight: (dir: 1 | -1) => void;
+}) {
+  const stepBtn =
+    "h-8 w-8 shrink-0 rounded-lg border border-gray-200 text-base font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-30";
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-2.5">
+      <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-gray-600">
+        Set {index + 1}
+      </p>
+      <div className="flex items-center gap-2">
+        <span className="w-12 text-[11px] text-gray-600">Reps</span>
+        <button onClick={() => onStepReps(-1)} disabled={set.reps <= 1} className={stepBtn}>
+          −
+        </button>
+        <span className="flex-1 text-center text-lg font-bold tabular-nums text-gray-900">
+          {set.reps}
+        </span>
+        <button onClick={() => onStepReps(1)} className={stepBtn}>
+          +
+        </button>
+        {repsD !== null && repsD !== 0 && (
+          <span
+            className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+              repsD > 0 ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+            }`}
+          >
+            {fmtDelta(repsD)}
+          </span>
+        )}
+      </div>
+      {supportsWeight && (
+        <div className="mt-1.5 flex items-center gap-2">
+          <span className="w-12 text-[11px] text-gray-600">Weight</span>
+          <button
+            onClick={() => onStepWeight(-1)}
+            disabled={set.weight <= 0}
+            className={stepBtn}
+          >
+            −
+          </button>
+          <span className="flex-1 text-center text-lg font-bold tabular-nums text-gray-900">
+            {set.weight} <span className="text-[11px] text-gray-600">{unit}</span>
+          </span>
+          <button onClick={() => onStepWeight(1)} className={stepBtn}>
+            +
+          </button>
+          {weightD !== null && weightD !== 0 && (
+            <span
+              className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+                weightD > 0 ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+              }`}
+            >
+              {fmtDelta(weightD)}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ExerciseSheet({
   initial,
   catalog,
@@ -379,28 +469,25 @@ function ExerciseSheet({
     return eq ? eq.supportsWeight : false;
   }, [catalog.equipment, r.equipment]);
 
-  const usingCustom = !catalog.schemes.includes(r.scheme);
-
   function setEquipment(eq: string) {
     const meta = catalog.equipment.find((e) => e.value === eq);
     const eqSupportsWeight = meta ? meta.supportsWeight : false;
     setR((x) => ({
       ...x,
       equipment: eq,
-      weight: eqSupportsWeight ? x.weight : 0,
+      // No-weight equipment: zero every set's weight (reps-only).
+      sets: eqSupportsWeight ? x.sets : x.sets.map((s) => ({ ...s, weight: 0 })),
     }));
   }
 
-  function stepWeight(direction: 1 | -1) {
-    setR((x) => {
-      const step = weightStep(x.weightUnit);
-      return { ...x, weight: Math.max(0, x.weight + direction * step) };
-    });
-  }
+  const onAddSet = () => setR((x) => ({ ...x, sets: addSet(x.sets) }));
+  const onRemoveSet = () => setR((x) => ({ ...x, sets: removeSet(x.sets) }));
+  const onStepReps = (i: number, dir: 1 | -1) =>
+    setR((x) => ({ ...x, sets: stepReps(x.sets, i, dir) }));
+  const onStepWeight = (i: number, dir: 1 | -1) =>
+    setR((x) => ({ ...x, sets: stepSetWeight(x.sets, i, dir, x.weightUnit) }));
 
-  const weightSectionNo = supportsWeight ? "3." : null;
-  const schemeNo = supportsWeight ? "4." : "3.";
-  const notesNo = supportsWeight ? "5." : "4.";
+  const livePreview = buildSchemeSummary(r);
 
   return (
     <motion.div
@@ -470,99 +557,73 @@ function ExerciseSheet({
           })}
         </div>
 
-        {/* Weight */}
-        {supportsWeight && (
-          <>
-            <div className="mb-2 flex items-baseline justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-gray-600">
-                {weightSectionNo} Weight ({weightStep(r.weightUnit)} {r.weightUnit} steps)
-              </p>
-              <div className="flex shrink-0 rounded-lg bg-gray-100 p-0.5">
-                {(["kg", "lb"] as WeightUnit[]).map((u) => (
-                  <button
-                    key={u}
-                    onClick={() => setR((x) => ({ ...x, weightUnit: u }))}
-                    className={`rounded-md px-2.5 py-1 text-[10px] font-semibold transition-colors ${
-                      r.weightUnit === u ? "bg-emerald-500 text-white" : "text-gray-600"
-                    }`}
-                  >
-                    {u}
-                  </button>
-                ))}
-              </div>
+        {/* Sets */}
+        <div className="mb-2 flex items-baseline justify-between">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-gray-600">
+            3. Sets {supportsWeight && `(${weightStep(r.weightUnit)} ${r.weightUnit} weight steps)`}
+          </p>
+          {supportsWeight && (
+            <div className="flex shrink-0 rounded-lg bg-gray-100 p-0.5">
+              {(["kg", "lb"] as WeightUnit[]).map((u) => (
+                <button
+                  key={u}
+                  onClick={() => setR((x) => ({ ...x, weightUnit: u }))}
+                  className={`rounded-md px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                    r.weightUnit === u ? "bg-emerald-500 text-white" : "text-gray-600"
+                  }`}
+                >
+                  {u}
+                </button>
+              ))}
             </div>
-            <div className="mb-4 flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3">
-              <button
-                onClick={() => stepWeight(-1)}
-                disabled={r.weight <= 0}
-                className="h-10 w-10 rounded-xl border border-gray-200 text-lg font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-30"
-              >
-                −
-              </button>
-              <div className="flex-1 text-center">
-                <p className="font-[family-name:var(--font-display)] text-3xl font-bold tabular-nums text-gray-900">
-                  {r.weight}
-                </p>
-                <p className="text-[10px] uppercase tracking-wide text-gray-600">
-                  {r.weightUnit}
-                </p>
-              </div>
-              <button
-                onClick={() => stepWeight(1)}
-                className="h-10 w-10 rounded-xl border border-gray-200 text-lg font-bold text-gray-600 hover:bg-gray-50"
-              >
-                +
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* Scheme */}
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-600">
-          {schemeNo} Set / rep scheme
+          )}
+        </div>
+        <p className="mb-2 text-[11px] text-gray-600">
+          Each set starts from the one above — just tap what changed.
         </p>
-        <div className="mb-2 grid grid-cols-1 gap-2">
-          {catalog.schemes.map((s) => {
-            const active = !usingCustom && r.scheme === s;
-            return (
-              <button
-                key={s}
-                onClick={() => setR((x) => ({ ...x, scheme: s }))}
-                className={`rounded-xl border px-3 py-2 text-left text-sm transition-all ${
-                  active
-                    ? "border-emerald-500 bg-emerald-50 font-semibold text-emerald-700"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-emerald-200"
-                }`}
-              >
-                {s}
-              </button>
-            );
-          })}
+        <div className="mb-3 flex flex-col gap-2">
+          {r.sets.map((s, i) => (
+            <SetRow
+              key={i}
+              index={i}
+              set={s}
+              unit={r.weightUnit}
+              supportsWeight={supportsWeight}
+              repsD={repsDelta(r.sets, i)}
+              weightD={weightDelta(r.sets, i)}
+              onStepReps={(dir) => onStepReps(i, dir)}
+              onStepWeight={(dir) => onStepWeight(i, dir)}
+            />
+          ))}
+        </div>
+        <div className="mb-3 flex gap-2">
           <button
-            onClick={() => setR((x) => ({ ...x, scheme: usingCustom ? x.scheme : "" }))}
-            className={`rounded-xl border px-3 py-2 text-left text-sm transition-all ${
-              usingCustom
-                ? "border-emerald-500 bg-emerald-50 font-semibold text-emerald-700"
-                : "border-gray-200 bg-white text-gray-700 hover:border-emerald-200"
-            }`}
+            onClick={onAddSet}
+            disabled={r.sets.length >= MAX_SETS}
+            className="flex-1 rounded-xl border border-emerald-300 bg-emerald-50/40 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-40"
           >
-            Custom…
+            + Add set
+          </button>
+          <button
+            onClick={onRemoveSet}
+            disabled={r.sets.length <= MIN_SETS}
+            className="flex-1 rounded-xl border border-gray-200 bg-white py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+          >
+            − Remove set
           </button>
         </div>
-        {usingCustom && (
-          <input
-            type="text"
-            value={r.scheme}
-            onChange={(e) => setR((x) => ({ ...x, scheme: e.target.value }))}
-            placeholder="e.g. 5 sets, 12-10-8-8-6"
-            className="mb-4 w-full rounded-xl border border-emerald-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-          />
+        {livePreview && (
+          <div className="mb-4 rounded-xl bg-gray-50 px-3 py-2">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-gray-600">
+              Saves as
+            </p>
+            <p className="text-sm font-semibold text-gray-800">{livePreview}</p>
+          </div>
         )}
-        {!usingCustom && <div className="mb-4" />}
 
         {/* Notes */}
         <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-600">
-          {notesNo} Notes (optional)
+          4. Notes (optional)
         </p>
         <input
           type="text"
@@ -590,7 +651,7 @@ function ExerciseSheet({
           </button>
           <button
             onClick={() => onSave(r)}
-            disabled={!r.bodyPart || !r.scheme.trim()}
+            disabled={!r.bodyPart || r.sets.length === 0}
             className="flex-1 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 active:scale-[0.98] disabled:opacity-40"
           >
             Save

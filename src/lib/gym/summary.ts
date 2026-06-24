@@ -1,33 +1,40 @@
 import type { ExerciseRow, GymDraft } from "./types";
 
 /**
- * Pure summaries for the gym log header. Gym is unscored, so these are simple
- * counts rather than points — but they live here (not in the component) so the
+ * Pure summaries for the gym log. Gym is unscored, so these are simple counts
+ * and display strings — but they live here (not in the component) so the
  * behaviour is unit-tested and the form stays declarative.
  */
-
-/**
- * Best-effort set count from a scheme string. Matches a leading "N sets …"
- * pattern (e.g. "6 sets, 8, 4×6, 8" → 6). Falls back to 4 when the scheme has
- * no leading count (custom free-form schemes, "Variation!", etc.).
- */
-export function estimateSets(scheme: string): number {
-  const m = scheme.match(/^\s*(\d+)\s*sets/i);
-  if (m) return parseInt(m[1], 10);
-  return 4;
-}
 
 /** Number of logged exercise rows. */
 export function exerciseCount(draft: GymDraft): number {
   return draft.rows.length;
 }
 
-/** Estimated total sets across all logged exercises. */
+/** Exact total sets across all logged exercises. */
 export function totalSets(draft: GymDraft): number {
-  return draft.rows.reduce((sum, r) => sum + estimateSets(r.scheme), 0);
+  return draft.rows.reduce((sum, r) => sum + r.sets.length, 0);
 }
 
-/** Whether a weight value is meaningful for a row (>0 and equipment present). */
+/** Whether any set in the row carries weight (drives weighted vs reps-only display). */
 export function hasWeight(row: ExerciseRow): boolean {
-  return row.weight > 0 && row.equipment !== null && row.equipment !== "None";
+  return row.sets.some((s) => s.weight > 0);
+}
+
+/**
+ * Human-readable summary of an exercise's sets, e.g.
+ *   weighted : "6 sets · 14×10 · 8×15 · 8×25 · 8×20 · 8×20 · 14×20 lb"
+ *   reps-only: "3 sets · 14 · 8 · 8 reps"
+ * Returns "" for a row with no sets.
+ */
+export function buildSchemeSummary(row: ExerciseRow): string {
+  const n = row.sets.length;
+  if (n === 0) return "";
+  const label = `${n} ${n === 1 ? "set" : "sets"}`;
+  if (hasWeight(row)) {
+    const parts = row.sets.map((s) => `${s.reps}×${s.weight}`);
+    return `${label} · ${parts.join(" · ")} ${row.weightUnit}`;
+  }
+  const parts = row.sets.map((s) => `${s.reps}`);
+  return `${label} · ${parts.join(" · ")} reps`;
 }

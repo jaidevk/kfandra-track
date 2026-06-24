@@ -10,16 +10,29 @@
 
 export type WeightUnit = "kg" | "lb";
 
+/** Reps & weight performed in one set. weight is 0 for no-weight movements. */
+export interface ExerciseSet {
+  reps: number;
+  weight: number;
+}
+
+/** Default reps for the first set of a brand-new exercise. */
+export const DEFAULT_REPS = 10;
+
 export interface ExerciseRow {
   /** Client-stable id (also the gym_log_exercises id when round-tripped). */
   id: string;
   bodyPart: string;
   /** null when no equipment / bodyweight movement. */
   equipment: string | null;
-  /** 0 when the equipment carries no weight. */
-  weight: number;
   weightUnit: WeightUnit;
-  /** Preset or free-form set/rep scheme string. */
+  /** Per-set reps & weight; always at least one set for a logged exercise. */
+  sets: ExerciseSet[];
+  /**
+   * Display summary string. Regenerated from `sets` on save (see
+   * summary.buildSchemeSummary). May hold a legacy scheme for old rows that
+   * predate per-set logging and have not been re-saved.
+   */
   scheme: string;
   notes: string;
 }
@@ -43,15 +56,15 @@ export function emptyDraft(): GymDraft {
 
 export function newExercise(
   id: string,
-  defaults: { bodyPart: string; scheme: string },
+  defaults: { bodyPart: string },
 ): ExerciseRow {
   return {
     id,
     bodyPart: defaults.bodyPart,
     equipment: "None",
-    weight: 0,
     weightUnit: "kg",
-    scheme: defaults.scheme,
+    sets: [{ reps: DEFAULT_REPS, weight: 0 }],
+    scheme: "",
     notes: "",
   };
 }

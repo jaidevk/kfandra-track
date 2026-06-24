@@ -13,6 +13,7 @@ import {
   type WeightUnit,
 } from "@/lib/gym/types";
 import {
+  newSet,
   addSet,
   removeSet,
   stepReps,
@@ -462,7 +463,12 @@ function ExerciseSheet({
   onClose: () => void;
   onDelete: (() => void) | null;
 }) {
-  const [r, setR] = useState<ExerciseRow>(initial);
+  // Guarantee at least one set so the editor is always usable — legacy rows
+  // saved before per-set logging load with sets:[] and would otherwise leave
+  // Save disabled with nothing to edit.
+  const [r, setR] = useState<ExerciseRow>(() =>
+    initial.sets.length > 0 ? initial : { ...initial, sets: [newSet()] },
+  );
 
   const supportsWeight = useMemo(() => {
     const eq = catalog.equipment.find((e) => e.value === r.equipment);

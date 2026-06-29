@@ -102,3 +102,12 @@ export function indexFoods(catalog: DietCatalog): Record<string, FoodItemInfo> {
     catalog.sections.flatMap((s) => s.items).map((i) => [i.key, i]),
   );
 }
+
+/** A player's saved custom food (the "My foods" palette). */
+export interface PlayerFoodItem {
+  id: string;
+  name: string;
+  unit: string | null;
+  notes: string | null;
+  useCount: number;
+}

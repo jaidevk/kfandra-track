@@ -30,6 +30,7 @@ import {
   removeLogged,
   addCustomItem,
   setSkipped,
+  stepCustomQuantity,
 } from "@/lib/diet/draft";
 import { loadDietLogAction, saveDietLogAction } from "@/lib/diet/actions";
 import { dateLabel, todayKey } from "@/lib/diet/dates";
@@ -449,8 +450,8 @@ function MealDetail({
                   key={it.id}
                   item={it}
                   foodById={foodById}
-                  onPlus={() => onAdjust(it.id, 1)}
-                  onMinus={() => onAdjust(it.id, -1)}
+                  onPlus={() => onAdjust(it.id, 0.5)}
+                  onMinus={() => onAdjust(it.id, -0.5)}
                   onRemove={() => onRemove(it.id)}
                 />
               ))}
@@ -734,7 +735,7 @@ function CustomItemSheet({
             </p>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                onClick={() => setQuantity((q) => stepCustomQuantity(q, -1))}
                 className="h-10 w-10 rounded-xl border border-gray-200 text-base font-bold text-gray-600 hover:bg-gray-50"
               >
                 −
@@ -743,7 +744,7 @@ function CustomItemSheet({
                 {quantity}
               </p>
               <button
-                onClick={() => setQuantity((q) => q + 1)}
+                onClick={() => setQuantity((q) => stepCustomQuantity(q, 1))}
                 className="h-10 w-10 rounded-xl border border-gray-200 text-base font-bold text-gray-600 hover:bg-gray-50"
               >
                 +

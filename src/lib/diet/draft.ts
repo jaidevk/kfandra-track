@@ -97,3 +97,8 @@ export function setSkipped(
     items: skipped ? [] : meal.items,
   });
 }
+
+/** Step a custom-item quantity by ±0.5, floored at 0.5. dir is 1 or -1. */
+export function stepCustomQuantity(q: number, dir: 1 | -1): number {
+  return Math.max(0.5, q + dir * 0.5);
+}

@@ -2,8 +2,9 @@
 
 import { getCurrentPlayer } from "@/lib/auth/current-user";
 import { loadDietLog, saveDietLog } from "./repository";
+import { loadPlayerFoods, upsertPlayerFood } from "./personal-foods-repository";
 import { isValidDateKey } from "./dates";
-import type { DietDraft } from "./types";
+import type { DietDraft, PlayerFoodItem } from "./types";
 
 /**
  * Server actions for Diet entry. Every action re-resolves the signed-in player
@@ -43,6 +44,26 @@ export async function saveDietLogAction(
   try {
     await saveDietLog(player.id, dateKey, draft);
     return { ok: true, data: undefined };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Save failed." };
+  }
+}
+
+/** Record a used custom food in the player's palette; returns the refreshed list. */
+export async function savePlayerFoodAction(food: {
+  name: string;
+  unit: string | null;
+  notes: string | null;
+}): Promise<ActionResult<{ foods: PlayerFoodItem[] }>> {
+  const player = await getCurrentPlayer();
+  if (!player) return { ok: false, error: NOT_SIGNED_IN };
+  if (!food.name.trim()) {
+    const foods = await loadPlayerFoods(player.id);
+    return { ok: true, data: { foods } };
+  }
+  try {
+    const foods = await upsertPlayerFood(player.id, food);
+    return { ok: true, data: { foods } };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Save failed." };
   }

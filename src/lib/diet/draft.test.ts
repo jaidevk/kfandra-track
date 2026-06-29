@@ -5,6 +5,7 @@ import {
   adjustLogged,
   addCustomItem,
   stepCustomQuantity,
+  tapPersonalFood,
 } from "./draft";
 
 describe("tapFood", () => {
@@ -64,5 +65,25 @@ describe("stepCustomQuantity", () => {
     expect(stepCustomQuantity(1, 1)).toBe(1.5);
     expect(stepCustomQuantity(1, -1)).toBe(0.5);
     expect(stepCustomQuantity(0.5, -1)).toBe(0.5); // floored
+  });
+});
+
+describe("tapPersonalFood", () => {
+  const food = { name: "Protein shake", unit: "glass", notes: "post workout" };
+
+  it("adds the saved custom food at count 1", () => {
+    const out = tapPersonalFood(emptyDraft(), "lunch", food);
+    const item = out.meals.lunch.items[0];
+    expect(item.foodKey).toBeNull();
+    expect(item.customName).toBe("Protein shake");
+    expect(item.customUnit).toBe("glass");
+    expect(item.count).toBe(1);
+  });
+
+  it("merges on re-tap of the same name+unit", () => {
+    let out = tapPersonalFood(emptyDraft(), "lunch", food);
+    out = tapPersonalFood(out, "lunch", food);
+    expect(out.meals.lunch.items).toHaveLength(1);
+    expect(out.meals.lunch.items[0].count).toBe(2);
   });
 });

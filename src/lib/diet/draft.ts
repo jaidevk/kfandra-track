@@ -102,3 +102,39 @@ export function setSkipped(
 export function stepCustomQuantity(q: number, dir: 1 | -1): number {
   return Math.max(0.5, q + dir * 0.5);
 }
+
+/**
+ * Add a saved personal food to a meal at count 1, merging on re-tap of the same
+ * name+unit (mirrors tapFood's catalogue merge). Stores it as a custom item so
+ * the diet log keeps its inline snapshot.
+ */
+export function tapPersonalFood(
+  draft: DietDraft,
+  slotKey: string,
+  food: { name: string; unit: string | null; notes: string | null },
+): DietDraft {
+  const meal = getMeal(draft, slotKey);
+  const unit = food.unit ?? undefined;
+  const existing = meal.items.find(
+    (it) =>
+      it.foodKey === null &&
+      it.customName === food.name &&
+      (it.customUnit ?? undefined) === unit,
+  );
+  const items = existing
+    ? meal.items.map((it) =>
+        it === existing ? { ...it, count: it.count + 1 } : it,
+      )
+    : [
+        ...meal.items,
+        {
+          id: `custom-${Date.now()}`,
+          foodKey: null,
+          customName: food.name,
+          customUnit: unit,
+          customNotes: food.notes ?? undefined,
+          count: 1,
+        } as LoggedItem,
+      ];
+  return setMealIn(draft, slotKey, { skipped: false, items });
+}

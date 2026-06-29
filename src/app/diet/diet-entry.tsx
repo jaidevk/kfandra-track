@@ -15,6 +15,7 @@ import {
   type LoggedItem,
   type MealLog,
   type MealSlotInfo,
+  type PlayerFoodItem,
 } from "@/lib/diet/types";
 import {
   compactSummary,
@@ -24,82 +25,24 @@ import {
   loggedMealCount,
   totalUnits,
 } from "@/lib/diet/summary";
-import { loadDietLogAction, saveDietLogAction } from "@/lib/diet/actions";
+import {
+  tapFood,
+  adjustLogged,
+  removeLogged,
+  addCustomItem,
+  setSkipped,
+  stepCustomQuantity,
+  tapPersonalFood,
+} from "@/lib/diet/draft";
+import {
+  loadDietLogAction,
+  saveDietLogAction,
+  savePlayerFoodAction,
+} from "@/lib/diet/actions";
 import { dateLabel, todayKey } from "@/lib/diet/dates";
 import { AnalyticsEvent, capture } from "@/lib/observability/analytics";
 
 type SyncStatus = "idle" | "saving" | "saved" | "error";
-
-/* ── Pure draft mutators on the sparse, key-addressed meals map ───────────── */
-
-function setMealIn(draft: DietDraft, slotKey: string, meal: MealLog): DietDraft {
-  return { ...draft, meals: { ...draft.meals, [slotKey]: meal } };
-}
-
-function tapFood(draft: DietDraft, slotKey: string, foodKey: string): DietDraft {
-  const meal = getMeal(draft, slotKey);
-  const existing = meal.items.find((it) => it.foodKey === foodKey);
-  const items = existing
-    ? meal.items.map((it) =>
-        it.foodKey === foodKey ? { ...it, count: it.count + 1 } : it,
-      )
-    : [
-        ...meal.items,
-        { id: `${foodKey}-${Date.now()}`, foodKey, count: 1 } as LoggedItem,
-      ];
-  return setMealIn(draft, slotKey, { skipped: false, items });
-}
-
-function adjustLogged(
-  draft: DietDraft,
-  slotKey: string,
-  loggedId: string,
-  delta: number,
-): DietDraft {
-  const meal = getMeal(draft, slotKey);
-  const items = meal.items
-    .map((it) => (it.id === loggedId ? { ...it, count: it.count + delta } : it))
-    .filter((it) => it.count > 0);
-  return setMealIn(draft, slotKey, { ...meal, items });
-}
-
-function removeLogged(
-  draft: DietDraft,
-  slotKey: string,
-  loggedId: string,
-): DietDraft {
-  const meal = getMeal(draft, slotKey);
-  return setMealIn(draft, slotKey, {
-    ...meal,
-    items: meal.items.filter((it) => it.id !== loggedId),
-  });
-}
-
-function addCustomItem(
-  draft: DietDraft,
-  slotKey: string,
-  custom: { name: string; quantity: number; unit: string; notes?: string },
-): DietDraft {
-  const meal = getMeal(draft, slotKey);
-  const item: LoggedItem = {
-    id: `custom-${Date.now()}`,
-    foodKey: null,
-    customName: custom.name,
-    customUnit: custom.unit,
-    customNotes: custom.notes,
-    count: custom.quantity,
-  };
-  return setMealIn(draft, slotKey, { skipped: false, items: [...meal.items, item] });
-}
-
-function setSkipped(draft: DietDraft, slotKey: string, skipped: boolean): DietDraft {
-  const meal = getMeal(draft, slotKey);
-  return setMealIn(draft, slotKey, {
-    ...meal,
-    skipped,
-    items: skipped ? [] : meal.items,
-  });
-}
 
 /* ── Root component ──────────────────────────────────────────────────────── */
 
@@ -108,14 +51,18 @@ export default function DietEntry({
   initialDate,
   initialDraft,
   catalog,
+  initialPersonalFoods,
 }: {
   playerName: string;
   initialDate: string;
   initialDraft: DietDraft;
   catalog: DietCatalog;
+  initialPersonalFoods: PlayerFoodItem[];
 }) {
   const [dateKey, setDateKey] = useState<string>(initialDate);
   const [draft, setDraft] = useState<DietDraft>(initialDraft);
+  const [personalFoods, setPersonalFoods] =
+    useState<PlayerFoodItem[]>(initialPersonalFoods);
   const [status, setStatus] = useState<SyncStatus>("idle");
   const [switching, setSwitching] = useState(false);
   const [openSlot, setOpenSlot] = useState<string | null>(null); // null = hub
@@ -159,6 +106,15 @@ export default function DietEntry({
     setDraft(updater);
   }, []);
 
+  /** Record a used custom food in the player's palette, then refresh chips. */
+  const rememberFood = useCallback(
+    async (food: { name: string; unit: string | null; notes: string | null }) => {
+      const res = await savePlayerFoodAction(food);
+      if (res.ok) setPersonalFoods(res.data.foods);
+    },
+    [],
+  );
+
   /** Switch the logged day, loading that day's draft (mirrors Gym). */
   const switchDate = useCallback(async (nextDate: string) => {
     if (!nextDate) return;
@@ -183,11 +139,17 @@ export default function DietEntry({
           meal={getMeal(draft, openMeal.key)}
           sections={catalog.sections}
           foodById={foodById}
+          personalFoods={personalFoods}
           status={status}
           onBack={() => setOpenSlot(null)}
           onTap={(foodKey) => {
             mutate((d) => tapFood(d, openMeal.key, foodKey));
             capture(AnalyticsEvent.DietMealLogged, { slot: openMeal.key, source: "catalog" });
+          }}
+          onTapPersonal={(food) => {
+            mutate((d) => tapPersonalFood(d, openMeal.key, food));
+            void rememberFood(food);
+            capture(AnalyticsEvent.DietMealLogged, { slot: openMeal.key, source: "personal" });
           }}
           onAdjust={(id, delta) =>
             mutate((d) => adjustLogged(d, openMeal.key, id, delta))
@@ -195,6 +157,7 @@ export default function DietEntry({
           onRemove={(id) => mutate((d) => removeLogged(d, openMeal.key, id))}
           onAddCustom={(c) => {
             mutate((d) => addCustomItem(d, openMeal.key, c));
+            void rememberFood({ name: c.name, unit: c.unit, notes: c.notes ?? null });
             capture(AnalyticsEvent.DietMealLogged, { slot: openMeal.key, source: "custom" });
           }}
           onToggleSkip={() =>
@@ -424,9 +387,11 @@ function MealDetail({
   meal,
   sections,
   foodById,
+  personalFoods,
   status,
   onBack,
   onTap,
+  onTapPersonal,
   onAdjust,
   onRemove,
   onAddCustom,
@@ -436,9 +401,11 @@ function MealDetail({
   meal: MealLog;
   sections: DietCatalog["sections"];
   foodById: Record<string, FoodItemInfo>;
+  personalFoods: PlayerFoodItem[];
   status: SyncStatus;
   onBack: () => void;
   onTap: (foodKey: string) => void;
+  onTapPersonal: (food: { name: string; unit: string | null; notes: string | null }) => void;
   onAdjust: (loggedId: string, delta: number) => void;
   onRemove: (loggedId: string) => void;
   onAddCustom: (c: { name: string; quantity: number; unit: string; notes?: string }) => void;
@@ -513,8 +480,8 @@ function MealDetail({
                   key={it.id}
                   item={it}
                   foodById={foodById}
-                  onPlus={() => onAdjust(it.id, 1)}
-                  onMinus={() => onAdjust(it.id, -1)}
+                  onPlus={() => onAdjust(it.id, 0.5)}
+                  onMinus={() => onAdjust(it.id, -0.5)}
                   onRemove={() => onRemove(it.id)}
                 />
               ))}
@@ -539,6 +506,42 @@ function MealDetail({
             Not in the list?
           </span>
         </button>
+      )}
+
+      {/* Your foods — personal saved customs, one tap to re-log */}
+      {!meal.skipped && personalFoods.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-600">
+            Your foods
+          </h2>
+          <div className="grid grid-cols-2 gap-2">
+            {personalFoods.map((food) => (
+              <button
+                key={food.id}
+                onClick={() =>
+                  onTapPersonal({
+                    name: food.name,
+                    unit: food.unit,
+                    notes: food.notes,
+                  })
+                }
+                className="group flex items-center gap-2.5 rounded-xl border border-violet-200 bg-violet-50/40 p-2.5 text-left transition-all hover:border-violet-300 hover:bg-violet-50 active:scale-[0.98]"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-lg">
+                  ✏️
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[12px] font-semibold leading-tight text-gray-900">
+                    {food.name}
+                  </p>
+                  <p className="truncate text-[10px] leading-tight text-gray-600">
+                    {food.unit ?? "custom"}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* Catalog */}
@@ -798,7 +801,7 @@ function CustomItemSheet({
             </p>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                onClick={() => setQuantity((q) => stepCustomQuantity(q, -1))}
                 className="h-10 w-10 rounded-xl border border-gray-200 text-base font-bold text-gray-600 hover:bg-gray-50"
               >
                 −
@@ -807,7 +810,7 @@ function CustomItemSheet({
                 {quantity}
               </p>
               <button
-                onClick={() => setQuantity((q) => q + 1)}
+                onClick={() => setQuantity((q) => stepCustomQuantity(q, 1))}
                 className="h-10 w-10 rounded-xl border border-gray-200 text-base font-bold text-gray-600 hover:bg-gray-50"
               >
                 +

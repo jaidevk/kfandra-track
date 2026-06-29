@@ -47,10 +47,10 @@ describe("stepReps", () => {
 });
 
 describe("stepSetWeight", () => {
-  it("steps weight by the unit step and floors at 0", () => {
+  it("steps weight by the unit step (0.5 kg / 1 lb) and floors at 0", () => {
     const sets = [{ reps: 8, weight: 0 }];
-    expect(stepSetWeight(sets, 0, 1, "lb")[0].weight).toBe(5);
-    expect(stepSetWeight(sets, 0, 1, "kg")[0].weight).toBe(2);
+    expect(stepSetWeight(sets, 0, 1, "lb")[0].weight).toBe(1);
+    expect(stepSetWeight(sets, 0, 1, "kg")[0].weight).toBe(0.5);
     expect(stepSetWeight(sets, 0, -1, "lb")[0].weight).toBe(0); // floored
   });
 });

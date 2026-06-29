@@ -69,7 +69,7 @@ export function newExercise(
   };
 }
 
-/** Weight increment per tap for a unit (2 kg / 5 lb). */
+/** Weight increment per tap for a unit (0.5 kg / 1 lb). */
 export function weightStep(unit: WeightUnit): number {
-  return unit === "kg" ? 2 : 5;
+  return unit === "kg" ? 0.5 : 1;
 }

@@ -527,6 +527,47 @@ export type Database = {
           },
         ]
       }
+      player_food_items: {
+        Row: {
+          created_at: string
+          id: string
+          last_used_at: string
+          name: string
+          notes: string | null
+          player_id: string
+          unit: string | null
+          use_count: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_used_at?: string
+          name: string
+          notes?: string | null
+          player_id: string
+          unit?: string | null
+          use_count?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_used_at?: string
+          name?: string
+          notes?: string | null
+          player_id?: string
+          unit?: string | null
+          use_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_food_items_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       players: {
         Row: {
           created_at: string

@@ -24,82 +24,18 @@ import {
   loggedMealCount,
   totalUnits,
 } from "@/lib/diet/summary";
+import {
+  tapFood,
+  adjustLogged,
+  removeLogged,
+  addCustomItem,
+  setSkipped,
+} from "@/lib/diet/draft";
 import { loadDietLogAction, saveDietLogAction } from "@/lib/diet/actions";
 import { dateLabel, todayKey } from "@/lib/diet/dates";
 import { AnalyticsEvent, capture } from "@/lib/observability/analytics";
 
 type SyncStatus = "idle" | "saving" | "saved" | "error";
-
-/* ── Pure draft mutators on the sparse, key-addressed meals map ───────────── */
-
-function setMealIn(draft: DietDraft, slotKey: string, meal: MealLog): DietDraft {
-  return { ...draft, meals: { ...draft.meals, [slotKey]: meal } };
-}
-
-function tapFood(draft: DietDraft, slotKey: string, foodKey: string): DietDraft {
-  const meal = getMeal(draft, slotKey);
-  const existing = meal.items.find((it) => it.foodKey === foodKey);
-  const items = existing
-    ? meal.items.map((it) =>
-        it.foodKey === foodKey ? { ...it, count: it.count + 1 } : it,
-      )
-    : [
-        ...meal.items,
-        { id: `${foodKey}-${Date.now()}`, foodKey, count: 1 } as LoggedItem,
-      ];
-  return setMealIn(draft, slotKey, { skipped: false, items });
-}
-
-function adjustLogged(
-  draft: DietDraft,
-  slotKey: string,
-  loggedId: string,
-  delta: number,
-): DietDraft {
-  const meal = getMeal(draft, slotKey);
-  const items = meal.items
-    .map((it) => (it.id === loggedId ? { ...it, count: it.count + delta } : it))
-    .filter((it) => it.count > 0);
-  return setMealIn(draft, slotKey, { ...meal, items });
-}
-
-function removeLogged(
-  draft: DietDraft,
-  slotKey: string,
-  loggedId: string,
-): DietDraft {
-  const meal = getMeal(draft, slotKey);
-  return setMealIn(draft, slotKey, {
-    ...meal,
-    items: meal.items.filter((it) => it.id !== loggedId),
-  });
-}
-
-function addCustomItem(
-  draft: DietDraft,
-  slotKey: string,
-  custom: { name: string; quantity: number; unit: string; notes?: string },
-): DietDraft {
-  const meal = getMeal(draft, slotKey);
-  const item: LoggedItem = {
-    id: `custom-${Date.now()}`,
-    foodKey: null,
-    customName: custom.name,
-    customUnit: custom.unit,
-    customNotes: custom.notes,
-    count: custom.quantity,
-  };
-  return setMealIn(draft, slotKey, { skipped: false, items: [...meal.items, item] });
-}
-
-function setSkipped(draft: DietDraft, slotKey: string, skipped: boolean): DietDraft {
-  const meal = getMeal(draft, slotKey);
-  return setMealIn(draft, slotKey, {
-    ...meal,
-    skipped,
-    items: skipped ? [] : meal.items,
-  });
-}
 
 /* ── Root component ──────────────────────────────────────────────────────── */
 

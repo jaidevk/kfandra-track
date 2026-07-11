@@ -3,6 +3,7 @@ import { getCurrentPlayer } from "@/lib/auth/current-user";
 import { loadGymCatalog } from "@/lib/gym/config";
 import { loadGymLog } from "@/lib/gym/repository";
 import { todayKey } from "@/lib/gym/dates";
+import { Breadcrumb } from "@/components/breadcrumb";
 import GymEntry from "./gym-entry";
 
 /**
@@ -21,11 +22,14 @@ export default async function GymPage() {
   ]);
 
   return (
-    <GymEntry
-      playerName={player.displayName}
-      initialDate={dateKey}
-      initialDraft={draft}
-      catalog={catalog}
-    />
+    <>
+      <Breadcrumb label="Strength & Conditioning" />
+      <GymEntry
+        playerName={player.displayName}
+        initialDate={dateKey}
+        initialDraft={draft}
+        catalog={catalog}
+      />
+    </>
   );
 }

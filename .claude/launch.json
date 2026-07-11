@@ -6,8 +6,9 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["next", "dev"],
       "port": 3000,
+      "autoPort": true,
       "env": {
-        "PATH": "/opt/homebrew/opt/node@22/bin:/usr/local/bin:/usr/bin:/bin"
+        "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
       }
     }
   ]

@@ -46,8 +46,8 @@ export const strings = {
       subtitle: "Tap entries · per session",
     },
     gym: {
-      title: "Gym",
-      subtitle: "Body part · sets & reps",
+      title: "Strength and Conditioning",
+      subtitle: "Sets, reps & S&C tests",
     },
     diet: {
       title: "Diet",
@@ -84,7 +84,7 @@ export const strings = {
     title: "Admin",
     subtitle: "KFANDRA staff only",
     mmgCard: { title: "MMG", subtitle: "Submissions by date or player" },
-    gymCard: { title: "Gym", subtitle: "Review daily logs" },
+    gymCard: { title: "Strength & Conditioning", subtitle: "Review daily logs" },
     dietCard: { title: "Diet", subtitle: "Review daily logs" },
     configCard: { title: "Scoring", subtitle: "Edit points & game names" },
     backToApp: "← Back to app",

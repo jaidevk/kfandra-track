@@ -145,7 +145,7 @@ export default function GymEntry({
           <div>
             <div className="flex items-center gap-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-200/80">
-                Gym log · {playerName}
+                S&C log · {playerName}
               </p>
               <SyncBadge status={status} switching={switching} />
             </div>
@@ -269,7 +269,7 @@ export default function GymEntry({
       )}
 
       <p className="text-center text-[11px] italic text-gray-600">
-        Gym tracking is not scored — KFANDRA reviews it separately.
+        S&C tracking is not scored — KFANDRA reviews it separately.
       </p>
 
       {/* ── Exercise editor sheet ──────────────────────────────────── */}

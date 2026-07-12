@@ -1,7 +1,13 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
-import type { ExerciseRow, GymDraft, WeightUnit } from "./types";
+import type {
+  EntryType,
+  ExerciseRow,
+  GymDraft,
+  TestMetric,
+  WeightUnit,
+} from "./types";
 import { emptyDraft } from "./types";
 import { buildSchemeSummary } from "./summary";
 
@@ -30,25 +36,57 @@ export async function loadGymLog(
 
   const { data: exRows } = await admin
     .from("gym_log_exercises")
-    .select("id, body_part, equipment, weight, weight_unit, scheme, sets, notes, sort_order")
+    .select(
+      "id, entry_type, body_part, equipment, weight, weight_unit, test_name, test_metric, scheme, sets, notes, sort_order",
+    )
     .eq("gym_log_id", log.id)
     .order("sort_order", { ascending: true });
 
-  const rows: ExerciseRow[] = (exRows ?? []).map((r) => ({
-    id: r.id,
-    bodyPart: r.body_part,
-    equipment: r.equipment,
-    weightUnit: (r.weight_unit as WeightUnit) ?? "kg",
-    sets: Array.isArray(r.sets)
-      ? (r.sets as Array<{ reps?: number; weight?: number }>).map((s) => ({
-          reps: typeof s.reps === "number" ? s.reps : 0,
-          weight: typeof s.weight === "number" ? s.weight : 0,
-        }))
-      : [],
-    // Legacy rows (no sets yet) keep their old scheme text for display.
-    scheme: r.scheme ?? "",
-    notes: r.notes ?? "",
-  }));
+  const rows: ExerciseRow[] = (exRows ?? []).map((r) => {
+    const entryType = (r.entry_type as EntryType) ?? "exercise";
+    const weightUnit = (r.weight_unit as WeightUnit) ?? "kg";
+    // For tests the `sets` jsonb holds attempts ({mins,seconds,reps}); for
+    // exercises it holds sets ({reps,weight}).
+    const raw = Array.isArray(r.sets) ? (r.sets as Array<Record<string, unknown>>) : [];
+
+    if (entryType === "test") {
+      return {
+        id: r.id,
+        entryType: "test",
+        bodyPart: r.body_part,
+        equipment: null,
+        weightUnit,
+        sets: [],
+        testName: r.test_name ?? null,
+        testMetric: (r.test_metric as TestMetric | null) ?? "reps",
+        attempts: raw.map((a) => ({
+          mins: typeof a.mins === "number" ? a.mins : 0,
+          seconds: typeof a.seconds === "number" ? a.seconds : 0,
+          reps: typeof a.reps === "number" ? a.reps : 0,
+        })),
+        scheme: r.scheme ?? "",
+        notes: r.notes ?? "",
+      };
+    }
+
+    return {
+      id: r.id,
+      entryType: "exercise",
+      bodyPart: r.body_part,
+      equipment: r.equipment,
+      weightUnit,
+      sets: raw.map((s) => ({
+        reps: typeof s.reps === "number" ? s.reps : 0,
+        weight: typeof s.weight === "number" ? s.weight : 0,
+      })),
+      testName: null,
+      testMetric: null,
+      attempts: [],
+      // Legacy rows (no sets yet) keep their old scheme text for display.
+      scheme: r.scheme ?? "",
+      notes: r.notes ?? "",
+    };
+  });
 
   return {
     rows,
@@ -98,17 +136,26 @@ export async function saveGymLog(
   await admin.from("gym_log_exercises").delete().eq("gym_log_id", log.id);
 
   const exerciseRows = draft.rows
-    // Skip rows with no body part or no sets (nothing was performed).
-    .filter((r) => r.bodyPart.length > 0 && r.sets.length > 0)
+    // Skip rows with nothing performed: an exercise needs a body part + a set;
+    // a test needs a selected test + an attempt.
+    .filter((r) =>
+      r.entryType === "test"
+        ? (r.testName?.length ?? 0) > 0 && r.attempts.length > 0
+        : r.bodyPart.length > 0 && r.sets.length > 0,
+    )
     .map((r, i) => ({
       gym_log_id: log.id,
+      entry_type: r.entryType,
       body_part: r.bodyPart,
-      equipment: r.equipment,
+      equipment: r.entryType === "test" ? null : r.equipment,
       // Per-exercise weight is superseded by per-set weights; left null.
       weight: null,
       weight_unit: r.weightUnit,
+      test_name: r.entryType === "test" ? r.testName : null,
+      test_metric: r.entryType === "test" ? r.testMetric : null,
       scheme: buildSchemeSummary(r) || null,
-      sets: r.sets as unknown as Json,
+      // `sets` jsonb carries attempts for tests, sets for exercises.
+      sets: (r.entryType === "test" ? r.attempts : r.sets) as unknown as Json,
       notes: r.notes.trim() || null,
       sort_order: i,
     }));

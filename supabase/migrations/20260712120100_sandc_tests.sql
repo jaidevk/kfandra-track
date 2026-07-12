@@ -53,6 +53,6 @@ insert into public.gym_catalog (kind, value, metric, icon, full_name, sort_order
   ('test', 'Free Squat jumps',   'reps', '🪑', null,              11),
   ('test', 'FSJF',               'reps', '🪑', 'FSJF',            12),
   ('test', 'FSJR',               'reps', '🪑', 'FSJR',            13),
-  ('test', 'Zor',                'reps', '🤸', 'Hindu push-up',   14),
+  ('test', 'Zor',                'reps', '🤸', null,              14),
   ('test', 'Rev. Zor',           'reps', '🤸', 'Reverse Zor',     15)
 on conflict (kind, value) do nothing;

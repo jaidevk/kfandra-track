@@ -135,7 +135,13 @@ function RowGroup({
       {expandable && isOpen && (
         <tr className="bg-slate-50/70">
           <td colSpan={8} className="px-4 pb-3 pt-1">
-            <Detail detail={row.detail} repReps={row.repReps} repPoints={row.repPoints} />
+            <Detail
+              detail={row.detail}
+              repReps={row.repReps}
+              repPoints={row.repPoints}
+              confirmationPoints={row.confirmationPoints}
+              arrivalPoints={row.arrivalPoints}
+            />
           </td>
         </tr>
       )}
@@ -152,17 +158,19 @@ function Detail({
   detail,
   repReps,
   repPoints,
+  confirmationPoints,
+  arrivalPoints,
 }: {
   detail: SessionRowDetail | null;
   repReps: number;
   repPoints: number;
+  confirmationPoints: number;
+  arrivalPoints: number;
 }) {
   const games = detail?.games ?? [];
   const packing = detail?.packing ?? [];
   const otherGroups = detail?.otherGroups ?? [];
-  const confirmationOrder = detail?.confirmationOrder ?? null;
-  const arrivalOrder = detail?.arrivalOrder ?? null;
-  const hasOrder = confirmationOrder != null || arrivalOrder != null;
+  const hasOrder = confirmationPoints > 0 || arrivalPoints > 0;
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {repReps > 0 && (
@@ -222,11 +230,15 @@ function Detail({
       )}
       {hasOrder && (
         <Section title="Order ladder">
-          {confirmationOrder != null && (
-            <p className="text-gray-700">Confirmed #{confirmationOrder}</p>
+          {confirmationPoints > 0 && (
+            <p className="text-gray-700">
+              Confirmation <span className="text-gray-400">= {n(confirmationPoints)}</span>
+            </p>
           )}
-          {arrivalOrder != null && (
-            <p className="text-gray-700">Arrived #{arrivalOrder}</p>
+          {arrivalPoints > 0 && (
+            <p className="text-gray-700">
+              Arrival <span className="text-gray-400">= {n(arrivalPoints)}</span>
+            </p>
           )}
         </Section>
       )}

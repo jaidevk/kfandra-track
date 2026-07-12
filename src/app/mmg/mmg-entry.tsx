@@ -435,10 +435,12 @@ function NumberField({
   label,
   value,
   onChange,
+  placeholder = "—",
 }: {
   label: string;
   value: number | null;
   onChange: (v: number | null) => void;
+  placeholder?: string;
 }) {
   return (
     <label className="block">
@@ -452,7 +454,7 @@ function NumberField({
           onChange(cleaned === "" ? null : Number(cleaned));
         }}
         inputMode="numeric"
-        placeholder="—"
+        placeholder={placeholder}
         className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm tabular-nums text-center focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
       />
     </label>
@@ -512,15 +514,19 @@ function ParticipationCard({
           label="Confirmation order"
           value={p.confirmationOrder}
           onChange={(v) => onChange({ confirmationOrder: v })}
+          placeholder="e.g. 1"
         />
         <NumberField
           label="Arrival order"
           value={p.arrivalOrder}
           onChange={(v) => onChange({ arrivalOrder: v })}
+          placeholder="e.g. 1"
         />
       </div>
       <p className="-mt-1 text-[11px] text-gray-600">
-        Your place in line — points scale with how many show up.
+        Enter your <span className="font-semibold">rank</span> — 1 = first to
+        confirm / arrive, 2 = second, and so on. Just your place in line (not a
+        points value); points scale with how many show up.
       </p>
       <div className="grid grid-cols-1 gap-2">
         <Toggle

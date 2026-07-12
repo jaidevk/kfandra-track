@@ -92,6 +92,9 @@ export type SelfScored = {
   detail: SessionRowDetail;
 };
 
+/** Gym reps allocated to a session (closest previous session), with points. */
+export type RepScore = { reps: number; points: number };
+
 export type SessionRow = {
   playerId: string;
   displayName: string;
@@ -104,9 +107,13 @@ export type SessionRow = {
   packingPoints: number;
   /** Free-form "other" points. */
   otherPoints: number;
-  /** Grand total: order ladder + games + packing + other. */
+  /** Gym-exercise rep points (reps × per-rep rate) for this session's window. */
+  repPoints: number;
+  /** Rep count behind repPoints (for the drill-down). */
+  repReps: number;
+  /** Grand total: order ladder + games + packing + other + reps. */
   total: number;
-  /** Drill-down detail for submitters; null for non-submitters. */
+  /** Drill-down detail for MMG submitters; null otherwise. */
   detail: SessionRowDetail | null;
 };
 
@@ -128,6 +135,7 @@ export function toSessionRows(
   order: OrderPts[],
   submittedIds: string[],
   selfById: Record<string, SelfScored> = {},
+  repById: Record<string, RepScore> = {},
 ): SessionRow[] {
   const byId = new Map(order.map((o) => [o.playerId, o]));
   const submitted = new Set(submittedIds);
@@ -139,6 +147,7 @@ export function toSessionRows(
     const gamesPoints = self?.games ?? 0;
     const packingPoints = self?.packing ?? 0;
     const otherPoints = self?.other ?? 0;
+    const rep = repById[p.id] ?? { reps: 0, points: 0 };
     return {
       playerId: p.id,
       displayName: p.displayName,
@@ -148,8 +157,15 @@ export function toSessionRows(
       gamesPoints,
       packingPoints,
       otherPoints,
+      repPoints: rep.points,
+      repReps: rep.reps,
       total:
-        arrivalPoints + confirmationPoints + gamesPoints + packingPoints + otherPoints,
+        arrivalPoints +
+        confirmationPoints +
+        gamesPoints +
+        packingPoints +
+        otherPoints +
+        rep.points,
       detail: self?.detail ?? null,
     };
   });

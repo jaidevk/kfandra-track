@@ -45,6 +45,8 @@ const row = (playerId: string, displayName: string, total: number): SessionRow =
   gamesPoints: 0,
   packingPoints: 0,
   otherPoints: 0,
+  repPoints: 0,
+  repReps: 0,
   total,
   detail: null,
 });

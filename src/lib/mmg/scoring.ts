@@ -21,6 +21,7 @@ export type PointScope =
   | "result"
   | "stat"
   | "order"
+  | "fitness"
   | "other";
 
 /** A point_rules row with its game-type override resolved to a key. */
@@ -54,6 +55,8 @@ export interface ScoringConfig {
   };
   /** Base unit for the N×100 order ladder (used by the session-level engine). */
   orderBasePerRank: number;
+  /** Points awarded per gym-exercise rep (fitness scope). 0 = disabled. */
+  pointsPerRep: number;
 }
 
 /** Fold raw point_rules rows into a structured, lookup-friendly config. */
@@ -69,6 +72,7 @@ export function buildScoringConfig(rows: PointRuleRow[]): ScoringConfig {
       confirmedBy11am: 0,
     },
     orderBasePerRank: 0,
+    pointsPerRep: 0,
   };
 
   for (const row of rows) {
@@ -91,6 +95,9 @@ export function buildScoringConfig(rows: PointRuleRow[]): ScoringConfig {
       }
       case "order":
         if (row.rule_key === "base_per_rank") config.orderBasePerRank = row.points;
+        break;
+      case "fitness":
+        if (row.rule_key === "per_rep") config.pointsPerRep = row.points;
         break;
       // 'other' rows carry no fixed value — points are entered free-form.
     }

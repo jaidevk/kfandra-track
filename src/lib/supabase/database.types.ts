@@ -625,7 +625,13 @@ export type Database = {
           label: string
           points: number
           rule_key: string
-          scope: "participation" | "result" | "stat" | "order" | "other"
+          scope:
+            | "participation"
+            | "result"
+            | "stat"
+            | "order"
+            | "other"
+            | "fitness"
           updated_at: string
         }
         Insert: {
@@ -636,7 +642,13 @@ export type Database = {
           label: string
           points: number
           rule_key: string
-          scope: "participation" | "result" | "stat" | "order" | "other"
+          scope:
+            | "participation"
+            | "result"
+            | "stat"
+            | "order"
+            | "other"
+            | "fitness"
           updated_at?: string
         }
         Update: {
@@ -647,7 +659,13 @@ export type Database = {
           label?: string
           points?: number
           rule_key?: string
-          scope?: "participation" | "result" | "stat" | "order" | "other"
+          scope?:
+            | "participation"
+            | "result"
+            | "stat"
+            | "order"
+            | "other"
+            | "fitness"
           updated_at?: string
         }
         Relationships: [

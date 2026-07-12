@@ -67,6 +67,16 @@ describe("toSessionRows", () => {
     expect(crank.submitted).toBe(true);
     expect(crank.total).toBe(1000);
   });
+
+  it("adds gym rep points to the total, even for non-MMG-submitters", () => {
+    // Baz did gym (30 reps → 3000) but never submitted an MMG entry.
+    const rows = toSessionRows(players, [], [], {}, { b: { reps: 30, points: 3000 } });
+    const baz = rows.find((r) => r.playerId === "b")!;
+    expect(baz.submitted).toBe(false);
+    expect(baz.repReps).toBe(30);
+    expect(baz.repPoints).toBe(3000);
+    expect(baz.total).toBe(3000);
+  });
 });
 
 const config: ScoringConfig = {
@@ -80,6 +90,7 @@ const config: ScoringConfig = {
     confirmedBy11am: 500,
   },
   orderBasePerRank: 100,
+  pointsPerRep: 100,
 };
 
 const draft: MmgDraft = {

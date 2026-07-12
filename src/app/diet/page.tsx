@@ -4,7 +4,6 @@ import { loadDietCatalog } from "@/lib/diet/config";
 import { loadDietLog } from "@/lib/diet/repository";
 import { loadPlayerFoods } from "@/lib/diet/personal-foods-repository";
 import { todayKey } from "@/lib/diet/dates";
-import { Breadcrumb } from "@/components/breadcrumb";
 import DietEntry from "./diet-entry";
 
 /**
@@ -25,15 +24,12 @@ export default async function DietPage() {
   ]);
 
   return (
-    <>
-      <Breadcrumb label="Diet" />
-      <DietEntry
-        playerName={player.displayName}
-        initialDate={dateKey}
-        initialDraft={draft}
-        catalog={catalog}
-        initialPersonalFoods={personalFoods}
-      />
-    </>
+    <DietEntry
+      playerName={player.displayName}
+      initialDate={dateKey}
+      initialDraft={draft}
+      catalog={catalog}
+      initialPersonalFoods={personalFoods}
+    />
   );
 }

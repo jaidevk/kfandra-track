@@ -6,6 +6,61 @@ export type PlayerRef = { id: string; displayName: string };
 /** A single point line in a drill-down (e.g. one packing bonus, one Other row). */
 export type PointLine = { label: string; points: number };
 
+/** Coarse buckets the free-form "Other" descriptions fall into. */
+export type OtherCategory =
+  | "Fitness"
+  | "Skill"
+  | "Bonus"
+  | "Drill"
+  | "Game"
+  | "Other";
+
+/** Other lines of one category, with their subtotal. */
+export type OtherGroup = { category: OtherCategory; points: number; lines: PointLine[] };
+
+const OTHER_RULES: { category: OtherCategory; keywords: string[] }[] = [
+  {
+    category: "Fitness",
+    keywords: [
+      "gwtw", "gww", "push", " pu", "pus", "squat", "calf", "calve", "abs",
+      "plank", "burpee", "zor", "baithak", "lunge", "sumo", "stamina", "1 min", "mins",
+    ],
+  },
+  { category: "Skill", keywords: ["skill", "shibobo", "backheel", "nutmeg", "juggl"] },
+  {
+    category: "Bonus",
+    keywords: ["bonus", "margin", "win by", "goal difference", "gd ", "winning"],
+  },
+  {
+    category: "Drill",
+    keywords: [
+      "drill", "practi", "passing", "crossing", "kicking", "catching",
+      "grubber", "volley", "contest",
+    ],
+  },
+  {
+    category: "Game",
+    keywords: [
+      "game", "tyre", "fennis", "tennis", "shooting", "3-and-in", "three",
+      "rebound", "tap-in", "conversion", "throw",
+    ],
+  },
+];
+
+/**
+ * Classify a free-form "Other" description into a coarse bucket by keyword.
+ * Heuristic and first-match-wins (priority: Fitness → Skill → Bonus → Drill →
+ * Game → Other) — meant to give the dominant bucket a rough shape, not to be
+ * exact. Derived at read time, so it re-tunes without touching stored data.
+ */
+export function classifyOther(description: string): OtherCategory {
+  const d = description.toLowerCase();
+  for (const rule of OTHER_RULES) {
+    if (rule.keywords.some((k) => d.includes(k))) return rule.category;
+  }
+  return "Other";
+}
+
 /** One stat within a game card, with its point value. */
 export type StatLine = { key: string; count: number; points: number };
 
@@ -23,7 +78,8 @@ export type GameLine = {
 export type SessionRowDetail = {
   games: GameLine[];
   packing: PointLine[];
-  others: PointLine[];
+  /** "Other" lines grouped by type, each with a subtotal (desc by points). */
+  otherGroups: OtherGroup[];
   confirmationOrder: number | null;
   arrivalOrder: number | null;
 };
@@ -35,6 +91,9 @@ export type SelfScored = {
   other: number;
   detail: SessionRowDetail;
 };
+
+/** Gym reps allocated to a session (closest previous session), with points. */
+export type RepScore = { reps: number; points: number };
 
 export type SessionRow = {
   playerId: string;
@@ -48,9 +107,13 @@ export type SessionRow = {
   packingPoints: number;
   /** Free-form "other" points. */
   otherPoints: number;
-  /** Grand total: order ladder + games + packing + other. */
+  /** Gym-exercise rep points (reps × per-rep rate) for this session's window. */
+  repPoints: number;
+  /** Rep count behind repPoints (for the drill-down). */
+  repReps: number;
+  /** Grand total: order ladder + games + packing + other + reps. */
   total: number;
-  /** Drill-down detail for submitters; null for non-submitters. */
+  /** Drill-down detail for MMG submitters; null otherwise. */
   detail: SessionRowDetail | null;
 };
 
@@ -72,6 +135,7 @@ export function toSessionRows(
   order: OrderPts[],
   submittedIds: string[],
   selfById: Record<string, SelfScored> = {},
+  repById: Record<string, RepScore> = {},
 ): SessionRow[] {
   const byId = new Map(order.map((o) => [o.playerId, o]));
   const submitted = new Set(submittedIds);
@@ -83,6 +147,7 @@ export function toSessionRows(
     const gamesPoints = self?.games ?? 0;
     const packingPoints = self?.packing ?? 0;
     const otherPoints = self?.other ?? 0;
+    const rep = repById[p.id] ?? { reps: 0, points: 0 };
     return {
       playerId: p.id,
       displayName: p.displayName,
@@ -92,8 +157,15 @@ export function toSessionRows(
       gamesPoints,
       packingPoints,
       otherPoints,
+      repPoints: rep.points,
+      repReps: rep.reps,
       total:
-        arrivalPoints + confirmationPoints + gamesPoints + packingPoints + otherPoints,
+        arrivalPoints +
+        confirmationPoints +
+        gamesPoints +
+        packingPoints +
+        otherPoints +
+        rep.points,
       detail: self?.detail ?? null,
     };
   });
@@ -157,13 +229,22 @@ export function buildSelfScored(
   }
 
   let otherTotal = 0;
-  const others: PointLine[] = [];
+  const groups = new Map<OtherCategory, OtherGroup>();
   for (const o of draft.others) {
     const n = Number(o.points);
     if (!Number.isFinite(n) || n === 0) continue;
     otherTotal += n;
-    others.push({ label: o.description || "—", points: n });
+    const category = classifyOther(o.description);
+    const line: PointLine = { label: o.description || "—", points: n };
+    const g = groups.get(category);
+    if (g) {
+      g.points += n;
+      g.lines.push(line);
+    } else {
+      groups.set(category, { category, points: n, lines: [line] });
+    }
   }
+  const otherGroups = [...groups.values()].sort((a, b) => b.points - a.points);
 
   return {
     games: gamesTotal,
@@ -172,7 +253,7 @@ export function buildSelfScored(
     detail: {
       games,
       packing,
-      others,
+      otherGroups,
       confirmationOrder: draft.participation.confirmationOrder,
       arrivalOrder: draft.participation.arrivalOrder,
     },

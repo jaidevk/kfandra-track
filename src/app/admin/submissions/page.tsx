@@ -98,6 +98,8 @@ async function ByDate({ sessionId }: { sessionId: string }) {
     gamesPoints: r.gamesPoints,
     packingPoints: r.packingPoints,
     otherPoints: r.otherPoints,
+    repPoints: r.repPoints,
+    repReps: r.repReps,
     total: r.total,
     detail: r.detail,
   }));
@@ -111,7 +113,7 @@ async function ByDate({ sessionId }: { sessionId: string }) {
         </h2>
         <p className="text-[11px] text-gray-600">
           {submittedCount} of {rows.length} players submitted · tap a player to
-          see the games, packing &amp; other breakdown
+          see the games, packing, other &amp; reps breakdown
         </p>
       </div>
       <PointsTable firstColHeader="Player" rows={tableRows} />
@@ -134,6 +136,8 @@ async function ByPlayer({ playerId }: { playerId: string }) {
     gamesPoints: e.gamesPoints,
     packingPoints: e.packingPoints,
     otherPoints: e.otherPoints,
+    repPoints: e.repPoints,
+    repReps: e.repReps,
     total: e.total,
     detail: e.detail,
   }));
@@ -144,6 +148,8 @@ async function ByPlayer({ playerId }: { playerId: string }) {
       gamesPoints: a.gamesPoints + e.gamesPoints,
       packingPoints: a.packingPoints + e.packingPoints,
       otherPoints: a.otherPoints + e.otherPoints,
+      repPoints: a.repPoints + e.repPoints,
+      repReps: a.repReps + e.repReps,
       total: a.total + e.total,
     }),
     {
@@ -152,6 +158,8 @@ async function ByPlayer({ playerId }: { playerId: string }) {
       gamesPoints: 0,
       packingPoints: 0,
       otherPoints: 0,
+      repPoints: 0,
+      repReps: 0,
       total: 0,
     },
   );

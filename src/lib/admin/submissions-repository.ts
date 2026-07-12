@@ -9,10 +9,67 @@ import {
   buildSelfScored,
   type PlayerRef,
   type OrderPts,
+  type RepScore,
   type SelfScored,
   type SessionRow,
   type SessionRowDetail,
 } from "./submissions-rows";
+
+/**
+ * Gym-exercise rep points allocated to a session. Every rep is assigned to the
+ * closest *previous* session: a session claims all gym reps logged from its own
+ * date up to (but not including) the next session's date. Reps in S&C tests are
+ * excluded — only entry_type='exercise' sets count. Returns {} when the rate is
+ * 0 (feature disabled). Pass playerId to scope to one player.
+ */
+async function sessionRepScores(
+  sessionId: string,
+  pointsPerRep: number,
+  playerId?: string,
+): Promise<Record<string, RepScore>> {
+  if (pointsPerRep <= 0) return {};
+  const admin = createAdminClient();
+  const { data: sess } = await admin
+    .from("sessions")
+    .select("session_date")
+    .eq("id", sessionId)
+    .maybeSingle();
+  if (!sess) return {};
+  const start = sess.session_date;
+  const { data: nextRows } = await admin
+    .from("sessions")
+    .select("session_date")
+    .gt("session_date", start)
+    .order("session_date", { ascending: true })
+    .limit(1);
+  const end = nextRows?.[0]?.session_date ?? "9999-12-31";
+
+  let q = admin
+    .from("gym_logs")
+    .select("player_id, gym_log_exercises(sets, entry_type)")
+    .gte("log_date", start)
+    .lt("log_date", end);
+  if (playerId) q = q.eq("player_id", playerId);
+  const { data: logs } = await q;
+
+  const out: Record<string, RepScore> = {};
+  for (const l of logs ?? []) {
+    const exs = (l.gym_log_exercises ?? []) as Array<{
+      sets: unknown;
+      entry_type: string;
+    }>;
+    let reps = 0;
+    for (const e of exs) {
+      if (e.entry_type !== "exercise") continue;
+      const sets = Array.isArray(e.sets) ? (e.sets as Array<{ reps?: number }>) : [];
+      for (const s of sets) reps += typeof s.reps === "number" ? s.reps : 0;
+    }
+    const prev = out[l.player_id]?.reps ?? 0;
+    const total = prev + reps;
+    out[l.player_id] = { reps: total, points: total * pointsPerRep };
+  }
+  return out;
+}
 
 export type { PlayerRef, SessionRow, OrderPts, SessionRowDetail } from "./submissions-rows";
 
@@ -79,7 +136,9 @@ export async function getSessionSubmissions(sessionId: string): Promise<SessionR
       }),
   );
 
-  const rows = toSessionRows(players, orderPts, submittedIds, selfById);
+  const repById = await sessionRepScores(sessionId, loaded.config.pointsPerRep);
+
+  const rows = toSessionRows(players, orderPts, submittedIds, selfById, repById);
   // Submitted first, then by total descending.
   return rows.sort(
     (a, b) => Number(b.submitted) - Number(a.submitted) || b.total - a.total,
@@ -94,6 +153,8 @@ export type PlayerSessionEntry = {
   gamesPoints: number;
   packingPoints: number;
   otherPoints: number;
+  repPoints: number;
+  repReps: number;
   total: number;
   detail: SessionRowDetail | null;
   narration: string | null;
@@ -133,14 +194,16 @@ export async function getPlayerSubmissions(playerId: string): Promise<PlayerSubm
   const mmg: PlayerSessionEntry[] = await Promise.all(
     (entriesRes.data ?? []).map(async (e) => {
       const session = e.sessions as { session_date: string } | null;
-      const [draft, order] = await Promise.all([
+      const [draft, order, rep] = await Promise.all([
         loadMmgEntry(playerId, e.session_id, { gameTypeKeyById }),
         computeSessionOrderPoints(e.session_id),
+        sessionRepScores(e.session_id, loaded.config.pointsPerRep, playerId),
       ]);
       const self = buildSelfScored(loaded.config, draft, gameName);
       const mine = order.find((o) => o.playerId === playerId);
       const confirmationPoints = mine?.confirmationPoints ?? 0;
       const arrivalPoints = mine?.arrivalPoints ?? 0;
+      const myRep = rep[playerId] ?? { reps: 0, points: 0 };
       return {
         sessionId: e.session_id,
         date: session?.session_date ?? "",
@@ -149,12 +212,15 @@ export async function getPlayerSubmissions(playerId: string): Promise<PlayerSubm
         gamesPoints: self.games,
         packingPoints: self.packing,
         otherPoints: self.other,
+        repPoints: myRep.points,
+        repReps: myRep.reps,
         total:
           confirmationPoints +
           arrivalPoints +
           self.games +
           self.packing +
-          self.other,
+          self.other +
+          myRep.points,
         detail: self.detail,
         narration: e.narration,
       };

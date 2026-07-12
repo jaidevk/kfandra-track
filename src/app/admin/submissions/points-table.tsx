@@ -16,6 +16,8 @@ export type PointsRow = {
   gamesPoints: number;
   packingPoints: number;
   otherPoints: number;
+  repPoints: number;
+  repReps: number;
   total: number;
   detail: SessionRowDetail | null;
 };
@@ -52,12 +54,13 @@ export function PointsTable({
             <th className="px-2 py-2 text-right font-semibold">Games</th>
             <th className="px-2 py-2 text-right font-semibold">Packing</th>
             <th className="px-2 py-2 text-right font-semibold">Other</th>
+            <th className="px-2 py-2 text-right font-semibold">Reps</th>
             <th className="px-3 py-2 text-right font-semibold">Total</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
           {rows.map((r) => {
-            const expandable = !!r.detail;
+            const expandable = !!r.detail || r.repReps > 0;
             const isOpen = open === r.key;
             return (
               <RowGroup
@@ -77,6 +80,7 @@ export function PointsTable({
               <td className="px-2 py-2 text-right tabular-nums">{n(footer.gamesPoints)}</td>
               <td className="px-2 py-2 text-right tabular-nums">{n(footer.packingPoints)}</td>
               <td className="px-2 py-2 text-right tabular-nums">{n(footer.otherPoints)}</td>
+              <td className="px-2 py-2 text-right tabular-nums">{n(footer.repPoints)}</td>
               <td className="px-3 py-2 text-right tabular-nums">{n(footer.total)}</td>
             </tr>
           )}
@@ -123,14 +127,15 @@ function RowGroup({
         <td className="px-2 py-2 text-right tabular-nums">{cell(row.gamesPoints)}</td>
         <td className="px-2 py-2 text-right tabular-nums">{cell(row.packingPoints)}</td>
         <td className="px-2 py-2 text-right tabular-nums">{cell(row.otherPoints)}</td>
+        <td className="px-2 py-2 text-right tabular-nums">{cell(row.repPoints)}</td>
         <td className="px-3 py-2 text-right font-bold tabular-nums text-gray-900">
           {cell(row.total)}
         </td>
       </tr>
-      {expandable && isOpen && row.detail && (
+      {expandable && isOpen && (
         <tr className="bg-slate-50/70">
-          <td colSpan={7} className="px-4 pb-3 pt-1">
-            <Detail detail={row.detail} />
+          <td colSpan={8} className="px-4 pb-3 pt-1">
+            <Detail detail={row.detail} repReps={row.repReps} repPoints={row.repPoints} />
           </td>
         </tr>
       )}
@@ -143,11 +148,33 @@ function cell(v: number) {
   return v === 0 ? <span className="text-gray-300">—</span> : n(v);
 }
 
-function Detail({ detail }: { detail: SessionRowDetail }) {
-  const { games, packing, others, confirmationOrder, arrivalOrder } = detail;
+function Detail({
+  detail,
+  repReps,
+  repPoints,
+}: {
+  detail: SessionRowDetail | null;
+  repReps: number;
+  repPoints: number;
+}) {
+  const games = detail?.games ?? [];
+  const packing = detail?.packing ?? [];
+  const otherGroups = detail?.otherGroups ?? [];
+  const confirmationOrder = detail?.confirmationOrder ?? null;
+  const arrivalOrder = detail?.arrivalOrder ?? null;
   const hasOrder = confirmationOrder != null || arrivalOrder != null;
   return (
     <div className="grid gap-3 sm:grid-cols-2">
+      {repReps > 0 && (
+        <Section title="Reps (gym)">
+          <p className="text-gray-700">
+            {n(repReps)} reps <span className="text-gray-400">= {n(repPoints)}</span>
+          </p>
+          <p className="text-[11px] text-gray-500">
+            Exercise reps in this session&rsquo;s window (closest previous session).
+          </p>
+        </Section>
+      )}
       {games.length > 0 && (
         <Section title={`Games · ${games.length}`}>
           {games.map((g, i) => (
@@ -177,12 +204,19 @@ function Detail({ detail }: { detail: SessionRowDetail }) {
           ))}
         </Section>
       )}
-      {others.length > 0 && (
-        <Section title="Other">
-          {others.map((o, i) => (
-            <p key={i} className="text-gray-700">
-              {o.label} <span className="text-gray-400">= {n(o.points)}</span>
-            </p>
+      {otherGroups.length > 0 && (
+        <Section title="Other · by type">
+          {otherGroups.map((g) => (
+            <div key={g.category} className="mb-1.5 last:mb-0">
+              <p className="font-medium text-gray-800">
+                {g.category} <span className="text-gray-500">· {n(g.points)}</span>
+              </p>
+              {g.lines.map((o, i) => (
+                <p key={i} className="pl-3 text-gray-600">
+                  {o.label} <span className="text-gray-400">= {n(o.points)}</span>
+                </p>
+              ))}
+            </div>
           ))}
         </Section>
       )}

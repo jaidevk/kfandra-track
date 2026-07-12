@@ -1,16 +1,17 @@
 import Link from "next/link";
 
 /**
- * Top-of-page breadcrumb: "‹ KFANDRA › <label>", where KFANDRA links home.
+ * Breadcrumb: "‹ KFANDRA › <label>", where KFANDRA links home.
  *
  * Exists primarily so iPhone standalone-PWA users — who have no browser back
  * button or address bar — can always get back to the home screen. Rendered
- * above each mode's entry form (gym / diet / mmg). Server-compatible (just
- * Link + text), so it needs no "use client".
+ * inside each mode's entry form, left-aligned in the gap between the header
+ * card and the main section. No positioning of its own — the parent's
+ * container controls width/padding so it lines up flush-left with the cards.
  */
 export function Breadcrumb({ label }: { label: string }) {
   return (
-    <nav aria-label="Breadcrumb" className="mx-auto max-w-md px-5 pt-4">
+    <nav aria-label="Breadcrumb">
       <ol className="flex items-center gap-1.5 text-[12px]">
         <li>
           <Link

@@ -26,6 +26,7 @@ import type { GameTypeOption } from "@/lib/mmg/config";
 import type { SessionRow } from "@/lib/mmg/sessions";
 import type { SessionOrderResult } from "@/lib/mmg/order";
 import { AnalyticsEvent, capture } from "@/lib/observability/analytics";
+import { Breadcrumb } from "@/components/breadcrumb";
 
 type SyncStatus = "idle" | "saving" | "saved" | "error";
 
@@ -251,6 +252,8 @@ export default function MmgEntry({
           <Stat label="Other" value={breakdown.others} />
         </div>
       </div>
+
+      <Breadcrumb label="MMG" />
 
       {/* ── 1. Participation ───────────────────────────────────────── */}
       <SectionHeading index={1} title="Participation" subtitle="Once per session" />

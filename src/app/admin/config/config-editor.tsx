@@ -9,9 +9,10 @@ const SCOPE_TITLES: Record<string, string> = {
   stat: "Highlights",
   participation: "Participation bonuses",
   order: "Order of arrival",
+  fitness: "Fitness (gym reps)",
   other: "Other",
 };
-const SCOPE_ORDER = ["result", "stat", "participation", "order", "other"];
+const SCOPE_ORDER = ["result", "stat", "participation", "order", "fitness", "other"];
 
 export default function ConfigEditor({
   rules,

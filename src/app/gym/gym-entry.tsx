@@ -6,6 +6,7 @@ import { saveDraft as saveLocalDraft } from "@/lib/drafts/storage";
 import {
   emptyDraft,
   newExercise,
+  newTestEntry,
   weightStep,
   SANDC_TESTS_BODY_PART,
   type ExerciseRow,
@@ -46,6 +47,7 @@ import {
 import { loadGymLogAction, saveGymLogAction } from "@/lib/gym/actions";
 import { dateLabel, todayKey } from "@/lib/gym/dates";
 import type { GymCatalog, TestOption } from "@/lib/gym/config";
+import { Breadcrumb } from "@/components/breadcrumb";
 import { AnalyticsEvent, capture } from "@/lib/observability/analytics";
 
 type SyncStatus = "idle" | "saving" | "saved" | "error";
@@ -221,6 +223,8 @@ export default function GymEntry({
         </div>
       </div>
 
+      <Breadcrumb label="Strength & Conditioning" />
+
       {/* ── Body weight ────────────────────────────────────────────── */}
       <BodyWeightCard
         weight={draft.bodyWeight}
@@ -291,15 +295,23 @@ export default function GymEntry({
         </div>
       )}
 
-      <button
-        onClick={() => setEditing(newExercise(`r-${Date.now()}`, defaults))}
-        className="rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50/40 py-4 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
-      >
-        + Add exercise
-      </button>
+      <div className="grid grid-cols-2 gap-2.5">
+        <button
+          onClick={() => setEditing(newExercise(`r-${Date.now()}`, defaults))}
+          className="rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50/40 py-4 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
+        >
+          + Add exercise
+        </button>
+        <button
+          onClick={() => setEditing(newTestEntry(`r-${Date.now()}`))}
+          className="rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/40 py-4 text-sm font-semibold text-amber-700 hover:bg-amber-50"
+        >
+          + Add test
+        </button>
+      </div>
       {draft.rows.length === 0 && (
         <p className="-mt-2 text-center text-xs text-gray-600">
-          Tap to log your first exercise
+          Log an exercise, or run an S&amp;C test
         </p>
       )}
 

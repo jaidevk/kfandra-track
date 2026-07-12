@@ -43,7 +43,10 @@ const row = (playerId: string, displayName: string, total: number): SessionRow =
   arrivalPoints: 0,
   confirmationPoints: 0,
   gamesPoints: 0,
+  packingPoints: 0,
+  otherPoints: 0,
   total,
+  detail: null,
 });
 
 function fakeClient(): SheetsClient & {

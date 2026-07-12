@@ -7,9 +7,11 @@ import {
   emptyDraft,
   newExercise,
   weightStep,
+  SANDC_TESTS_BODY_PART,
   type ExerciseRow,
   type ExerciseSet,
   type GymDraft,
+  type TestAttempt,
   type WeightUnit,
 } from "@/lib/gym/types";
 import {
@@ -23,10 +25,27 @@ import {
   MIN_SETS,
   MAX_SETS,
 } from "@/lib/gym/sets";
-import { exerciseCount, totalSets, buildSchemeSummary } from "@/lib/gym/summary";
+import {
+  newAttempt,
+  addAttempt,
+  removeAttempt,
+  stepMins,
+  stepSeconds,
+  stepAttemptReps,
+  attemptRepsDelta,
+  attemptTimeDelta,
+  MIN_ATTEMPTS,
+  MAX_ATTEMPTS,
+} from "@/lib/gym/attempts";
+import {
+  exerciseCount,
+  testCount,
+  totalSets,
+  buildSchemeSummary,
+} from "@/lib/gym/summary";
 import { loadGymLogAction, saveGymLogAction } from "@/lib/gym/actions";
 import { dateLabel, todayKey } from "@/lib/gym/dates";
-import type { GymCatalog } from "@/lib/gym/config";
+import type { GymCatalog, TestOption } from "@/lib/gym/config";
 import { AnalyticsEvent, capture } from "@/lib/observability/analytics";
 
 type SyncStatus = "idle" | "saving" | "saved" | "error";
@@ -54,6 +73,12 @@ export default function GymEntry({
     return m;
   }, [catalog.bodyParts]);
 
+  const iconByTest = useMemo(() => {
+    const m = new Map<string, string | null>();
+    for (const t of catalog.tests) m.set(t.value, t.icon);
+    return m;
+  }, [catalog.tests]);
+
   const defaults = useMemo(
     () => ({ bodyPart: catalog.bodyParts[0]?.value ?? "Shoulders" }),
     [catalog.bodyParts],
@@ -61,6 +86,7 @@ export default function GymEntry({
 
   const count = exerciseCount(draft);
   const sets = totalSets(draft);
+  const tests = testCount(draft);
 
   // ── Autosave: local immediately + server on a debounce ───────────────────
   const serverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -145,7 +171,7 @@ export default function GymEntry({
           <div>
             <div className="flex items-center gap-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-200/80">
-                Gym log · {playerName}
+                S&C log · {playerName}
               </p>
               <SyncBadge status={status} switching={switching} />
             </div>
@@ -174,6 +200,14 @@ export default function GymEntry({
                 </p>
                 <p className="text-[11px] text-emerald-200/60">sets</p>
               </div>
+              {tests > 0 && (
+                <div className="border-l border-white/20 pl-4">
+                  <p className="font-[family-name:var(--font-display)] text-3xl font-black tabular-nums tracking-tight text-amber-200">
+                    {tests}
+                  </p>
+                  <p className="text-[11px] text-amber-200/70">tests</p>
+                </div>
+              )}
             </div>
           </div>
           {count > 0 && (
@@ -208,16 +242,34 @@ export default function GymEntry({
                   className="min-w-0 flex-1 text-left"
                 >
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-lg">{iconByBodyPart.get(r.bodyPart) ?? "🏋️"}</span>
-                    <p className="text-sm font-bold text-gray-900">{r.bodyPart}</p>
-                    {r.equipment && r.equipment !== "None" && (
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-600">
-                        · {r.equipment}
-                      </span>
+                    {r.entryType === "test" ? (
+                      <>
+                        <span className="text-lg">
+                          {iconByTest.get(r.testName ?? "") ?? "🎯"}
+                        </span>
+                        <p className="text-sm font-bold text-gray-900">
+                          {r.testName ?? "Test"}
+                        </p>
+                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-700">
+                          S&C test
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-lg">
+                          {iconByBodyPart.get(r.bodyPart) ?? "🏋️"}
+                        </span>
+                        <p className="text-sm font-bold text-gray-900">{r.bodyPart}</p>
+                        {r.equipment && r.equipment !== "None" && (
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-600">
+                            · {r.equipment}
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
                   {(() => {
-                    const summary = r.sets.length > 0 ? buildSchemeSummary(r) : r.scheme;
+                    const summary = buildSchemeSummary(r) || r.scheme;
                     return summary ? (
                       <p className="mt-1 text-sm text-gray-700">{summary}</p>
                     ) : null;
@@ -269,7 +321,7 @@ export default function GymEntry({
       )}
 
       <p className="text-center text-[11px] italic text-gray-600">
-        Gym tracking is not scored — KFANDRA reviews it separately.
+        S&C tracking is not scored — KFANDRA reviews it separately.
       </p>
 
       {/* ── Exercise editor sheet ──────────────────────────────────── */}
@@ -450,6 +502,140 @@ function SetRow({
   );
 }
 
+function TestChip({
+  test,
+  active,
+  onClick,
+}: {
+  test: TestOption;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-xl border p-2.5 text-left transition-all ${
+        active
+          ? "border-emerald-500 bg-emerald-50"
+          : "border-gray-200 bg-white hover:border-emerald-200"
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        <span className="shrink-0 text-base">{test.icon ?? "🎯"}</span>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-gray-900">{test.value}</p>
+          {test.fullName && (
+            <p className="truncate text-[11px] text-gray-500">{test.fullName}</p>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+/** Signed time delta as "+7s" / "−7s". */
+function fmtSecDelta(d: number): string {
+  return d > 0 ? `+${d}s` : `−${Math.abs(d)}s`;
+}
+
+function AttemptRow({
+  index,
+  attempt,
+  metric,
+  repsD,
+  timeD,
+  onStepMins,
+  onStepSeconds,
+  onStepReps,
+}: {
+  index: number;
+  attempt: TestAttempt;
+  metric: "time" | "reps";
+  repsD: number | null;
+  timeD: number | null;
+  onStepMins: (dir: 1 | -1) => void;
+  onStepSeconds: (dir: 1 | -1) => void;
+  onStepReps: (dir: 1 | -1) => void;
+}) {
+  const stepBtn =
+    "h-8 w-8 shrink-0 rounded-lg border border-gray-200 text-base font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-30";
+  const delta = metric === "time" ? timeD : repsD;
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-2.5">
+      <div className="mb-2 flex items-center gap-2">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-gray-600">
+          Attempt {index + 1}
+        </p>
+        {delta !== null && delta !== 0 && (
+          <span
+            className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+              // Faster time (negative) and more reps (positive) are both "good".
+              (metric === "time" ? delta < 0 : delta > 0)
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-rose-50 text-rose-700"
+            }`}
+          >
+            {metric === "time" ? fmtSecDelta(delta) : fmtDelta(delta)}
+          </span>
+        )}
+      </div>
+      {metric === "time" ? (
+        <>
+          <div className="flex items-center gap-2">
+            <span className="w-12 text-[11px] text-gray-600">Mins</span>
+            <button
+              onClick={() => onStepMins(-1)}
+              disabled={attempt.mins <= 0}
+              className={stepBtn}
+            >
+              −
+            </button>
+            <span className="flex-1 text-center text-lg font-bold tabular-nums text-gray-900">
+              {attempt.mins}
+            </span>
+            <button onClick={() => onStepMins(1)} className={stepBtn}>
+              +
+            </button>
+          </div>
+          <div className="mt-1.5 flex items-center gap-2">
+            <span className="w-12 text-[11px] text-gray-600">Secs</span>
+            <button
+              onClick={() => onStepSeconds(-1)}
+              disabled={attempt.seconds <= 0}
+              className={stepBtn}
+            >
+              −
+            </button>
+            <span className="flex-1 text-center text-lg font-bold tabular-nums text-gray-900">
+              {String(attempt.seconds).padStart(2, "0")}
+            </span>
+            <button onClick={() => onStepSeconds(1)} className={stepBtn}>
+              +
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="flex items-center gap-2">
+          <span className="w-12 text-[11px] text-gray-600">Reps</span>
+          <button
+            onClick={() => onStepReps(-1)}
+            disabled={attempt.reps <= 0}
+            className={stepBtn}
+          >
+            −
+          </button>
+          <span className="flex-1 text-center text-lg font-bold tabular-nums text-gray-900">
+            {attempt.reps}
+          </span>
+          <button onClick={() => onStepReps(1)} className={stepBtn}>
+            +
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ExerciseSheet({
   initial,
   catalog,
@@ -465,15 +651,70 @@ function ExerciseSheet({
 }) {
   // Guarantee at least one set so the editor is always usable — legacy rows
   // saved before per-set logging load with sets:[] and would otherwise leave
-  // Save disabled with nothing to edit.
+  // Save disabled with nothing to edit. Tests keep sets:[] (they use attempts).
   const [r, setR] = useState<ExerciseRow>(() =>
-    initial.sets.length > 0 ? initial : { ...initial, sets: [newSet()] },
+    initial.entryType === "test" || initial.sets.length > 0
+      ? initial
+      : { ...initial, sets: [newSet()] },
   );
+
+  const isTest = r.entryType === "test";
+  const timedTests = catalog.tests.filter((t) => t.metric === "time");
+  const repTests = catalog.tests.filter((t) => t.metric === "reps");
 
   const supportsWeight = useMemo(() => {
     const eq = catalog.equipment.find((e) => e.value === r.equipment);
     return eq ? eq.supportsWeight : false;
   }, [catalog.equipment, r.equipment]);
+
+  // Selecting the "S and C Tests" body part flips the row into test mode (and
+  // any other body part flips it back), preserving what still makes sense.
+  function selectBodyPart(value: string) {
+    setR((x) => {
+      if (value === SANDC_TESTS_BODY_PART) {
+        if (x.entryType === "test") return { ...x, bodyPart: value };
+        return {
+          ...x,
+          entryType: "test",
+          bodyPart: value,
+          equipment: null,
+          sets: [],
+          testName: null,
+          testMetric: null,
+          attempts: [],
+        };
+      }
+      if (x.entryType === "test") {
+        return {
+          ...x,
+          entryType: "exercise",
+          bodyPart: value,
+          equipment: x.equipment ?? "None",
+          sets: x.sets.length ? x.sets : [newSet()],
+          testName: null,
+          testMetric: null,
+          attempts: [],
+        };
+      }
+      return { ...x, bodyPart: value };
+    });
+  }
+
+  function pickTest(test: TestOption) {
+    setR((x) => {
+      const metricChanged = x.testMetric !== test.metric;
+      return {
+        ...x,
+        testName: test.value,
+        testMetric: test.metric,
+        // Keep attempts across same-metric test swaps; reset on time↔reps.
+        attempts:
+          x.attempts.length && !metricChanged
+            ? x.attempts
+            : [newAttempt(test.metric)],
+      };
+    });
+  }
 
   function setEquipment(eq: string) {
     const meta = catalog.equipment.find((e) => e.value === eq);
@@ -493,7 +734,20 @@ function ExerciseSheet({
   const onStepWeight = (i: number, dir: 1 | -1) =>
     setR((x) => ({ ...x, sets: stepSetWeight(x.sets, i, dir, x.weightUnit) }));
 
+  const onAddAttempt = () => setR((x) => ({ ...x, attempts: addAttempt(x.attempts) }));
+  const onRemoveAttempt = () =>
+    setR((x) => ({ ...x, attempts: removeAttempt(x.attempts) }));
+  const onStepMins = (i: number, dir: 1 | -1) =>
+    setR((x) => ({ ...x, attempts: stepMins(x.attempts, i, dir) }));
+  const onStepSeconds = (i: number, dir: 1 | -1) =>
+    setR((x) => ({ ...x, attempts: stepSeconds(x.attempts, i, dir) }));
+  const onStepAttemptReps = (i: number, dir: 1 | -1) =>
+    setR((x) => ({ ...x, attempts: stepAttemptReps(x.attempts, i, dir) }));
+
   const livePreview = buildSchemeSummary(r);
+  const canSave = isTest
+    ? !!r.testName && r.attempts.length > 0
+    : !!r.bodyPart && r.sets.length > 0;
 
   return (
     <motion.div
@@ -510,10 +764,12 @@ function ExerciseSheet({
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-gray-200" />
         <h3 className="mb-1 text-base font-bold text-gray-900">
-          {onDelete ? "Edit exercise" : "Add exercise"}
+          {onDelete ? "Edit" : "Add"} {isTest ? "test" : "exercise"}
         </h3>
         <p className="mb-4 text-[11px] text-gray-600">
-          From the GWW/GWtW movement & equipment catalog.
+          {isTest
+            ? "S&C test — record the time taken or reps for each attempt."
+            : "From the GWW/GWtW movement & equipment catalog."}
         </p>
 
         {/* Body part */}
@@ -526,7 +782,7 @@ function ExerciseSheet({
             return (
               <button
                 key={b.value}
-                onClick={() => setR((x) => ({ ...x, bodyPart: b.value }))}
+                onClick={() => selectBodyPart(b.value)}
                 className={`flex items-center gap-2 rounded-xl border p-2.5 text-left transition-all ${
                   active
                     ? "border-emerald-500 bg-emerald-50"
@@ -540,84 +796,181 @@ function ExerciseSheet({
           })}
         </div>
 
-        {/* Equipment */}
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-600">
-          2. Equipment
-        </p>
-        <div className="mb-4 grid grid-cols-3 gap-2">
-          {catalog.equipment.map((eq) => {
-            const active = r.equipment === eq.value;
-            return (
-              <button
-                key={eq.value}
-                onClick={() => setEquipment(eq.value)}
-                className={`rounded-xl border py-2 text-center text-xs font-semibold transition-all ${
-                  active
-                    ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-emerald-200"
-                }`}
-              >
-                {eq.value}
-              </button>
-            );
-          })}
-        </div>
+        {/* Section 2: Test picker (test mode) or Equipment (exercise mode) */}
+        {isTest ? (
+          <>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-600">
+              2. Test
+            </p>
+            {timedTests.length > 0 && (
+              <>
+                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                  ⏱ Timed tests
+                </p>
+                <div className="mb-3 grid grid-cols-2 gap-2">
+                  {timedTests.map((t) => (
+                    <TestChip
+                      key={t.value}
+                      test={t}
+                      active={r.testName === t.value}
+                      onClick={() => pickTest(t)}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+            {repTests.length > 0 && (
+              <>
+                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                  🔁 1-minute tests · reps in 60s
+                </p>
+                <div className="mb-4 grid grid-cols-2 gap-2">
+                  {repTests.map((t) => (
+                    <TestChip
+                      key={t.value}
+                      test={t}
+                      active={r.testName === t.value}
+                      onClick={() => pickTest(t)}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-600">
+              2. Equipment
+            </p>
+            <div className="mb-4 grid grid-cols-3 gap-2">
+              {catalog.equipment.map((eq) => {
+                const active = r.equipment === eq.value;
+                return (
+                  <button
+                    key={eq.value}
+                    onClick={() => setEquipment(eq.value)}
+                    className={`rounded-xl border py-2 text-center text-xs font-semibold transition-all ${
+                      active
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-emerald-200"
+                    }`}
+                  >
+                    {eq.value}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
 
-        {/* Sets */}
-        <div className="mb-2 flex items-baseline justify-between">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-gray-600">
-            3. Sets {supportsWeight && `(${weightStep(r.weightUnit)} ${r.weightUnit} weight steps)`}
-          </p>
-          {supportsWeight && (
-            <div className="flex shrink-0 rounded-lg bg-gray-100 p-0.5">
-              {(["kg", "lb"] as WeightUnit[]).map((u) => (
+        {/* Section 3: attempts (test) or sets (exercise) */}
+        {isTest ? (
+          r.testName ? (
+            <>
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-600">
+                3. {r.testMetric === "time" ? "Time taken" : "Reps"}
+              </p>
+              <p className="mb-2 text-[11px] text-gray-600">
+                Add an entry per attempt — did it twice? Log both.
+              </p>
+              <div className="mb-3 flex flex-col gap-2">
+                {r.attempts.map((a, i) => (
+                  <AttemptRow
+                    key={i}
+                    index={i}
+                    attempt={a}
+                    metric={r.testMetric ?? "reps"}
+                    repsD={attemptRepsDelta(r.attempts, i)}
+                    timeD={attemptTimeDelta(r.attempts, i)}
+                    onStepMins={(dir) => onStepMins(i, dir)}
+                    onStepSeconds={(dir) => onStepSeconds(i, dir)}
+                    onStepReps={(dir) => onStepAttemptReps(i, dir)}
+                  />
+                ))}
+              </div>
+              <div className="mb-3 flex gap-2">
                 <button
-                  key={u}
-                  onClick={() => setR((x) => ({ ...x, weightUnit: u }))}
-                  className={`rounded-md px-2.5 py-1 text-[10px] font-semibold transition-colors ${
-                    r.weightUnit === u ? "bg-emerald-500 text-white" : "text-gray-600"
-                  }`}
+                  onClick={onAddAttempt}
+                  disabled={r.attempts.length >= MAX_ATTEMPTS}
+                  className="flex-1 rounded-xl border border-emerald-300 bg-emerald-50/40 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-40"
                 >
-                  {u}
+                  + Add attempt
                 </button>
+                <button
+                  onClick={onRemoveAttempt}
+                  disabled={r.attempts.length <= MIN_ATTEMPTS}
+                  className="flex-1 rounded-xl border border-gray-200 bg-white py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+                >
+                  − Remove attempt
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="mb-3 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-3 py-4 text-center text-xs text-gray-500">
+              Pick a test above to record time or reps.
+            </p>
+          )
+        ) : (
+          <>
+            {/* Sets */}
+            <div className="mb-2 flex items-baseline justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-gray-600">
+                3. Sets{" "}
+                {supportsWeight &&
+                  `(${weightStep(r.weightUnit)} ${r.weightUnit} weight steps)`}
+              </p>
+              {supportsWeight && (
+                <div className="flex shrink-0 rounded-lg bg-gray-100 p-0.5">
+                  {(["kg", "lb"] as WeightUnit[]).map((u) => (
+                    <button
+                      key={u}
+                      onClick={() => setR((x) => ({ ...x, weightUnit: u }))}
+                      className={`rounded-md px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                        r.weightUnit === u ? "bg-emerald-500 text-white" : "text-gray-600"
+                      }`}
+                    >
+                      {u}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <p className="mb-2 text-[11px] text-gray-600">
+              Each set starts from the one above — just tap what changed.
+            </p>
+            <div className="mb-3 flex flex-col gap-2">
+              {r.sets.map((s, i) => (
+                <SetRow
+                  key={i}
+                  index={i}
+                  set={s}
+                  unit={r.weightUnit}
+                  supportsWeight={supportsWeight}
+                  repsD={repsDelta(r.sets, i)}
+                  weightD={weightDelta(r.sets, i)}
+                  onStepReps={(dir) => onStepReps(i, dir)}
+                  onStepWeight={(dir) => onStepWeight(i, dir)}
+                />
               ))}
             </div>
-          )}
-        </div>
-        <p className="mb-2 text-[11px] text-gray-600">
-          Each set starts from the one above — just tap what changed.
-        </p>
-        <div className="mb-3 flex flex-col gap-2">
-          {r.sets.map((s, i) => (
-            <SetRow
-              key={i}
-              index={i}
-              set={s}
-              unit={r.weightUnit}
-              supportsWeight={supportsWeight}
-              repsD={repsDelta(r.sets, i)}
-              weightD={weightDelta(r.sets, i)}
-              onStepReps={(dir) => onStepReps(i, dir)}
-              onStepWeight={(dir) => onStepWeight(i, dir)}
-            />
-          ))}
-        </div>
-        <div className="mb-3 flex gap-2">
-          <button
-            onClick={onAddSet}
-            disabled={r.sets.length >= MAX_SETS}
-            className="flex-1 rounded-xl border border-emerald-300 bg-emerald-50/40 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-40"
-          >
-            + Add set
-          </button>
-          <button
-            onClick={onRemoveSet}
-            disabled={r.sets.length <= MIN_SETS}
-            className="flex-1 rounded-xl border border-gray-200 bg-white py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40"
-          >
-            − Remove set
-          </button>
-        </div>
+            <div className="mb-3 flex gap-2">
+              <button
+                onClick={onAddSet}
+                disabled={r.sets.length >= MAX_SETS}
+                className="flex-1 rounded-xl border border-emerald-300 bg-emerald-50/40 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-40"
+              >
+                + Add set
+              </button>
+              <button
+                onClick={onRemoveSet}
+                disabled={r.sets.length <= MIN_SETS}
+                className="flex-1 rounded-xl border border-gray-200 bg-white py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+              >
+                − Remove set
+              </button>
+            </div>
+          </>
+        )}
         {livePreview && (
           <div className="mb-4 rounded-xl bg-gray-50 px-3 py-2">
             <p className="text-[10px] font-bold uppercase tracking-wide text-gray-600">
@@ -657,7 +1010,7 @@ function ExerciseSheet({
           </button>
           <button
             onClick={() => onSave(r)}
-            disabled={!r.bodyPart || r.sets.length === 0}
+            disabled={!canSave}
             className="flex-1 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 active:scale-[0.98] disabled:opacity-40"
           >
             Save

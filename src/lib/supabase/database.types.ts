@@ -307,30 +307,36 @@ export type Database = {
       gym_catalog: {
         Row: {
           created_at: string
+          full_name: string | null
           icon: string | null
           id: string
           is_active: boolean
-          kind: "body_part" | "equipment" | "scheme"
+          kind: "body_part" | "equipment" | "scheme" | "test"
+          metric: string | null
           sort_order: number
           supports_weight: boolean
           value: string
         }
         Insert: {
           created_at?: string
+          full_name?: string | null
           icon?: string | null
           id?: string
           is_active?: boolean
-          kind: "body_part" | "equipment" | "scheme"
+          kind: "body_part" | "equipment" | "scheme" | "test"
+          metric?: string | null
           sort_order?: number
           supports_weight?: boolean
           value: string
         }
         Update: {
           created_at?: string
+          full_name?: string | null
           icon?: string | null
           id?: string
           is_active?: boolean
-          kind?: "body_part" | "equipment" | "scheme"
+          kind?: "body_part" | "equipment" | "scheme" | "test"
+          metric?: string | null
           sort_order?: number
           supports_weight?: boolean
           value?: string
@@ -341,6 +347,7 @@ export type Database = {
         Row: {
           body_part: string
           created_at: string
+          entry_type: string
           equipment: string | null
           gym_log_id: string
           id: string
@@ -348,12 +355,15 @@ export type Database = {
           scheme: string | null
           sets: Json
           sort_order: number
+          test_metric: string | null
+          test_name: string | null
           weight: number | null
           weight_unit: "kg" | "lb"
         }
         Insert: {
           body_part: string
           created_at?: string
+          entry_type?: string
           equipment?: string | null
           gym_log_id: string
           id?: string
@@ -361,12 +371,15 @@ export type Database = {
           scheme?: string | null
           sets?: Json
           sort_order?: number
+          test_metric?: string | null
+          test_name?: string | null
           weight?: number | null
           weight_unit?: "kg" | "lb"
         }
         Update: {
           body_part?: string
           created_at?: string
+          entry_type?: string
           equipment?: string | null
           gym_log_id?: string
           id?: string
@@ -374,6 +387,8 @@ export type Database = {
           scheme?: string | null
           sets?: Json
           sort_order?: number
+          test_metric?: string | null
+          test_name?: string | null
           weight?: number | null
           weight_unit?: "kg" | "lb"
         }

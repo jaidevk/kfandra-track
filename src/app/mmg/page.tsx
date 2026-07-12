@@ -9,6 +9,7 @@ import {
   type SessionRow,
 } from "@/lib/mmg/sessions";
 import type { GameTypeKey } from "@/lib/mmg/types";
+import { Breadcrumb } from "@/components/breadcrumb";
 import MmgEntry from "./mmg-entry";
 
 /**
@@ -43,13 +44,16 @@ export default async function MmgPage() {
     : [session, ...recent];
 
   return (
-    <MmgEntry
-      playerName={player.displayName}
-      initialSession={session}
-      initialDraft={draft}
-      config={config}
-      gameTypes={gameTypes}
-      sessions={sessions}
-    />
+    <>
+      <Breadcrumb label="MMG" />
+      <MmgEntry
+        playerName={player.displayName}
+        initialSession={session}
+        initialDraft={draft}
+        config={config}
+        gameTypes={gameTypes}
+        sessions={sessions}
+      />
+    </>
   );
 }

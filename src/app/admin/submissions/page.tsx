@@ -6,6 +6,7 @@ import {
   getPlayerSubmissions,
 } from "@/lib/admin/submissions-repository";
 import SyncButton from "./sync-button";
+import { PointsTable, type PointsRow } from "./points-table";
 
 export const dynamic = "force-dynamic";
 
@@ -87,6 +88,20 @@ async function ByDate({ sessionId }: { sessionId: string }) {
   const session = sessions.find((s) => s.id === sessionId);
   const submittedCount = rows.filter((r) => r.submitted).length;
 
+  const tableRows: PointsRow[] = rows.map((r) => ({
+    key: r.playerId,
+    label: r.displayName,
+    note: r.submitted ? undefined : "not submitted",
+    muted: !r.submitted,
+    confirmationPoints: r.confirmationPoints,
+    arrivalPoints: r.arrivalPoints,
+    gamesPoints: r.gamesPoints,
+    packingPoints: r.packingPoints,
+    otherPoints: r.otherPoints,
+    total: r.total,
+    detail: r.detail,
+  }));
+
   return (
     <div className="space-y-4">
       <BackLink />
@@ -95,50 +110,11 @@ async function ByDate({ sessionId }: { sessionId: string }) {
           {session ? fmtDate(session.date) : "Session"}
         </h2>
         <p className="text-[11px] text-gray-600">
-          {submittedCount} of {rows.length} players submitted · Total = arrival +
-          confirmation + games (games, stats, packing &amp; other points)
+          {submittedCount} of {rows.length} players submitted · tap a player to
+          see the games, packing &amp; other breakdown
         </p>
       </div>
-      <div className="overflow-hidden rounded-xl border border-gray-300 bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-blue-100 text-[11px] uppercase tracking-wide text-blue-900">
-            <tr>
-              <th className="px-3 py-2 text-left font-semibold">Player</th>
-              <th className="px-3 py-2 text-right font-semibold">Arrival</th>
-              <th className="px-3 py-2 text-right font-semibold">Confirm</th>
-              <th className="px-3 py-2 text-right font-semibold">Games</th>
-              <th className="px-3 py-2 text-right font-semibold">Total</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {rows.map((r) => (
-              <tr
-                key={r.playerId}
-                className={
-                  r.submitted
-                    ? "text-gray-800 odd:bg-white even:bg-slate-100"
-                    : "text-gray-600 odd:bg-white even:bg-slate-100"
-                }
-              >
-                <td className="px-3 py-2">
-                  {r.displayName}
-                  {!r.submitted && (
-                    <span className="ml-2 text-[10px] uppercase tracking-wide">
-                      not submitted
-                    </span>
-                  )}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums">{r.arrivalPoints}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{r.confirmationPoints}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{r.gamesPoints}</td>
-                <td className="px-3 py-2 text-right font-bold tabular-nums text-gray-900">
-                  {r.total}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <PointsTable firstColHeader="Player" rows={tableRows} />
     </div>
   );
 }
@@ -150,13 +126,43 @@ async function ByPlayer({ playerId }: { playerId: string }) {
   ]);
   const player = players.find((p) => p.id === playerId);
 
+  const tableRows: PointsRow[] = data.mmg.map((e) => ({
+    key: e.sessionId,
+    label: fmtDate(e.date),
+    confirmationPoints: e.confirmationPoints,
+    arrivalPoints: e.arrivalPoints,
+    gamesPoints: e.gamesPoints,
+    packingPoints: e.packingPoints,
+    otherPoints: e.otherPoints,
+    total: e.total,
+    detail: e.detail,
+  }));
+  const season = data.mmg.reduce(
+    (a, e) => ({
+      confirmationPoints: a.confirmationPoints + e.confirmationPoints,
+      arrivalPoints: a.arrivalPoints + e.arrivalPoints,
+      gamesPoints: a.gamesPoints + e.gamesPoints,
+      packingPoints: a.packingPoints + e.packingPoints,
+      otherPoints: a.otherPoints + e.otherPoints,
+      total: a.total + e.total,
+    }),
+    {
+      confirmationPoints: 0,
+      arrivalPoints: 0,
+      gamesPoints: 0,
+      packingPoints: 0,
+      otherPoints: 0,
+      total: 0,
+    },
+  );
+
   return (
     <div className="space-y-4">
       <BackLink />
       <div>
         <h2 className="text-lg font-bold text-gray-900">{player?.displayName ?? "Player"}</h2>
         <p className="text-[11px] text-gray-600">
-          {data.mmg.length} MMG sessions · {data.gymDays} gym days · {data.dietDays} diet days
+          {data.mmg.length} MMG sessions · {data.gymDays} S&amp;C days · {data.dietDays} diet days
         </p>
       </div>
 
@@ -164,30 +170,7 @@ async function ByPlayer({ playerId }: { playerId: string }) {
       {data.mmg.length === 0 ? (
         <p className="text-sm text-gray-600">No MMG submissions.</p>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-300 bg-white">
-          <table className="w-full text-sm">
-            <thead className="bg-blue-100 text-[11px] uppercase tracking-wide text-blue-900">
-              <tr>
-                <th className="px-3 py-2 text-left font-semibold">Date</th>
-                <th className="px-3 py-2 text-right font-semibold">Confirm #</th>
-                <th className="px-3 py-2 text-right font-semibold">Arrival #</th>
-                <th className="px-3 py-2 text-right font-semibold">Games</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {data.mmg.map((e) => (
-                <tr key={e.sessionId} className="text-gray-800 odd:bg-white even:bg-slate-100">
-                  <td className="px-3 py-2 font-medium text-gray-900">{fmtDate(e.date)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">
-                    {e.confirmationOrder ?? "—"}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{e.arrivalOrder ?? "—"}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{e.gameCount}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <PointsTable firstColHeader="Date" rows={tableRows} footer={season} />
       )}
     </div>
   );

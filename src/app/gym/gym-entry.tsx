@@ -333,7 +333,7 @@ export default function GymEntry({
       )}
 
       <p className="text-center text-[11px] italic text-gray-600">
-        S&C tracking is not scored — KFANDRA reviews it separately.
+        KFANDRA reviews your S&C log.
       </p>
 
       {/* ── Exercise editor sheet ──────────────────────────────────── */}

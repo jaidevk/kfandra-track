@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { toSessionRows, buildSelfScored, type SelfScored } from "./submissions-rows";
+import {
+  toSessionRows,
+  buildSelfScored,
+  classifyOther,
+  type SelfScored,
+} from "./submissions-rows";
 import type { ScoringConfig } from "@/lib/mmg/scoring";
 import type { MmgDraft } from "@/lib/mmg/types";
 
@@ -16,7 +21,7 @@ const self = (over: Partial<SelfScored> = {}): SelfScored => ({
   detail: {
     games: [],
     packing: [],
-    others: [],
+    otherGroups: [],
     confirmationOrder: null,
     arrivalOrder: null,
   },
@@ -128,15 +133,49 @@ describe("buildSelfScored", () => {
     ]);
   });
 
-  it("keeps only non-zero, numeric other rows", () => {
+  it("keeps only non-zero other rows and groups them by type", () => {
     expect(result.other).toBe(2000);
-    expect(result.detail.others).toEqual([
-      { label: "Rugby Win as Manager", points: 2000 },
+    expect(result.detail.otherGroups).toEqual([
+      {
+        category: "Other",
+        points: 2000,
+        lines: [{ label: "Rugby Win as Manager", points: 2000 }],
+      },
     ]);
   });
 
   it("carries the order ranks into the detail", () => {
     expect(result.detail.confirmationOrder).toBe(1);
     expect(result.detail.arrivalOrder).toBe(2);
+  });
+});
+
+describe("classifyOther", () => {
+  it("tags free-form descriptions into coarse buckets by keyword", () => {
+    expect(classifyOther("GWtW PUs, Squats, Calves, Abs 1 mins")).toBe("Fitness");
+    expect(classifyOther("Passing drill 5 wins 1 tie")).toBe("Drill");
+    expect(classifyOther("Rugby win margin of 12")).toBe("Bonus");
+    expect(classifyOther("MMG tyre game")).toBe("Game");
+    expect(classifyOther("Skill (Shibobo 2 + Backheel 1)")).toBe("Skill");
+    expect(classifyOther("Celebration")).toBe("Other");
+  });
+
+  it("groups multiple lines of the same type and subtotals them, desc by points", () => {
+    const grouped = buildSelfScored(
+      config,
+      {
+        ...draft,
+        others: [
+          { id: "a", description: "Passing drill", points: "5500" },
+          { id: "b", description: "Football crossing drill", points: "4000" },
+          { id: "c", description: "MMG tyre game", points: "16900" },
+        ],
+      },
+      (k) => k,
+    ).detail.otherGroups;
+    expect(grouped.map((g) => [g.category, g.points])).toEqual([
+      ["Game", 16900],
+      ["Drill", 9500],
+    ]);
   });
 });

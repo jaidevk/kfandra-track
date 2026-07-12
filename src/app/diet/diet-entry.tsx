@@ -41,6 +41,7 @@ import {
 } from "@/lib/diet/actions";
 import { dateLabel, todayKey } from "@/lib/diet/dates";
 import { AnalyticsEvent, capture } from "@/lib/observability/analytics";
+import { Breadcrumb } from "@/components/breadcrumb";
 
 type SyncStatus = "idle" | "saving" | "saved" | "error";
 
@@ -276,6 +277,8 @@ function DietHub({
           Tap a meal to log what you ate. Saved as you go — no submit needed.
         </p>
       </div>
+
+      <Breadcrumb label="Diet" />
 
       {/* Meal cards */}
       <div className="space-y-2.5">

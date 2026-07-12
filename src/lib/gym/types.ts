@@ -107,6 +107,26 @@ export function newExercise(
 }
 
 /**
+ * A blank S&C test row for the "Add test" flow — opens the sheet already in
+ * test mode with no test picked yet, so the player sees the Test picker first.
+ */
+export function newTestEntry(id: string): ExerciseRow {
+  return {
+    id,
+    entryType: "test",
+    bodyPart: SANDC_TESTS_BODY_PART,
+    equipment: null,
+    weightUnit: "kg",
+    sets: [],
+    testName: null,
+    testMetric: null,
+    attempts: [],
+    scheme: "",
+    notes: "",
+  };
+}
+
+/**
  * A brand-new S&C test row, seeded with one attempt. Rep tests start at
  * DEFAULT_REPS; timed tests start at 0m 0s.
  */

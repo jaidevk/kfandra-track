@@ -144,7 +144,7 @@ function cell(v: number) {
 }
 
 function Detail({ detail }: { detail: SessionRowDetail }) {
-  const { games, packing, others, confirmationOrder, arrivalOrder } = detail;
+  const { games, packing, otherGroups, confirmationOrder, arrivalOrder } = detail;
   const hasOrder = confirmationOrder != null || arrivalOrder != null;
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -177,12 +177,19 @@ function Detail({ detail }: { detail: SessionRowDetail }) {
           ))}
         </Section>
       )}
-      {others.length > 0 && (
-        <Section title="Other">
-          {others.map((o, i) => (
-            <p key={i} className="text-gray-700">
-              {o.label} <span className="text-gray-400">= {n(o.points)}</span>
-            </p>
+      {otherGroups.length > 0 && (
+        <Section title="Other · by type">
+          {otherGroups.map((g) => (
+            <div key={g.category} className="mb-1.5 last:mb-0">
+              <p className="font-medium text-gray-800">
+                {g.category} <span className="text-gray-500">· {n(g.points)}</span>
+              </p>
+              {g.lines.map((o, i) => (
+                <p key={i} className="pl-3 text-gray-600">
+                  {o.label} <span className="text-gray-400">= {n(o.points)}</span>
+                </p>
+              ))}
+            </div>
           ))}
         </Section>
       )}

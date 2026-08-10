@@ -104,6 +104,146 @@ export type Database = {
           },
         ]
       }
+      club_balance_sheets: {
+        Row: {
+          as_of_date: string | null
+          club_bonus: number
+          club_id: string
+          id: string
+          matches_drawn: number
+          matches_lost: number
+          matches_played: number
+          matches_won: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          as_of_date?: string | null
+          club_bonus?: number
+          club_id: string
+          id?: string
+          matches_drawn?: number
+          matches_lost?: number
+          matches_played?: number
+          matches_won?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          as_of_date?: string | null
+          club_bonus?: number
+          club_id?: string
+          id?: string
+          matches_drawn?: number
+          matches_lost?: number
+          matches_played?: number
+          matches_won?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_balance_sheets_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_balance_sheets_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_player_shares: {
+        Row: {
+          amount: number
+          club_id: string
+          id: string
+          player_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          club_id: string
+          id?: string
+          player_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          club_id?: string
+          id?: string
+          player_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_player_shares_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_player_shares_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clubs: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          logo_path: string
+          manager_name: string
+          manager_player_id: string | null
+          name: string
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          logo_path: string
+          manager_name?: string
+          manager_player_id?: string | null
+          name: string
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          logo_path?: string
+          manager_name?: string
+          manager_player_id?: string | null
+          name?: string
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clubs_manager_player_id_fkey"
+            columns: ["manager_player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       diet_log_items: {
         Row: {
           count: number

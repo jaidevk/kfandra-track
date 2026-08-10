@@ -95,6 +95,16 @@ Promoting staff, deactivating players, resetting a PIN, adding/removing game
 types, editing the food/gym catalogues, and highlight *names* are done by the
 developer (see the **Developer Guide**).
 
+## Club Balance Sheets (KLCFERRSXVSG1)
+
+Each club has one running balance sheet, edited only by its Player Manager (and
+KFANDRA). Managers open **Club Balance Sheet** from the home screen, tap their
+crest, and record matches plus a loanee list (add member + number); the app
+computes the Kroopies totals. Review every club under **Admin → Club Balance
+Sheet**, and use **Copy sheet as text** to paste a club's figures to them. Rates
+live in `app_config` under `klc_rates`. Link managers to their accounts with
+`supabase/snippets/link-club-managers.sql`.
+
 ---
 
 > **Private — KFANDRA staff only.** Keep this guide and the app internal to

@@ -7,6 +7,7 @@ export default function AdminDashboard() {
     { href: "/admin/submissions", ...admin.mmgCard },
     { href: "/admin/gym", ...admin.gymCard },
     { href: "/admin/diet", ...admin.dietCard },
+    { href: "/admin/klc", ...admin.klcCard },
     { href: "/admin/config", ...admin.configCard },
   ];
   return (

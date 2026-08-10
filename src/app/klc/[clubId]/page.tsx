@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentPlayer } from "@/lib/auth/current-user";
 import { isStaffRole } from "@/lib/auth/roles";
-import { getClub, loadClubBalance, listActiveMembers } from "@/lib/klc/repository";
+import { getClub, loadClubEntries, listActiveMembers } from "@/lib/klc/repository";
 import { loadKlcRates } from "@/lib/klc/config";
 import ClubBalanceEntry from "./club-balance-entry";
 
@@ -22,8 +22,8 @@ export default async function ClubPage({
   const staff = isStaffRole(player.role);
   if (!staff && club.managerPlayerId !== player.id) redirect("/klc");
 
-  const [draft, rates, members] = await Promise.all([
-    loadClubBalance(clubId),
+  const [entries, rates, members] = await Promise.all([
+    loadClubEntries(clubId),
     loadKlcRates(),
     listActiveMembers(),
   ]);
@@ -32,7 +32,7 @@ export default async function ClubPage({
     <ClubBalanceEntry
       clubId={clubId}
       club={club}
-      initialDraft={draft}
+      initialEntries={entries}
       rates={rates}
       members={members}
     />

@@ -4,7 +4,7 @@ import { buildBalanceDraft } from "./mapping";
 describe("buildBalanceDraft", () => {
   it("maps a stored sheet + loanee rows into a draft", () => {
     const sheet = {
-      as_of_date: "2026-07-20",
+      entry_date: "2026-07-20",
       matches_played: 6, matches_won: 4, matches_drawn: 1, matches_lost: 1,
       club_bonus: 50,
     };

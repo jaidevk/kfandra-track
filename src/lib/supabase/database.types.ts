@@ -106,9 +106,9 @@ export type Database = {
       }
       club_balance_sheets: {
         Row: {
-          as_of_date: string | null
           club_bonus: number
           club_id: string
+          entry_date: string
           id: string
           matches_drawn: number
           matches_lost: number
@@ -118,9 +118,9 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          as_of_date?: string | null
           club_bonus?: number
           club_id: string
+          entry_date: string
           id?: string
           matches_drawn?: number
           matches_lost?: number
@@ -130,9 +130,9 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
-          as_of_date?: string | null
           club_bonus?: number
           club_id?: string
+          entry_date?: string
           id?: string
           matches_drawn?: number
           matches_lost?: number
@@ -145,7 +145,7 @@ export type Database = {
           {
             foreignKeyName: "club_balance_sheets_club_id_fkey"
             columns: ["club_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
@@ -162,6 +162,7 @@ export type Database = {
         Row: {
           amount: number
           club_id: string
+          entry_date: string
           id: string
           player_id: string
           updated_at: string
@@ -169,6 +170,7 @@ export type Database = {
         Insert: {
           amount?: number
           club_id: string
+          entry_date: string
           id?: string
           player_id: string
           updated_at?: string
@@ -176,6 +178,7 @@ export type Database = {
         Update: {
           amount?: number
           club_id?: string
+          entry_date?: string
           id?: string
           player_id?: string
           updated_at?: string

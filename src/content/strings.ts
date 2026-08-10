@@ -66,6 +66,8 @@ export const strings = {
     lockedNote: "Only your own club’s sheet is open to you.",
     noClubNote: "You don’t manage a club, so no sheet is editable.",
     sheetHeading: "Club Balance Sheet",
+    overviewHeading: "Overview (all dates)",
+    thisDateHeading: "This date",
     managerLabel: "Player Manager",
     breadcrumb: "Balance Sheet",
     addLoanee: "+ Add loanee",

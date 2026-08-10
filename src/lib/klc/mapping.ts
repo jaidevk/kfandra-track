@@ -6,7 +6,7 @@
 import type { ClubBalanceDraft } from "./types";
 
 export interface SheetRow {
-  as_of_date: string | null;
+  entry_date: string | null;
   matches_played: number;
   matches_won: number;
   matches_drawn: number;
@@ -19,13 +19,13 @@ export interface ShareRowWithName {
   display_name: string;
 }
 
-/** Merge stored sheet + loanee rows into a draft. */
+/** Merge one dated sheet row + its loanee rows into a draft. */
 export function buildBalanceDraft(
   sheet: SheetRow | null,
   shares: ShareRowWithName[],
 ): ClubBalanceDraft {
   return {
-    asOfDate: sheet?.as_of_date ?? null,
+    asOfDate: sheet?.entry_date ?? null,
     matchesPlayed: sheet?.matches_played ?? 0,
     matchesWon: sheet?.matches_won ?? 0,
     matchesDrawn: sheet?.matches_drawn ?? 0,

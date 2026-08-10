@@ -36,20 +36,23 @@ create trigger clubs_set_updated_at
   before update on public.clubs
   for each row execute function app.set_updated_at();
 
--- ─── club_balance_sheets (one running row per club) ──────────────────────────
+-- ─── club_balance_sheets (one row per club PER DATE) ─────────────────────────
+-- Each match-day is its own dated entry; the app aggregates them into a running
+-- overview. Any date's entry stays editable.
 create table public.club_balance_sheets (
   id             uuid primary key default gen_random_uuid(),
-  club_id        uuid not null unique references public.clubs(id) on delete cascade,
-  as_of_date     date,
+  club_id        uuid not null references public.clubs(id) on delete cascade,
+  entry_date     date not null,
   matches_played int not null default 0,
   matches_won    int not null default 0,
   matches_drawn  int not null default 0,
   matches_lost   int not null default 0,
   club_bonus     int not null default 0,  -- Kroopies (item 7)
   updated_at     timestamptz not null default now(),
-  updated_by     uuid references public.players(id) on delete set null
+  updated_by     uuid references public.players(id) on delete set null,
+  unique (club_id, entry_date)
 );
-comment on table public.club_balance_sheets is 'One cumulative balance sheet per club. Totals 8/9/10 are derived, not stored.';
+comment on table public.club_balance_sheets is 'One dated balance entry per club per date. Totals 8/9/10 are derived; the running overview aggregates all dates.';
 
 create trigger club_balance_sheets_set_updated_at
   before update on public.club_balance_sheets
@@ -59,12 +62,13 @@ create trigger club_balance_sheets_set_updated_at
 create table public.club_player_shares (
   id         uuid primary key default gen_random_uuid(),
   club_id    uuid not null references public.clubs(id) on delete cascade,
+  entry_date date not null,
   player_id  uuid not null references public.players(id) on delete cascade,
   amount     int  not null default 0,
   updated_at timestamptz not null default now(),
-  unique (club_id, player_id)
+  unique (club_id, entry_date, player_id)
 );
-comment on table public.club_player_shares is 'Item-4 loanee rows: amount*loaneePerShare feeds the loanee distribution. One row per (club, loanee).';
+comment on table public.club_player_shares is 'Item-4 loanee rows per dated entry: amount*loaneePerShare feeds that date''s loanee distribution. One row per (club, date, loanee).';
 
 create trigger club_player_shares_set_updated_at
   before update on public.club_player_shares

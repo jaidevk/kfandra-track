@@ -47,45 +47,55 @@ export async function listActiveMembers(): Promise<MemberOption[]> {
   return (data ?? []).map((p) => ({ id: p.id, displayName: p.display_name }));
 }
 
-/** The club's current running draft (sheet + loanee rows with names). */
-export async function loadClubBalance(clubId: string): Promise<ClubBalanceDraft> {
+/** Every dated entry for a club (newest first), each with its loanee rows. */
+export async function loadClubEntries(clubId: string): Promise<ClubBalanceDraft[]> {
   const admin = createAdminClient();
-  const [sheetRes, sharesRes] = await Promise.all([
+  const [sheetsRes, sharesRes] = await Promise.all([
     admin
       .from("club_balance_sheets")
-      .select("as_of_date, matches_played, matches_won, matches_drawn, matches_lost, club_bonus")
+      .select("entry_date, matches_played, matches_won, matches_drawn, matches_lost, club_bonus")
       .eq("club_id", clubId)
-      .maybeSingle(),
+      .order("entry_date", { ascending: false }),
     admin
       .from("club_player_shares")
-      .select("player_id, amount, players(display_name)")
+      .select("entry_date, player_id, amount, players(display_name)")
       .eq("club_id", clubId),
   ]);
 
-  const shares: ShareRowWithName[] = (sharesRes.data ?? []).map((r) => {
+  const sharesByDate = new Map<string, ShareRowWithName[]>();
+  for (const r of sharesRes.data ?? []) {
     // players(display_name) comes back as an object (to-one relation).
     const rel = r.players as unknown as { display_name: string } | null;
-    return {
+    const list = sharesByDate.get(r.entry_date) ?? [];
+    list.push({
       player_id: r.player_id,
       amount: r.amount,
       display_name: rel?.display_name ?? "Unknown",
-    };
-  });
-  return buildBalanceDraft((sheetRes.data as SheetRow | null) ?? null, shares);
+    });
+    sharesByDate.set(r.entry_date, list);
+  }
+
+  return (sheetsRes.data ?? []).map((s) =>
+    buildBalanceDraft(s as SheetRow, sharesByDate.get(s.entry_date as string) ?? []),
+  );
 }
 
-/** Upsert the club's sheet and REPLACE its loanee rows wholesale. */
+/** Upsert one dated entry and REPLACE that date's loanee rows wholesale. */
 export async function saveClubBalance(
   clubId: string,
   draft: ClubBalanceDraft,
   updatedBy: string,
 ): Promise<void> {
+  if (!draft.asOfDate) {
+    throw new Error("A date is required to save a balance entry.");
+  }
+  const entryDate = draft.asOfDate;
   const admin = createAdminClient();
 
   const { error: sheetErr } = await admin.from("club_balance_sheets").upsert(
     {
       club_id: clubId,
-      as_of_date: draft.asOfDate,
+      entry_date: entryDate,
       matches_played: draft.matchesPlayed,
       matches_won: draft.matchesWon,
       matches_drawn: draft.matchesDrawn,
@@ -93,12 +103,16 @@ export async function saveClubBalance(
       club_bonus: draft.clubBonus,
       updated_by: updatedBy,
     },
-    { onConflict: "club_id" },
+    { onConflict: "club_id,entry_date" },
   );
   if (sheetErr) throw new Error(`Failed to save balance sheet: ${sheetErr.message}`);
 
-  // Replace loanee rows: delete all, then insert current (deduped by player).
-  await admin.from("club_player_shares").delete().eq("club_id", clubId);
+  // Replace this date's loanee rows: delete then insert (deduped by player).
+  await admin
+    .from("club_player_shares")
+    .delete()
+    .eq("club_id", clubId)
+    .eq("entry_date", entryDate);
 
   const byPlayer = new Map<string, number>();
   for (const s of draft.shares) {
@@ -106,6 +120,7 @@ export async function saveClubBalance(
   }
   const rows = [...byPlayer.entries()].map(([player_id, amount]) => ({
     club_id: clubId,
+    entry_date: entryDate,
     player_id,
     amount,
   }));

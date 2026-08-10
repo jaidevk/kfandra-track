@@ -97,13 +97,16 @@ developer (see the **Developer Guide**).
 
 ## Club Balance Sheets (KLCFERRSXVSG1)
 
-Each club has one running balance sheet, edited only by its Player Manager (and
-KFANDRA). Managers open **Club Balance Sheet** from the home screen, tap their
-crest, and record matches plus a loanee list (add member + number); the app
-computes the Kroopies totals. Review every club under **Admin → Club Balance
-Sheet**, and use **Copy sheet as text** to paste a club's figures to them. Rates
-live in `app_config` under `klc_rates`. Link managers to their accounts with
-`supabase/snippets/link-club-managers.sql`.
+Each club records **one entry per match-day**, edited only by its Player Manager
+(and KFANDRA). Managers open **Club Balance Sheet** from the home screen, tap
+their crest, **pick a date** (past dates show that date's figures; today/new
+dates start blank for input — any date stays editable), and record matches plus
+a loanee list (add member + number); the app computes that date's Kroopies
+totals **and a running overview across all dates**. Review every club under
+**Admin → Club Balance Sheet** — it shows the running overview plus the per-date
+breakdown — and use **Copy sheet as text** to paste a club's figures to them.
+Rates live in `app_config` under `klc_rates`. Link managers to their accounts
+with `supabase/snippets/link-club-managers.sql`.
 
 ---
 

@@ -17,7 +17,8 @@ Product-facing UX is in [docs/club-balance-sheet-ux.md](../../club-balance-sheet
 - **One club → one Player Manager** (an app user, `clubs.manager_player_id`). The Manager is responsible for the club's sheet.
 - **Only the Manager (or staff) may open/edit** a club's sheet. Everyone else sees the crest but it is locked (no numbers).
 - **Item 4 is a dynamic loanee list**, not a fixed roster: the Manager adds members who were loaned/attended, each with a number. Members are app users, picked from the active-members list. Sum(numbers) × rate = item 10.
-- **One running balance sheet per club** (cumulative). "Date" (item 1) is the as-of date. Autosaves; no submit button.
+- **Per-date entries (revised):** each match-day is its own dated entry (`club_balance_sheets` keyed by `(club_id, entry_date)`, shares by `(club_id, entry_date, player_id)`). Picking a date (item 1) shows/edits that date's values; any date stays editable. The page also shows a **running overview** aggregated across all dates (`aggregateOverview`), shown to the manager and to admin. (Supersedes the earlier "one running sheet per club".)
+- Autosaves per date; no submit button.
 - Landing page shows a **flat grid of all 13 crests**, title exactly **KLCFERRSXVSG1**.
 - Calculations (Kroopies), rates externalised in `app_config` under key `klc_rates` = `{ playedToKfandra: 10, wonFromKfandra: 20, loaneePerShare: 10 }`:
   - **(8) Paid to KFANDRA** = `matchesPlayed * playedToKfandra`

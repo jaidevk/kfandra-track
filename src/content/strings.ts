@@ -53,6 +53,38 @@ export const strings = {
       title: "Diet",
       subtitle: "8 meals · tap foods to log",
     },
+    balanceSheet: {
+      title: "Club Balance Sheet",
+      subtitle: "Bal. Sheet · Managers",
+    },
+  },
+
+  /** Club Balance Sheet (KLCFERRSXVSG1) screens. */
+  klc: {
+    landingTitle: "KLCFERRSXVSG1",
+    landingSubtitle: "Tap your club’s crest to open its balance sheet.",
+    lockedNote: "Only your own club’s sheet is open to you.",
+    noClubNote: "You don’t manage a club, so no sheet is editable.",
+    sheetHeading: "Club Balance Sheet",
+    overviewHeading: "Overview (all dates)",
+    thisDateHeading: "This date",
+    managerLabel: "Player Manager",
+    breadcrumb: "Balance Sheet",
+    addLoanee: "+ Add loanee",
+    pickPlayer: "Select player…",
+    fields: {
+      asOfDate: "Date",
+      matchesPlayed: "Matches played",
+      matchesWon: "Matches won",
+      players: "Players (loanees)",
+      matchesDrawn: "Matches drawn",
+      matchesLost: "Matches lost",
+      clubBonus: "Club Bonus from KFANDRA",
+      paidToKfandra: "Total to be paid to KFANDRA",
+      receivedFromKfandra: "Total to be received from KFANDRA",
+      distributedToLoanees: "Total to be distributed to loanees",
+    },
+    currency: "Kroopies",
   },
 
   /** The sign-in / register screen. */
@@ -86,6 +118,7 @@ export const strings = {
     mmgCard: { title: "MMG", subtitle: "Submissions by date or player" },
     gymCard: { title: "Strength & Conditioning", subtitle: "Review daily logs" },
     dietCard: { title: "Diet", subtitle: "Review daily logs" },
+    klcCard: { title: "Club Balance Sheet", subtitle: "Review each club’s sheet" },
     configCard: { title: "Scoring", subtitle: "Edit points & game names" },
     backToApp: "← Back to app",
     home: "Admin",

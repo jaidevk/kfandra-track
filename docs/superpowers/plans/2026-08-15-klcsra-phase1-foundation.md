@@ -1535,7 +1535,14 @@ export async function loadStandingsRules(): Promise<StandingsRules> {
 - [ ] **Step 2: Verify it type-checks and the suite is green**
 
 Run: `npm run test -- src/lib/klcsra` then `npx tsc --noEmit`
-Expected: all KLCSRA tests PASS; `tsc` reports no errors. (`@/lib/supabase/admin` exports `createAdminClient` — verified; it is the same import `src/lib/klc/config.ts` uses.)
+Expected: all KLCSRA tests PASS. (`@/lib/supabase/admin` exports `createAdminClient` — verified; it is the same import `src/lib/klc/config.ts` uses.)
+
+> **`tsc --noEmit` is NOT clean on this repo and never has been.** It reports
+> exactly **3 pre-existing `TS7016` errors**, all "could not find a declaration
+> file for module 'lucide-react'", in `src/components/ui/{dialog,select,sheet}.tsx`.
+> That is the baseline. The bar for this task is **no NEW errors** — in
+> particular zero errors under `src/lib/klcsra/`. Do not try to fix the
+> lucide-react typings; it is unrelated to Phase 1.
 
 - [ ] **Step 3: Commit**
 
@@ -1584,10 +1591,24 @@ Expected: all Task 3–8 tests PASS — `stat-rates` (6), `sport-stats` (15), `s
 Run: `npm run test`
 Expected: green. Task 2 altered shipped balance-sheet tables, so `src/lib/klc/**` tests matter here.
 
+Baseline measured after Task 2: **25 test files, 150 tests passing.** Phase 1
+adds 7 new test files, so the final count must be 32 files and comfortably more
+than 150 tests — and critically, **no fewer than 150**. A drop means Task 2's
+constraint swap broke something in the shipped balance-sheet feature.
+
 - [ ] **Step 3: Typecheck + lint**
 
-Run: `npx tsc --noEmit && npm run lint`
-Expected: no type errors; lint clean.
+Run them **separately** — `tsc` exits non-zero on the pre-existing baseline, so
+`tsc && lint` would silently skip lint entirely:
+
+```bash
+npx tsc --noEmit; echo "tsc exit=$?"
+npm run lint
+```
+
+Expected: `tsc` reports **only** the 3 pre-existing `TS7016` lucide-react errors
+in `src/components/ui/{dialog,select,sheet}.tsx` and nothing under
+`src/lib/klcsra/`; lint clean for the new files.
 
 - [ ] **Step 4: Confirm both migrations apply from clean**
 

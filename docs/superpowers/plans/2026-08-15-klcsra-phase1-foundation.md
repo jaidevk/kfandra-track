@@ -44,6 +44,8 @@ These were open assumptions in revision 1. KFANDRA resolved them on 2026-08-23:
    `klc_match_sides`, season date sanity, `slot >= 1`, and indexes on the `on delete restrict`
    foreign keys. The stats tally column is named `stat_count`, matching the sibling EAV table
    `submission_game_stats(stat_key, stat_value)` and avoiding the bare SQL function name.
+   Indexes were added on the FKs whose delete action forces a lookup of referencing rows:
+   `club_id` and `player_id` (`on delete restrict`) and `submitted_by` (`on delete set null`).
 
 ### Deferred to Phase 2 (filed as beads in Task 11)
 
@@ -207,8 +209,9 @@ create table public.klc_match_sides (
   score   int  not null default 0,
   unique (half_id, side),
   -- A club cannot play itself: at most one side per club per half. Combined
-  -- matches are unaffected -- half 2 has its own half_id, and the spec allows
-  -- a club to reappear in the other half.
+  -- matches are unaffected -- half 2 has its own half_id, so a club may still
+  -- reappear in the other half. (The spec neither requires nor forbids that
+  -- reuse; permitting it is the non-destructive direction.)
   unique (half_id, club_id),
   constraint klc_sides_side_chk  check (side in ('home','away')),
   constraint klc_sides_role_chk  check (role in ('home','away','neutral')),
@@ -227,8 +230,13 @@ create table public.klc_appearances (
   slot      int  not null,                               -- 1..6 (grows later)
   unique (side_id, player_id),
   -- Deferrable so the recorder can swap two players' slots in one transaction.
-  -- Note for Phase 2: a deferrable constraint cannot be an ON CONFLICT target,
-  -- so upserts must conflict on (side_id, player_id), which is immediate.
+  -- Two notes for Phase 2:
+  --   * a deferrable constraint cannot be an ON CONFLICT target, so upserts
+  --     must conflict on (side_id, player_id), which is immediate;
+  --   * deferral only helps INSIDE an explicit transaction. Two separate
+  --     PostgREST calls each commit, so a slot reorder must run in a
+  --     server-side transaction/RPC, or park at a high free slot (99) --
+  --     parking at a negative slot is rejected by klc_appearances_slot_chk.
   constraint klc_appearances_slot_uniq unique (side_id, slot)
     deferrable initially deferred,
   -- Upper bound stays app-side; the spec says the slot cap grows later.
@@ -247,7 +255,7 @@ create table public.klc_player_stats (
   stat_count    int  not null default 0,
   unique (appearance_id, stat_key),
   -- stat_count is an event TALLY; the +/- sign lives in the rates. A negative
-  -- tally would invert the payout -- count = -1 on redCard would PAY the
+  -- tally would invert the payout -- stat_count = -1 on redCard would PAY the
   -- player +20 KR for a sending-off.
   constraint klc_player_stats_count_chk check (stat_count >= 0)
 );
@@ -364,15 +372,37 @@ npx supabase db query --local "insert into public.klc_matches (entry_date, statu
 npx supabase db query --local "insert into public.klc_seasons (season_no, name, start_date, end_date) values (99, 'Bad', '2026-05-01', '2026-04-01');"
 ```
 
-Expected, in order: `klc_matches_friendly_season_chk`, `klc_matches_league_season_chk`,
-`klc_matches_submitted_at_chk`, `klc_seasons_dates_chk`.
+```bash
+# Duration must be positive when given.
+npx supabase db query --local "insert into public.klc_matches (entry_date, duration_minutes) values ('2026-08-01', -90);"
+```
 
-The non-negative tallies need a parent chain, so prove those two with a single
+Expected, in order: `klc_matches_friendly_season_chk`, `klc_matches_league_season_chk`,
+`klc_matches_submitted_at_chk`, `klc_seasons_dates_chk`, `klc_matches_duration_chk`.
+
+The remaining invariants need a parent chain, so prove them with a single
 scripted transaction that rolls back. Build a match -> half -> side ->
-appearance chain with `gen_random_uuid()`, then attempt `score = -1` on the side
-and `stat_count = -1` on a stat row. Expected: `klc_sides_score_chk` and
-`klc_player_stats_count_chk` violations respectively, and the transaction rolled
-back so the tables are left empty. Report the actual error text for both.
+appearance chain, then attempt each of:
+
+| Attempt | Must be rejected by |
+| --- | --- |
+| `score = -1` on the side | `klc_sides_score_chk` |
+| `stat_count = -1` on a stat row | `klc_player_stats_count_chk` |
+| `slot = 0` on an appearance | `klc_appearances_slot_chk` |
+| the same club as both `home` and `away` in one half | `klc_match_sides_half_id_club_id_key` |
+
+Then add two **positive controls**, so a blanket-rejecting schema cannot pass as
+a working one:
+
+| Attempt | Must succeed |
+| --- | --- |
+| a valid stat row (`goal`, count 2) | proves the checks are not rejecting everything |
+| the same club in half 1 **and** half 2 of a combined match | proves the new unique is half-scoped, not match-scoped |
+
+Roll back, and confirm the tables are left empty. Report the actual error text
+for each rejection. Note the local DB has no seeded players after a reset —
+insert your own inside the transaction (`players` requires `phone`, `pin_hash`
+and `display_name`).
 
 - [ ] **Step 5: Commit**
 

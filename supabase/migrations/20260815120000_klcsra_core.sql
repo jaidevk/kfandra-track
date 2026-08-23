@@ -98,8 +98,9 @@ create table public.klc_match_sides (
   score   int  not null default 0,
   unique (half_id, side),
   -- A club cannot play itself: at most one side per club per half. Combined
-  -- matches are unaffected -- half 2 has its own half_id, and the spec allows
-  -- a club to reappear in the other half.
+  -- matches are unaffected -- half 2 has its own half_id, so a club may still
+  -- reappear in the other half. (The spec neither requires nor forbids that
+  -- reuse; permitting it is the non-destructive direction.)
   unique (half_id, club_id),
   constraint klc_sides_side_chk  check (side in ('home','away')),
   constraint klc_sides_role_chk  check (role in ('home','away','neutral')),
@@ -118,8 +119,13 @@ create table public.klc_appearances (
   slot      int  not null,                               -- 1..6 (grows later)
   unique (side_id, player_id),
   -- Deferrable so the recorder can swap two players' slots in one transaction.
-  -- Note for Phase 2: a deferrable constraint cannot be an ON CONFLICT target,
-  -- so upserts must conflict on (side_id, player_id), which is immediate.
+  -- Two notes for Phase 2:
+  --   * a deferrable constraint cannot be an ON CONFLICT target, so upserts
+  --     must conflict on (side_id, player_id), which is immediate;
+  --   * deferral only helps INSIDE an explicit transaction. Two separate
+  --     PostgREST calls each commit, so a slot reorder must run in a
+  --     server-side transaction/RPC, or park at a high free slot (99) --
+  --     parking at a negative slot is rejected by klc_appearances_slot_chk.
   constraint klc_appearances_slot_uniq unique (side_id, slot)
     deferrable initially deferred,
   -- Upper bound stays app-side; the spec says the slot cap grows later.
@@ -138,7 +144,7 @@ create table public.klc_player_stats (
   stat_count    int  not null default 0,
   unique (appearance_id, stat_key),
   -- stat_count is an event TALLY; the +/- sign lives in the rates. A negative
-  -- tally would invert the payout -- count = -1 on redCard would PAY the
+  -- tally would invert the payout -- stat_count = -1 on redCard would PAY the
   -- player +20 KR for a sending-off.
   constraint klc_player_stats_count_chk check (stat_count >= 0)
 );

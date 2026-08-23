@@ -1,18 +1,11 @@
 /**
- * The Phase 2 banner. Deliberately loud: this UI is scaffolding for the
- * mechanics, and Phase 3 throws the visuals away. Shared by both recorder
- * routes so the wording cannot drift between them.
+ * The list route's inline error note.
+ *
+ * `PhaseNotice` — the Phase 2 "mechanics only" banner — lived here too and is
+ * gone: Phase 3 removed it from both recorder routes. The recorder route has
+ * its own copy of `ErrorNote` in `[id]/recorder-shared.tsx`, following this
+ * repo's per-feature convention rather than a shared component.
  */
-export function PhaseNotice() {
-  return (
-    <p
-      data-testid="phase2-notice"
-      className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-[12px] font-semibold text-amber-900"
-    >
-      Phase 2 placeholder — mechanics only. The real recorder UI lands in Phase 3.
-    </p>
-  );
-}
 
 /** An inline `ActionResult.error`. The messages are written for humans; show them verbatim. */
 export function ErrorNote({ message, testId }: { message: string | null; testId?: string }) {

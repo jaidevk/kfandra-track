@@ -158,14 +158,38 @@ export async function insertPlayer(seed: PlayerSeed): Promise<string> {
 export interface ClubRow {
   id: string;
   name: string;
+  /** The player account that manages the club. Real clubs exist with none. */
+  manager_player_id: string | null;
 }
+
+const CLUB_COLS = "id, name, manager_player_id";
 
 /** Active clubs in landing-grid order — the same order the club `<select>` shows. */
 export async function listClubs(limit = 4): Promise<ClubRow[]> {
   return sql<ClubRow>(
-    "select id, name from clubs where is_active order by sort_order limit $1",
+    `select ${CLUB_COLS} from clubs where is_active order by sort_order limit $1`,
     [limit],
   );
+}
+
+/** One club by its exact name. Throws when it is missing — a spec that names a
+ *  club the seed does not have wants to know immediately. */
+export async function findClub(name: string): Promise<ClubRow> {
+  const rows = await sql<ClubRow>(`select ${CLUB_COLS} from clubs where name = $1`, [name]);
+  const club = rows[0];
+  if (!club) throw new Error(`No club named "${name}" in the local database.`);
+  return club;
+}
+
+/**
+ * Point a club at a manager account.
+ *
+ * `clubs.manager_player_id` is ON DELETE SET NULL, so deleting the seeded
+ * player in teardown puts the club back exactly as it was found — there is
+ * nothing extra to restore.
+ */
+export async function setClubManager(clubId: string, playerId: string | null): Promise<void> {
+  await sql("update clubs set manager_player_id = $2 where id = $1", [clubId, playerId]);
 }
 
 // ── matches ─────────────────────────────────────────────────────────────────
@@ -188,6 +212,25 @@ export async function getMatchRow(id: string): Promise<MatchRow | null> {
     [id],
   );
   return rows[0] ?? null;
+}
+
+export interface SideRow {
+  half_no: number;
+  side: string;
+  club_id: string;
+  score: number;
+}
+
+/** Every stored side of a match — the independent proof that autosave landed. */
+export async function listSideRows(matchId: string): Promise<SideRow[]> {
+  return sql<SideRow>(
+    `select h.half_no, s.side, s.club_id, s.score
+       from klc_match_sides s
+       join klc_match_halves h on h.id = s.half_id
+      where h.match_id = $1
+      order by h.half_no, s.side`,
+    [matchId],
+  );
 }
 
 export interface StatRow {

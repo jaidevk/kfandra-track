@@ -26,7 +26,8 @@ create table public.klc_seasons (
   status     text not null default 'upcoming',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint klc_seasons_status_chk check (status in ('upcoming','active','closed'))
+  constraint klc_seasons_status_chk check (status in ('upcoming','active','closed')),
+  constraint klc_seasons_dates_chk  check (end_date is null or end_date >= start_date)
 );
 comment on table public.klc_seasons is
   'KLCSRA seasons. Exactly one may be active at a time; league matches tag the active season at Submit. Friendlies carry no season.';
@@ -43,7 +44,7 @@ create trigger klc_seasons_set_updated_at
 create table public.klc_matches (
   id               uuid primary key default gen_random_uuid(),
   entry_date       date not null,
-  season_id        uuid references public.klc_seasons(id) on delete set null,
+  season_id        uuid references public.klc_seasons(id) on delete restrict,
   is_friendly      boolean not null default false,
   sport            text not null default 'football',   -- football | rugby | fooba | variation
   duration_minutes int,
@@ -55,13 +56,22 @@ create table public.klc_matches (
   updated_at       timestamptz not null default now(),
   constraint klc_matches_sport_chk  check (sport in ('football','rugby','fooba','variation')),
   constraint klc_matches_status_chk check (status in ('draft','submitted')),
+  constraint klc_matches_duration_chk check (duration_minutes is null or duration_minutes > 0),
   -- Spec: "Friendlies always have season_id = null."
-  constraint klc_matches_friendly_season_chk check (not is_friendly or season_id is null)
+  constraint klc_matches_friendly_season_chk check (not is_friendly or season_id is null),
+  -- A submitted match must record when it was submitted. Reopen must clear
+  -- submitted_at, or "was this locked, and when" can never be reconstructed.
+  constraint klc_matches_submitted_at_chk check (status <> 'submitted' or submitted_at is not null),
+  -- A submitted LEAGUE match must carry a season. Without this it pays out
+  -- Kroopies and then never appears in any standings query, silently.
+  constraint klc_matches_league_season_chk
+    check (is_friendly or status <> 'submitted' or season_id is not null)
 );
 comment on table public.klc_matches is
   'KLCSRA match header. One or two halves (is_combined). Friendlies pay MMG only and carry no season. Locks when status=submitted.';
-create index klc_matches_date_idx   on public.klc_matches (entry_date);
-create index klc_matches_season_idx on public.klc_matches (season_id);
+create index klc_matches_date_idx         on public.klc_matches (entry_date);
+create index klc_matches_season_idx       on public.klc_matches (season_id);
+create index klc_matches_submitted_by_idx on public.klc_matches (submitted_by);
 
 create trigger klc_matches_set_updated_at
   before update on public.klc_matches
@@ -87,11 +97,18 @@ create table public.klc_match_sides (
   role    text not null default 'home',                  -- home | away | neutral
   score   int  not null default 0,
   unique (half_id, side),
-  constraint klc_sides_side_chk check (side in ('home','away')),
-  constraint klc_sides_role_chk check (role in ('home','away','neutral'))
+  -- A club cannot play itself: at most one side per club per half. Combined
+  -- matches are unaffected -- half 2 has its own half_id, and the spec allows
+  -- a club to reappear in the other half.
+  unique (half_id, club_id),
+  constraint klc_sides_side_chk  check (side in ('home','away')),
+  constraint klc_sides_role_chk  check (role in ('home','away','neutral')),
+  constraint klc_sides_score_chk check (score >= 0)
 );
 comment on table public.klc_match_sides is
   'Two sides per half. `side` is the AGGREGATE-TEAM SLOT (the "home" sides across halves form one aggregate team, the "away" sides the other); `role` is the venue role. The side''s manager is clubs.manager_player_id of club_id.';
+-- club_id is `on delete restrict`, which seq-scans this table without an index.
+create index klc_sides_club_idx on public.klc_match_sides (club_id);
 
 -- ─── klc_appearances ────────────────────────────────────────────────────────
 create table public.klc_appearances (
@@ -104,21 +121,29 @@ create table public.klc_appearances (
   -- Note for Phase 2: a deferrable constraint cannot be an ON CONFLICT target,
   -- so upserts must conflict on (side_id, player_id), which is immediate.
   constraint klc_appearances_slot_uniq unique (side_id, slot)
-    deferrable initially deferred
+    deferrable initially deferred,
+  -- Upper bound stays app-side; the spec says the slot cap grows later.
+  constraint klc_appearances_slot_chk check (slot >= 1)
 );
 comment on table public.klc_appearances is
   'Players who turned out for a side in a half. There is no club roster: club membership for a match IS this row. slot is display order.';
+-- player_id is `on delete restrict`, and per-player totals aggregate on it.
+create index klc_appearances_player_idx on public.klc_appearances (player_id);
 
 -- ─── klc_player_stats ───────────────────────────────────────────────────────
 create table public.klc_player_stats (
   id            uuid primary key default gen_random_uuid(),
   appearance_id uuid not null references public.klc_appearances(id) on delete cascade,
   stat_key      text not null,                           -- goal, try, mainGoal, ...
-  count         int  not null default 0,
-  unique (appearance_id, stat_key)
+  stat_count    int  not null default 0,
+  unique (appearance_id, stat_key),
+  -- stat_count is an event TALLY; the +/- sign lives in the rates. A negative
+  -- tally would invert the payout -- count = -1 on redCard would PAY the
+  -- player +20 KR for a sending-off.
+  constraint klc_player_stats_count_chk check (stat_count >= 0)
 );
 comment on table public.klc_player_stats is
-  'Per-appearance per-stat counts. stat_key values validated in the app against app_config klcsra_stat_rates / klcsra_sport_stats.';
+  'Per-appearance per-stat event tallies. stat_key values validated in the app against app_config klcsra_stat_rates / klcsra_sport_stats. Named stat_count to match the sibling EAV table submission_game_stats(stat_key, stat_value) and to avoid the bare SQL function name `count`.';
 
 -- ─── RLS: staff only for all KLCSRA tables ──────────────────────────────────
 alter table public.klc_seasons       enable row level security;

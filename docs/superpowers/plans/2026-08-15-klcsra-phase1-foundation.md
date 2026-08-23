@@ -97,6 +97,7 @@ These were open assumptions in revision 1. KFANDRA resolved them on 2026-08-23:
 - `src/lib/klcsra/standings.ts` / `.test.ts` — **create** — `computeStandingPoints`. Pure.
 - `src/lib/klcsra/combined.ts` / `.test.ts` — **create** — `HalfResult`, `computeCombinedPoints`. Pure.
 - `src/lib/klcsra/config.ts` — **create** — `server-only` loaders `loadStatRates`, `loadSportStats`, `loadStandingsRules`.
+- `src/lib/klcsra/config-contract.test.ts` — **create** — asserts the migration's seeded JSON matches the TypeScript defaults. Pure (reads the .sql file, no DB).
 - `src/lib/supabase/database.types.ts` — **regenerate**.
 
 ---
@@ -744,7 +745,15 @@ describe("parseSportStats", () => {
 
 describe("statsForSport", () => {
   it("returns the configured list for a sport", () => {
-    expect(statsForSport("rugby")).toEqual(DEFAULT_SPORT_STATS.rugby);
+    // statsForSport re-sorts into canonical STAT_KEYS order, so rugby's
+    // seeded order (tackle listed 2nd) comes back with tackle after preAssist.
+    expect(statsForSport("rugby")).toEqual([
+      "try", "assist", "preAssist", "tackle",
+      "yellowCard", "redCard", "blueCard", "lateChallenge",
+    ]);
+    expect([...statsForSport("rugby")].sort()).toEqual(
+      [...DEFAULT_SPORT_STATS.rugby].sort(),
+    );
   });
 
   it("honours a custom config", () => {
@@ -842,7 +851,14 @@ export function parseSportStats(value: unknown): SportStats {
   return out;
 }
 
-/** The stat keys a sport allows, in canonical display order. */
+/**
+ * The stat keys a sport allows, in canonical display order.
+ *
+ * Note this deliberately DISCARDS the order the stats appear in `app_config`:
+ * the allow-list configures MEMBERSHIP, and the recorder's stats popup should
+ * group identically across sports (scoring, contributions, defensive,
+ * sanctions, own-goals) rather than varying per sport.
+ */
 export function statsForSport(
   sport: Sport,
   config: SportStats = DEFAULT_SPORT_STATS,
@@ -1532,7 +1548,35 @@ export async function loadStandingsRules(): Promise<StandingsRules> {
 }
 ```
 
-- [ ] **Step 2: Verify it type-checks and the suite is green**
+- [ ] **Step 2: Add the seed/defaults contract test**
+
+Create `src/lib/klcsra/config-contract.test.ts`. This is the one test that guards
+the failure mode nothing else can catch: the migration's seeded JSON and the
+TypeScript defaults are two hand-maintained copies of the same three rule sets,
+and if they drift, **nothing throws** — `parseStatRates` silently falls back to
+the default for the mismatched key and the payout is quietly wrong. A key typo'd
+in `app_config` behaves identically. Types cannot catch this, because one side
+is a SQL string literal.
+
+The test reads `supabase/migrations/20260815120000_klcsra_core.sql` from disk,
+extracts the three seeded JSON literals, `JSON.parse`s them, and asserts each
+equals its TypeScript counterpart:
+
+| Seeded key | Must deep-equal |
+| --- | --- |
+| `klcsra_stat_rates` | `DEFAULT_STAT_RATES` (keys **and** kr/mmg values) |
+| `klcsra_sport_stats` | `DEFAULT_SPORT_STATS` (all four sports, exact lists) |
+| `klcsra_standings_rules` | `DEFAULT_STANDINGS_RULES` |
+
+Also assert that every key appearing in `klcsra_sport_stats` is a member of
+`STAT_KEYS` — an allow-list naming a stat that has no rate would silently never
+score.
+
+Extract each literal by locating its `insert into public.app_config` statement
+and taking the text between the first `'{` and the matching `}'` before
+`::jsonb`. Keep the test pure — read the file with `node:fs`, no DB connection.
+
+- [ ] **Step 3: Verify it type-checks and the suite is green**
 
 Run: `npm run test -- src/lib/klcsra` then `npx tsc --noEmit`
 Expected: all KLCSRA tests PASS. (`@/lib/supabase/admin` exports `createAdminClient` — verified; it is the same import `src/lib/klc/config.ts` uses.)
@@ -1544,11 +1588,11 @@ Expected: all KLCSRA tests PASS. (`@/lib/supabase/admin` exports `createAdminCli
 > particular zero errors under `src/lib/klcsra/`. Do not try to fix the
 > lucide-react typings; it is unrelated to Phase 1.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add src/lib/klcsra/config.ts
-git commit -m "feat(klcsra): server-only config loaders for stat rates, sport stats + standings rules"
+git add src/lib/klcsra/config.ts src/lib/klcsra/config-contract.test.ts
+git commit -m "feat(klcsra): server-only config loaders + seed/defaults contract test"
 ```
 
 ---
@@ -1592,9 +1636,10 @@ Run: `npm run test`
 Expected: green. Task 2 altered shipped balance-sheet tables, so `src/lib/klc/**` tests matter here.
 
 Baseline measured after Task 2: **25 test files, 150 tests passing.** Phase 1
-adds 7 new test files, so the final count must be 32 files and comfortably more
-than 150 tests — and critically, **no fewer than 150**. A drop means Task 2's
-constraint swap broke something in the shipped balance-sheet feature.
+adds 8 new test files (7 module tests + `config-contract.test.ts`), so the final
+count must be 33 files and comfortably more than 150 tests — and critically,
+**no fewer than 150**. A drop means Task 2's constraint swap broke something in
+the shipped balance-sheet feature.
 
 - [ ] **Step 3: Typecheck + lint**
 

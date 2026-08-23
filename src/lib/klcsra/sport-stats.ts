@@ -73,7 +73,14 @@ export function parseSportStats(value: unknown): SportStats {
   return out;
 }
 
-/** The stat keys a sport allows, in canonical display order. */
+/**
+ * The stat keys a sport allows, in canonical display order.
+ *
+ * Note this deliberately DISCARDS the order the stats appear in `app_config`:
+ * the allow-list configures MEMBERSHIP, and the recorder's stats popup should
+ * group identically across sports (scoring, contributions, defensive,
+ * sanctions, own-goals) rather than varying per sport.
+ */
 export function statsForSport(
   sport: Sport,
   config: SportStats = DEFAULT_SPORT_STATS,

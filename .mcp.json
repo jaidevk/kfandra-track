@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "posthog-kfandra": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote@latest",
+        "https://mcp.posthog.com/mcp",
+        "--header",
+        "Authorization:${POSTHOG_KFANDRA_AUTH}"
+      ]
+    }
+  }
+}

@@ -1,55 +1,44 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentPlayer } from "@/lib/auth/current-user";
+// The KLCSRA club option carries only the manager's NAME (free text). The KLC
+// club repository already selects `manager_player_id`, so the recorder's
+// "auto-place the manager in slot 1" is joined on from there rather than by
+// adding anything to the (frozen) Phase 2 repository.
+import { listClubs as listClubProfiles } from "@/lib/klc/repository";
 import { loadSportStats, loadStatRates } from "@/lib/klcsra/config";
-import { computePlayerPayout } from "@/lib/klcsra/payouts";
-import { getMatch, listActiveMembers, listClubs } from "@/lib/klcsra/repository";
+import {
+  getActiveSeason,
+  getMatch,
+  listActiveMembers,
+  listClubs,
+} from "@/lib/klcsra/repository";
 import { statsForSport } from "@/lib/klcsra/sport-stats";
-import type { StatKey, StatRates } from "@/lib/klcsra/stat-rates";
-import type { MatchDraft, PayoutLine, SideKey } from "@/lib/klcsra/types";
-import { PhaseNotice } from "../notice";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { MatchRecorder } from "./match-recorder";
+import type { RecorderClub } from "./recorder-shared";
 
 export const dynamic = "force-dynamic";
 
 /**
- * The same composition `submitMatchAction` performs, run for display so the
- * recorder can show a running total while the match is still a draft — and so
- * a submitted match still shows its numbers after a reload (Phase 2 stores no
- * totals anywhere; Phase 5 lands them on the balance sheet).
- *
- * A player earns independently in each half, so the halves are scored
- * separately and then added — never merged first.
+ * Who locked the match, for the audit line. `getMatch` does not return
+ * `submitted_by` and Phase 2's repository is frozen, so it is read here — the
+ * only consumer — and only for a match that is actually submitted.
  */
-function payoutPreview(
-  match: MatchDraft,
-  rates: StatRates,
-  allowed: readonly StatKey[],
-): PayoutLine[] {
-  const firstHalf = match.halves.find((h) => h.halfNo === 1) ?? match.halves[0];
-  const clubBySide = new Map<SideKey, string | null>();
-  for (const s of firstHalf?.sides ?? []) clubBySide.set(s.side, s.clubName);
-
-  return match.appearances.map((a) => {
-    let kr = 0;
-    let mmg = 0;
-    for (const counts of Object.values(a.stats)) {
-      const p = computePlayerPayout(counts, rates, {
-        includeKR: !match.isFriendly,
-        allowed,
-      });
-      kr += p.kr;
-      mmg += p.mmg;
-    }
-    return {
-      playerId: a.playerId,
-      displayName: a.displayName,
-      side: a.side,
-      clubName: clubBySide.get(a.side) ?? null,
-      kr,
-      mmg,
-    };
-  });
+async function submitterName(matchId: string): Promise<string | null> {
+  const admin = createAdminClient();
+  const { data: row } = await admin
+    .from("klc_matches")
+    .select("submitted_by")
+    .eq("id", matchId)
+    .maybeSingle();
+  if (!row?.submitted_by) return null;
+  const { data: player } = await admin
+    .from("players")
+    .select("display_name")
+    .eq("id", row.submitted_by)
+    .maybeSingle();
+  return player?.display_name ?? null;
 }
 
 export default async function MatchDetailPage({
@@ -58,32 +47,46 @@ export default async function MatchDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [match, clubs, members, player, rates, sportStats] = await Promise.all([
-    getMatch(id),
-    listClubs(),
-    listActiveMembers(),
-    getCurrentPlayer(),
-    loadStatRates(),
-    loadSportStats(),
-  ]);
+  const [match, clubs, clubProfiles, members, player, rates, sportStats, season] =
+    await Promise.all([
+      getMatch(id),
+      listClubs(),
+      listClubProfiles(),
+      listActiveMembers(),
+      getCurrentPlayer(),
+      loadStatRates(),
+      loadSportStats(),
+      getActiveSeason(),
+    ]);
   if (!match) notFound();
+
+  const managerByClub = new Map(clubProfiles.map((c) => [c.id, c.managerPlayerId]));
+  const recorderClubs: RecorderClub[] = clubs.map((c) => ({
+    ...c,
+    managerPlayerId: managerByClub.get(c.id) ?? null,
+  }));
 
   const allowedStats = statsForSport(match.sport, sportStats);
   const canReopen = player?.role === "super_admin" || player?.role === "kfandra";
+  const submittedBy = match.status === "submitted" ? await submitterName(match.id) : null;
 
   return (
     <div className="space-y-4">
-      <Link href="/admin/klc/matches" className="text-[12px] text-gray-600 hover:underline">
+      <Link
+        href="/admin/klc/matches"
+        className="mx-auto block w-full max-w-md text-[12px] text-gray-600 hover:underline"
+      >
         ← All matches
       </Link>
-      <PhaseNotice />
       <MatchRecorder
         match={match}
-        clubs={clubs}
+        clubs={recorderClubs}
         members={members}
         allowedStats={allowedStats}
-        preview={payoutPreview(match, rates, allowedStats)}
+        rates={rates}
         canReopen={canReopen}
+        activeSeasonName={season?.name ?? null}
+        submittedBy={submittedBy}
       />
     </div>
   );

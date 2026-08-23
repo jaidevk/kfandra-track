@@ -139,20 +139,30 @@ export function MatchRecorder({
 
       pendingSaves.current.set(key, {
         timer: setTimeout(() => void go(), delay),
-        go: () => void go(),
+        go,
       });
     },
     [router],
   );
 
-  /** Fire every scheduled save now (leaving the popup, submitting). */
-  const flushSaves = useCallback(() => {
+  /**
+   * Fire every scheduled save now (leaving the popup, submitting) and resolve
+   * once they have all landed.
+   *
+   * Awaiting matters on Submit: submitMatchAction locks the match, and a stat
+   * write still in flight would then be refused against a locked match and be
+   * missing from the payout the lock just computed. Fire-and-forget here means
+   * a goal tapped seconds before Submit can go unpaid.
+   */
+  const flushSaves = useCallback(async () => {
     const queued = [...pendingSaves.current.values()];
     pendingSaves.current.clear();
-    for (const { timer, go } of queued) {
-      clearTimeout(timer);
-      go();
-    }
+    await Promise.all(
+      queued.map(({ timer, go }) => {
+        clearTimeout(timer);
+        return go();
+      }),
+    );
   }, []);
 
   // ── derived: optimistic stats, payout lines, slot summaries ───────────────
@@ -284,13 +294,14 @@ export function MatchRecorder({
 
   const onDone = () => {
     setOpenAppearanceId(null);
-    flushSaves();
+    void flushSaves();
     startTransition(() => router.refresh());
   };
 
   const onSubmit = async () => {
-    flushSaves();
     setWorking(true);
+    // Await: a write still in flight would be refused by the lock below.
+    await flushSaves();
     setErrors((e) => ({ ...e, submit: null }));
     const res = await submitMatchAction(match.id);
     if (res.ok) startTransition(() => router.refresh());

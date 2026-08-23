@@ -592,38 +592,41 @@ export type Database = {
           },
         ]
       }
-      klc_appearances: {
+      klc_match_appearances: {
         Row: {
           id: string
+          match_id: string
           player_id: string
-          side_id: string
+          side: string
           slot: number
         }
         Insert: {
           id?: string
+          match_id: string
           player_id: string
-          side_id: string
+          side: string
           slot: number
         }
         Update: {
           id?: string
+          match_id?: string
           player_id?: string
-          side_id?: string
+          side?: string
           slot?: number
         }
         Relationships: [
           {
-            foreignKeyName: "klc_appearances_player_id_fkey"
-            columns: ["player_id"]
+            foreignKeyName: "klc_match_appearances_match_id_fkey"
+            columns: ["match_id"]
             isOneToOne: false
-            referencedRelation: "players"
+            referencedRelation: "klc_matches"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "klc_appearances_side_id_fkey"
-            columns: ["side_id"]
+            foreignKeyName: "klc_match_appearances_player_id_fkey"
+            columns: ["player_id"]
             isOneToOne: false
-            referencedRelation: "klc_match_sides"
+            referencedRelation: "players"
             referencedColumns: ["id"]
           },
         ]
@@ -759,18 +762,21 @@ export type Database = {
       klc_player_stats: {
         Row: {
           appearance_id: string
+          half_no: number
           id: string
           stat_count: number
           stat_key: string
         }
         Insert: {
           appearance_id: string
+          half_no?: number
           id?: string
           stat_count?: number
           stat_key: string
         }
         Update: {
           appearance_id?: string
+          half_no?: number
           id?: string
           stat_count?: number
           stat_key?: string
@@ -780,7 +786,7 @@ export type Database = {
             foreignKeyName: "klc_player_stats_appearance_id_fkey"
             columns: ["appearance_id"]
             isOneToOne: false
-            referencedRelation: "klc_appearances"
+            referencedRelation: "klc_match_appearances"
             referencedColumns: ["id"]
           },
         ]

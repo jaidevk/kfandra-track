@@ -89,6 +89,7 @@ These were open assumptions in revision 1. KFANDRA resolved them on 2026-08-23:
 
 - `supabase/migrations/20260815120000_klcsra_core.sql` — **create** — 6 KLCSRA tables + RLS + `updated_at` triggers + seed of the three `app_config` rule keys + Season 1.
 - `supabase/migrations/20260815120100_klc_sheet_source_tags.sql` — **create** — `source` / `results_source` columns on the shipped balance-sheet tables.
+- `supabase/migrations/20260815120200_klcsra_match_level_squads.sql` — **create** — replaces `klc_appearances` with match-level `klc_match_appearances` and moves half attribution onto `klc_player_stats.half_no`. See the addendum at the end of this plan.
 - `src/lib/klcsra/stat-rates.ts` / `.test.ts` — **create** — 16 `StatKey`s, `STAT_LABELS`, `DEFAULT_STAT_RATES`, `parseStatRates`. Pure.
 - `src/lib/klcsra/sport-stats.ts` / `.test.ts` — **create** — `Sport`, `SportStats`, `DEFAULT_SPORT_STATS`, `parseSportStats`, `statsForSport`. Pure.
 - `src/lib/klcsra/standings-rules.ts` / `.test.ts` — **create** — `PointsTuple`, `StandingsRules`, `DEFAULT_STANDINGS_RULES`, `parseStandingsRules`. Pure.
@@ -1817,3 +1818,67 @@ bd update Helper-bsr --notes="Phase 1 done: schema (klc_seasons/matches/halves/s
 **4. Config/code key parity:** the 16 keys seeded in `klcsra_stat_rates` and the four arrays in `klcsra_sport_stats` (Task 1) are camelCase and match `StatKey` exactly. The spec writes them PascalCase for readability — do **not** transcribe the spec's casing. ✓
 
 **5. Task ordering:** Task 1 before Task 2 (both migrations, timestamp order). Task 3 before Task 4 (sport-stats imports StatKey) and before Task 6. Task 5 before Tasks 7, 8. Task 7 before Task 8 (`round4`). Tasks 1–9 before Task 10 (types reflect migrations). ✓
+
+---
+
+## Addendum — match-level squads (2026-08-23, after Phase 1 shipped)
+
+Migration `20260815120200_klcsra_match_level_squads.sql` supersedes the
+`klc_appearances` / `klc_player_stats` shape created in Task 1. Task 1's SQL
+block above is left as it shipped; read this addendum as the current state.
+
+**Why.** KFANDRA clarified the combined-match model, and the spec agrees
+(§Combined match, "Rosters"): *the same six physical players play both halves
+for the same aggregate side.* What changes at half-time is the manager — and
+therefore the club — leading each team. A player belongs to exactly **one** team
+for the whole match and can never appear on both.
+
+Task 1 hung appearances off `klc_match_sides`, which is per-half. That was wrong
+in two ways:
+
+1. It stored each squad **twice** with nothing tying the copies together, so
+   H1's home squad and H2's home squad could silently diverge — which the domain
+   says is impossible.
+2. "A player is not on both teams" was not expressible as a constraint at all,
+   because `unique (side_id, player_id)` is scoped to a single side.
+
+**The corrected shape.**
+
+```
+klc_matches
+├─ klc_match_appearances   (match_id, player_id, side, slot)
+│    unique (match_id, player_id)          <- one team per player, per match
+│  └─ klc_player_stats     (appearance_id, half_no, stat_key, stat_count)
+│       unique (appearance_id, half_no, stat_key)
+└─ klc_match_halves
+   └─ klc_match_sides      (half_id, side, club_id, score)
+        ^ the per-half club/manager and score; the squad is NOT here
+```
+
+One appearance row per player per match makes the rule a database invariant
+rather than a convention. `half_no` on the stats preserves the spec's
+§Cross-half stats requirement that a player earns KR and MMG independently in
+each half — and the club they earned under is derived by joining
+`(half_no, side)` back to `klc_match_sides`.
+
+**Verified against local Postgres**, each case in a rolled-back transaction:
+a player is rejected from the second team; rejected twice on the same team; one
+appearance row carries stats in both halves; the same stat twice in one half is
+rejected; `half_no = 3` is rejected; slot 1 exists independently on both teams;
+and the per-half club derivation returns a *different* club for each half off a
+single appearance row.
+
+**No domain-logic change.** `payouts.ts`, `standings.ts` and `combined.ts` never
+referenced these tables — they operate on plain stat-count maps — so all 223
+tests pass untouched. `database.types.ts` regenerated.
+
+### Threat model note
+
+KFANDRA scoped the security work on 2026-08-23: the app has limited use among
+known club members, so complex security is not warranted. The uniform
+`app.is_staff()` RLS gate stays (it is already in place and costs nothing), but
+the refinements — splitting policies by `status` or adding submit-lock triggers
+— are dropped; enforcing the submit lock in server actions is sufficient for
+this audience. Correspondingly, Phase 3's player-facing standings and
+leaderboards should simply open `SELECT` to authenticated members, matching
+`clubs_select_all`, rather than routing through the service-role client.

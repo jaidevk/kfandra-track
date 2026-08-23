@@ -52,4 +52,17 @@ describe("computeCombinedPoints", () => {
   it("returns an empty map for no halves", () => {
     expect(computeCombinedPoints([], R)).toEqual({});
   });
+
+  it("pays the aggregate bonus once to a club playing both halves on one side", () => {
+    // The DB's uniques on klc_match_sides are scoped to half_id, so this is a
+    // legal arrangement. KL wins both halves (0.2 x 2) and the aggregate 3-0,
+    // but the 0.1 aggregate bonus is per CLUB, not per half-slot: 0.5, not 0.6.
+    const halves: HalfResult[] = [
+      { homeClubId: "KL", awayClubId: "DP", homeScore: 2, awayScore: 0 },
+      { homeClubId: "KL", awayClubId: "SOG", homeScore: 1, awayScore: 0 },
+    ];
+    expect(computeCombinedPoints(halves, R)).toEqual({
+      KL: 0.5, DP: 0, SOG: 0,
+    });
+  });
 });

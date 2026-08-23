@@ -1416,6 +1416,19 @@ describe("computeCombinedPoints", () => {
   it("returns an empty map for no halves", () => {
     expect(computeCombinedPoints([], R)).toEqual({});
   });
+
+  it("pays the aggregate bonus once to a club playing both halves on one side", () => {
+    // The DB's uniques on klc_match_sides are scoped to half_id, so this is a
+    // legal arrangement. KL wins both halves (0.2 x 2) and the aggregate 3-0,
+    // but the 0.1 aggregate bonus is per CLUB, not per half-slot: 0.5, not 0.6.
+    const halves: HalfResult[] = [
+      { homeClubId: "KL", awayClubId: "DP", homeScore: 2, awayScore: 0 },
+      { homeClubId: "KL", awayClubId: "SOG", homeScore: 1, awayScore: 0 },
+    ];
+    expect(computeCombinedPoints(halves, R)).toEqual({
+      KL: 0.5, DP: 0, SOG: 0,
+    });
+  });
 });
 ```
 
@@ -1477,8 +1490,14 @@ export function computeCombinedPoints(
     else if (h.awayScore > h.homeScore) add(h.awayClubId, rules.combined.halfWin);
   }
 
-  if (homeAgg > awayAgg) for (const c of homeClubs) add(c, rules.combined.aggregateBonus);
-  else if (awayAgg > homeAgg) for (const c of awayClubs) add(c, rules.combined.aggregateBonus);
+  // Dedupe: the aggregate bonus is per CLUB, not per half-slot. A club may
+  // legitimately play both halves on the same side (the DB's uniques are
+  // scoped to half_id), and must still receive the bonus only once.
+  if (homeAgg > awayAgg) {
+    for (const c of new Set(homeClubs)) add(c, rules.combined.aggregateBonus);
+  } else if (awayAgg > homeAgg) {
+    for (const c of new Set(awayClubs)) add(c, rules.combined.aggregateBonus);
+  }
 
   for (const k of Object.keys(points)) points[k] = round4(points[k]);
   return points;
@@ -1488,7 +1507,7 @@ export function computeCombinedPoints(
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npm run test -- src/lib/klcsra/combined.test.ts`
-Expected: PASS (5 tests). `round4` turns `0.2 + 0.1` into a clean `0.3`.
+Expected: PASS (6 tests). `round4` turns `0.2 + 0.1` into a clean `0.3`.
 
 - [ ] **Step 5: Commit**
 

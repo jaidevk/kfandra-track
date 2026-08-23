@@ -48,8 +48,14 @@ export function computeCombinedPoints(
     else if (h.awayScore > h.homeScore) add(h.awayClubId, rules.combined.halfWin);
   }
 
-  if (homeAgg > awayAgg) for (const c of homeClubs) add(c, rules.combined.aggregateBonus);
-  else if (awayAgg > homeAgg) for (const c of awayClubs) add(c, rules.combined.aggregateBonus);
+  // Dedupe: the aggregate bonus is per CLUB, not per half-slot. A club may
+  // legitimately play both halves on the same side (the DB's uniques are
+  // scoped to half_id), and must still receive the bonus only once.
+  if (homeAgg > awayAgg) {
+    for (const c of new Set(homeClubs)) add(c, rules.combined.aggregateBonus);
+  } else if (awayAgg > homeAgg) {
+    for (const c of new Set(awayClubs)) add(c, rules.combined.aggregateBonus);
+  }
 
   for (const k of Object.keys(points)) points[k] = round4(points[k]);
   return points;

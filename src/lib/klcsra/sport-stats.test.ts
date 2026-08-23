@@ -2,8 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   DEFAULT_SPORT_STATS,
   SPORTS,
+  SPORT_LABELS,
   parseSportStats,
   statsForSport,
+  type Sport,
 } from "./sport-stats";
 import { STAT_KEYS } from "./stat-rates";
 
@@ -77,6 +79,22 @@ describe("parseSportStats", () => {
     const r = parseSportStats({ hockey: ["goal"] });
     expect(r).toEqual(DEFAULT_SPORT_STATS);
   });
+
+  it("de-duplicates a repeated stat key", () => {
+    // app_config is hand-editable and has no uniqueness constraint; a repeated
+    // key would render the same button twice in the recorder's stats popup.
+    const r = parseSportStats({ football: ["goal", "goal", "assist"] });
+    expect(r.football).toEqual(["goal", "assist"]);
+  });
+});
+
+describe("SPORT_LABELS", () => {
+  it("gives every sport a non-empty label", () => {
+    for (const sport of SPORTS) {
+      expect(SPORT_LABELS[sport]).toBeTruthy();
+    }
+    expect(SPORT_LABELS.fooba).toBe("Fooba");
+  });
 });
 
 describe("statsForSport", () => {
@@ -100,5 +118,14 @@ describe("statsForSport", () => {
   it("returns keys in canonical STAT_KEYS order", () => {
     const cfg = parseSportStats({ football: ["ownGoal", "goal", "save"] });
     expect(statsForSport("football", cfg)).toEqual(["goal", "save", "ownGoal"]);
+  });
+
+  it("degrades to the full stat set for an unrecognised sport", () => {
+    // klc_matches.sport is CHECK-constrained text, not an enum, so it reaches
+    // TS as `string` and every call site is an unchecked cast. Widening the
+    // CHECK before the union catches up must not throw, and must not silently
+    // exclude stats (which would zero a payout).
+    expect(() => statsForSport("hockey" as Sport)).not.toThrow();
+    expect(statsForSport("hockey" as Sport)).toEqual(statsForSport("variation"));
   });
 });

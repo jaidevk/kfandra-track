@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { computeStandingPoints } from "./standings";
-import { DEFAULT_STANDINGS_RULES as R } from "./standings-rules";
+import {
+  DEFAULT_STANDINGS_RULES as R,
+  parseStandingsRules,
+} from "./standings-rules";
 
 describe("computeStandingPoints", () => {
   it("6+ players, home win 2-1 → 3 / 0", () => {
@@ -41,5 +44,14 @@ describe("computeStandingPoints", () => {
 
   it("a big away win applies the margin the other way", () => {
     expect(computeStandingPoints(3, 25, 6, R)).toEqual({ home: -1, away: 4 });
+  });
+
+  it("never awards a margin bonus on a draw, even at threshold 0", () => {
+    // With the default threshold of 20 a draw's margin of 0 excludes itself,
+    // so the explicit homeScore !== awayScore guard is only load-bearing when
+    // an admin configures a threshold of 0. Without it, BOTH sides would
+    // collect the winner bonus on a draw.
+    const r = parseStandingsRules({ margin: { threshold: 0 } });
+    expect(computeStandingPoints(1, 1, 6, r)).toEqual({ home: 1, away: 1 });
   });
 });

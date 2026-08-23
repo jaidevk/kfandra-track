@@ -4,12 +4,13 @@ import { parseStatRates, type StatRates } from "./stat-rates";
 import { parseSportStats, type SportStats } from "./sport-stats";
 import { parseStandingsRules, type StandingsRules } from "./standings-rules";
 
+// Types only. Re-exporting a VALUE from here would drag `server-only` into any
+// client bundle that imported it — `statsForSport` in particular is pure and
+// the recorder's stats popup needs it, so it must be imported from
+// `./sport-stats` directly. Loaders are the only values this module exports.
 export type { StatRates } from "./stat-rates";
 export type { SportStats, Sport } from "./sport-stats";
 export type { StandingsRules } from "./standings-rules";
-export { DEFAULT_STAT_RATES } from "./stat-rates";
-export { DEFAULT_SPORT_STATS, statsForSport } from "./sport-stats";
-export { DEFAULT_STANDINGS_RULES } from "./standings-rules";
 
 async function loadConfigValue(key: string): Promise<unknown> {
   const admin = createAdminClient();

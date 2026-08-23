@@ -22,7 +22,7 @@ export type StatRates = Record<StatKey, StatRate>;
  * Canonical stat order (also the display order): scoring events, then
  * contributions, then defensive, then sanctions, then own-goals.
  */
-export const STAT_KEYS: StatKey[] = [
+export const STAT_KEYS: readonly StatKey[] = [
   "goal", "try", "mainGoal", "reboundGoal",
   "assist", "preAssist", "switchover",
   "tackle", "save",

@@ -8,7 +8,7 @@ import { STAT_KEYS, type StatKey } from "./stat-rates";
 
 export type Sport = "football" | "rugby" | "fooba" | "variation";
 
-export const SPORTS: Sport[] = ["football", "rugby", "fooba", "variation"];
+export const SPORTS: readonly Sport[] = ["football", "rugby", "fooba", "variation"];
 
 export const SPORT_LABELS: Record<Sport, string> = {
   football: "Football",
@@ -65,9 +65,12 @@ export function parseSportStats(value: unknown): SportStats {
       out[sport] = [...DEFAULT_SPORT_STATS[sport]];
       continue;
     }
-    const keys = raw.filter(
-      (k): k is StatKey => typeof k === "string" && KNOWN_STATS.has(k),
-    );
+    // De-duplicate: app_config is hand-editable JSON with no uniqueness
+    // constraint, and a repeated key would render the same button twice in the
+    // recorder's stats popup.
+    const keys = [...new Set(
+      raw.filter((k): k is StatKey => typeof k === "string" && KNOWN_STATS.has(k)),
+    )];
     out[sport] = keys.length > 0 ? keys : [...DEFAULT_SPORT_STATS[sport]];
   }
   return out;
@@ -85,5 +88,12 @@ export function statsForSport(
   sport: Sport,
   config: SportStats = DEFAULT_SPORT_STATS,
 ): StatKey[] {
-  return inCanonicalOrder(config[sport] ?? DEFAULT_SPORT_STATS[sport]);
+  // `klc_matches.sport` is a CHECK-constrained text column, not an enum, so it
+  // reaches TypeScript as `string` and every call site is an unchecked cast.
+  // An unrecognised sport therefore has to degrade, not throw. Falling back to
+  // `variation` (every known stat) is the fail-safe direction: it never
+  // silently excludes a stat and so never silently zeroes a payout.
+  const allowed =
+    config[sport] ?? DEFAULT_SPORT_STATS[sport] ?? DEFAULT_SPORT_STATS.variation;
+  return inCanonicalOrder(allowed);
 }

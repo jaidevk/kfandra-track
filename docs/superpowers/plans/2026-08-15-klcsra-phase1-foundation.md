@@ -577,7 +577,7 @@ export type StatRates = Record<StatKey, StatRate>;
  * Canonical stat order (also the display order): scoring events, then
  * contributions, then defensive, then sanctions, then own-goals.
  */
-export const STAT_KEYS: StatKey[] = [
+export const STAT_KEYS: readonly StatKey[] = [
   "goal", "try", "mainGoal", "reboundGoal",
   "assist", "preAssist", "switchover",
   "tackle", "save",
@@ -666,8 +666,10 @@ import { describe, it, expect } from "vitest";
 import {
   DEFAULT_SPORT_STATS,
   SPORTS,
+  SPORT_LABELS,
   parseSportStats,
   statsForSport,
+  type Sport,
 } from "./sport-stats";
 import { STAT_KEYS } from "./stat-rates";
 
@@ -741,6 +743,22 @@ describe("parseSportStats", () => {
     const r = parseSportStats({ hockey: ["goal"] });
     expect(r).toEqual(DEFAULT_SPORT_STATS);
   });
+
+  it("de-duplicates a repeated stat key", () => {
+    // app_config is hand-editable and has no uniqueness constraint; a repeated
+    // key would render the same button twice in the recorder's stats popup.
+    const r = parseSportStats({ football: ["goal", "goal", "assist"] });
+    expect(r.football).toEqual(["goal", "assist"]);
+  });
+});
+
+describe("SPORT_LABELS", () => {
+  it("gives every sport a non-empty label", () => {
+    for (const sport of SPORTS) {
+      expect(SPORT_LABELS[sport]).toBeTruthy();
+    }
+    expect(SPORT_LABELS.fooba).toBe("Fooba");
+  });
 });
 
 describe("statsForSport", () => {
@@ -765,6 +783,15 @@ describe("statsForSport", () => {
     const cfg = parseSportStats({ football: ["ownGoal", "goal", "save"] });
     expect(statsForSport("football", cfg)).toEqual(["goal", "save", "ownGoal"]);
   });
+
+  it("degrades to the full stat set for an unrecognised sport", () => {
+    // klc_matches.sport is CHECK-constrained text, not an enum, so it reaches
+    // TS as `string` and every call site is an unchecked cast. Widening the
+    // CHECK before the union catches up must not throw, and must not silently
+    // exclude stats (which would zero a payout).
+    expect(() => statsForSport("hockey" as Sport)).not.toThrow();
+    expect(statsForSport("hockey" as Sport)).toEqual(statsForSport("variation"));
+  });
 });
 ```
 
@@ -786,7 +813,7 @@ import { STAT_KEYS, type StatKey } from "./stat-rates";
 
 export type Sport = "football" | "rugby" | "fooba" | "variation";
 
-export const SPORTS: Sport[] = ["football", "rugby", "fooba", "variation"];
+export const SPORTS: readonly Sport[] = ["football", "rugby", "fooba", "variation"];
 
 export const SPORT_LABELS: Record<Sport, string> = {
   football: "Football",
@@ -843,9 +870,12 @@ export function parseSportStats(value: unknown): SportStats {
       out[sport] = [...DEFAULT_SPORT_STATS[sport]];
       continue;
     }
-    const keys = raw.filter(
-      (k): k is StatKey => typeof k === "string" && KNOWN_STATS.has(k),
-    );
+    // De-duplicate: app_config is hand-editable JSON with no uniqueness
+    // constraint, and a repeated key would render the same button twice in the
+    // recorder's stats popup.
+    const keys = [...new Set(
+      raw.filter((k): k is StatKey => typeof k === "string" && KNOWN_STATS.has(k)),
+    )];
     out[sport] = keys.length > 0 ? keys : [...DEFAULT_SPORT_STATS[sport]];
   }
   return out;
@@ -863,7 +893,14 @@ export function statsForSport(
   sport: Sport,
   config: SportStats = DEFAULT_SPORT_STATS,
 ): StatKey[] {
-  return inCanonicalOrder(config[sport] ?? DEFAULT_SPORT_STATS[sport]);
+  // `klc_matches.sport` is a CHECK-constrained text column, not an enum, so it
+  // reaches TypeScript as `string` and every call site is an unchecked cast.
+  // An unrecognised sport therefore has to degrade, not throw. Falling back to
+  // `variation` (every known stat) is the fail-safe direction: it never
+  // silently excludes a stat and so never silently zeroes a payout.
+  const allowed =
+    config[sport] ?? DEFAULT_SPORT_STATS[sport] ?? DEFAULT_SPORT_STATS.variation;
+  return inCanonicalOrder(allowed);
 }
 ```
 
@@ -1018,8 +1055,8 @@ Two behaviours beyond a plain sum, both from spec v0.4:
 ```typescript
 import { describe, it, expect } from "vitest";
 import { computePlayerPayout } from "./payouts";
-import { DEFAULT_STAT_RATES } from "./stat-rates";
-import { statsForSport } from "./sport-stats";
+import { DEFAULT_STAT_RATES, parseStatRates } from "./stat-rates";
+import { statsForSport, parseSportStats } from "./sport-stats";
 
 describe("computePlayerPayout", () => {
   it("is zero for no stats", () => {
@@ -1074,6 +1111,43 @@ describe("computePlayerPayout — friendlies (includeKR: false)", () => {
   it("includeKR: true is the default", () => {
     expect(computePlayerPayout({ goal: 1 }, DEFAULT_STAT_RATES, {}))
       .toEqual({ kr: 20, mmg: 500 });
+  });
+});
+
+describe("computePlayerPayout — malformed counts", () => {
+  it("treats a NaN count as zero rather than poisoning the total", () => {
+    // A recorder input doing parseInt("") yields NaN. `if (!n) continue` skips
+    // it, so one bad field cannot turn a whole payout into NaN and write that
+    // to the balance sheet. Pinned because a refactor to
+    // `if (n === 0 || n === undefined)` would silently break it.
+    expect(computePlayerPayout({ goal: NaN, assist: 1 }, DEFAULT_STAT_RATES))
+      .toEqual({ kr: 10, mmg: 200 });
+  });
+
+  it("does process negative and fractional counts", () => {
+    // This function is a pure sum and does not validate its input. Non-negative
+    // integer counts are enforced one layer down by klc_player_stats'
+    // check (stat_count >= 0). Pinned so the division of responsibility is
+    // explicit rather than assumed.
+    expect(computePlayerPayout({ goal: -1 }, DEFAULT_STAT_RATES))
+      .toEqual({ kr: -20, mmg: -500 });
+    expect(computePlayerPayout({ goal: 1.5 }, DEFAULT_STAT_RATES))
+      .toEqual({ kr: 30, mmg: 750 });
+  });
+});
+
+describe("computePlayerPayout — parsed config end to end", () => {
+  it("composes with parsed app_config values, not just the defaults", () => {
+    // Every other compute test imports DEFAULT_* directly, so nothing would
+    // notice if a parser's output shape drifted from what the compute
+    // functions expect. This walks the real Phase 2 chain.
+    const rates = parseStatRates({ goal: { kr: 99, mmg: 1000 } });
+    const sports = parseSportStats({ football: ["goal", "assist"] });
+    expect(computePlayerPayout(
+      { goal: 1, assist: 1, try: 1 },
+      rates,
+      { allowed: statsForSport("football", sports) },
+    )).toEqual({ kr: 109, mmg: 1200 });
   });
 });
 
@@ -1214,6 +1288,18 @@ describe("round4", () => {
   it("keeps four decimal places", () => {
     expect(round4(0.12345)).toBe(0.1235);
   });
+
+  it("clears noise on negative sums too", () => {
+    expect(round4(-0.2 - 0.1)).toBe(-0.3);
+  });
+
+  it("returns -0 for a magnitude below the fourth decimal (documented)", () => {
+    // Object.is(-0, 0) is false, so a downstream `toBe(0)` would fail. Not
+    // reachable with the default rules (every negative is -1 or larger), but
+    // pinned here so the next person meets it in this test rather than in a
+    // confusing failure elsewhere.
+    expect(Object.is(round4(-0.00001), -0)).toBe(true);
+  });
 });
 ```
 
@@ -1222,7 +1308,10 @@ describe("round4", () => {
 ```typescript
 import { describe, it, expect } from "vitest";
 import { computeStandingPoints } from "./standings";
-import { DEFAULT_STANDINGS_RULES as R } from "./standings-rules";
+import {
+  DEFAULT_STANDINGS_RULES as R,
+  parseStandingsRules,
+} from "./standings-rules";
 
 describe("computeStandingPoints", () => {
   it("6+ players, home win 2-1 → 3 / 0", () => {
@@ -1263,6 +1352,15 @@ describe("computeStandingPoints", () => {
 
   it("a big away win applies the margin the other way", () => {
     expect(computeStandingPoints(3, 25, 6, R)).toEqual({ home: -1, away: 4 });
+  });
+
+  it("never awards a margin bonus on a draw, even at threshold 0", () => {
+    // With the default threshold of 20 a draw's margin of 0 excludes itself,
+    // so the explicit homeScore !== awayScore guard is only load-bearing when
+    // an admin configures a threshold of 0. Without it, BOTH sides would
+    // collect the winner bonus on a draw.
+    const r = parseStandingsRules({ margin: { threshold: 0 } });
+    expect(computeStandingPoints(1, 1, 6, r)).toEqual({ home: 1, away: 1 });
   });
 });
 ```
@@ -1534,12 +1632,13 @@ import { parseStatRates, type StatRates } from "./stat-rates";
 import { parseSportStats, type SportStats } from "./sport-stats";
 import { parseStandingsRules, type StandingsRules } from "./standings-rules";
 
+// Types only. Re-exporting a VALUE from here would drag `server-only` into any
+// client bundle that imported it — `statsForSport` in particular is pure and
+// the recorder's stats popup needs it, so it must be imported from
+// `./sport-stats` directly. Loaders are the only values this module exports.
 export type { StatRates } from "./stat-rates";
 export type { SportStats, Sport } from "./sport-stats";
 export type { StandingsRules } from "./standings-rules";
-export { DEFAULT_STAT_RATES } from "./stat-rates";
-export { DEFAULT_SPORT_STATS, statsForSport } from "./sport-stats";
-export { DEFAULT_STANDINGS_RULES } from "./standings-rules";
 
 async function loadConfigValue(key: string): Promise<unknown> {
   const admin = createAdminClient();

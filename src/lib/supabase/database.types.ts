@@ -114,6 +114,7 @@ export type Database = {
           matches_lost: number
           matches_played: number
           matches_won: number
+          results_source: string | null
           updated_at: string
           updated_by: string | null
         }
@@ -126,6 +127,7 @@ export type Database = {
           matches_lost?: number
           matches_played?: number
           matches_won?: number
+          results_source?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -138,6 +140,7 @@ export type Database = {
           matches_lost?: number
           matches_played?: number
           matches_won?: number
+          results_source?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -165,6 +168,7 @@ export type Database = {
           entry_date: string
           id: string
           player_id: string
+          source: string | null
           updated_at: string
         }
         Insert: {
@@ -173,6 +177,7 @@ export type Database = {
           entry_date: string
           id?: string
           player_id: string
+          source?: string | null
           updated_at?: string
         }
         Update: {
@@ -181,6 +186,7 @@ export type Database = {
           entry_date?: string
           id?: string
           player_id?: string
+          source?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -585,6 +591,232 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      klc_appearances: {
+        Row: {
+          id: string
+          player_id: string
+          side_id: string
+          slot: number
+        }
+        Insert: {
+          id?: string
+          player_id: string
+          side_id: string
+          slot: number
+        }
+        Update: {
+          id?: string
+          player_id?: string
+          side_id?: string
+          slot?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "klc_appearances_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "klc_appearances_side_id_fkey"
+            columns: ["side_id"]
+            isOneToOne: false
+            referencedRelation: "klc_match_sides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      klc_match_halves: {
+        Row: {
+          half_no: number
+          id: string
+          match_id: string
+        }
+        Insert: {
+          half_no: number
+          id?: string
+          match_id: string
+        }
+        Update: {
+          half_no?: number
+          id?: string
+          match_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "klc_match_halves_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "klc_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      klc_match_sides: {
+        Row: {
+          club_id: string
+          half_id: string
+          id: string
+          role: string
+          score: number
+          side: string
+        }
+        Insert: {
+          club_id: string
+          half_id: string
+          id?: string
+          role?: string
+          score?: number
+          side: string
+        }
+        Update: {
+          club_id?: string
+          half_id?: string
+          id?: string
+          role?: string
+          score?: number
+          side?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "klc_match_sides_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "klc_match_sides_half_id_fkey"
+            columns: ["half_id"]
+            isOneToOne: false
+            referencedRelation: "klc_match_halves"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      klc_matches: {
+        Row: {
+          created_at: string
+          duration_minutes: number | null
+          entry_date: string
+          id: string
+          is_combined: boolean
+          is_friendly: boolean
+          season_id: string | null
+          sport: string
+          status: string
+          submitted_at: string | null
+          submitted_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes?: number | null
+          entry_date: string
+          id?: string
+          is_combined?: boolean
+          is_friendly?: boolean
+          season_id?: string | null
+          sport?: string
+          status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number | null
+          entry_date?: string
+          id?: string
+          is_combined?: boolean
+          is_friendly?: boolean
+          season_id?: string | null
+          sport?: string
+          status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "klc_matches_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "klc_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "klc_matches_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      klc_player_stats: {
+        Row: {
+          appearance_id: string
+          id: string
+          stat_count: number
+          stat_key: string
+        }
+        Insert: {
+          appearance_id: string
+          id?: string
+          stat_count?: number
+          stat_key: string
+        }
+        Update: {
+          appearance_id?: string
+          id?: string
+          stat_count?: number
+          stat_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "klc_player_stats_appearance_id_fkey"
+            columns: ["appearance_id"]
+            isOneToOne: false
+            referencedRelation: "klc_appearances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      klc_seasons: {
+        Row: {
+          created_at: string
+          end_date: string | null
+          id: string
+          name: string
+          season_no: number
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          name: string
+          season_no: number
+          start_date: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          name?: string
+          season_no?: number
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       meal_slots: {
         Row: {

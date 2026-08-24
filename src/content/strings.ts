@@ -119,6 +119,8 @@ export const strings = {
     gymCard: { title: "Strength & Conditioning", subtitle: "Review daily logs" },
     dietCard: { title: "Diet", subtitle: "Review daily logs" },
     klcCard: { title: "Club Balance Sheet", subtitle: "Review each club’s sheet" },
+    klcMatchesCard: { title: "Match Recorder", subtitle: "Record KLC match stats" },
+    klcSeasonsCard: { title: "Seasons", subtitle: "Start, close & rename seasons" },
     configCard: { title: "Scoring", subtitle: "Edit points & game names" },
     backToApp: "← Back to app",
     home: "Admin",

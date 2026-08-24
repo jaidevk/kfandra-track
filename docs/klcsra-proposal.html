@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>KLCSRA — Match Stats Recording App · Proposal for review</title>
+<style>
+  :root{
+    color-scheme: light;
+    --ink:#0f172a; --slate:#475569; --mute:#94a3b8; --line:#e2e8f0; --line2:#eef2f7;
+    --blue:#2563eb; --blue-bg:#eff5ff; --blue-line:#dbe7ff;
+    --green:#059669; --green-bg:#ecfdf5;
+    --amber:#b45309; --amber-bg:#fff7ed;
+    --indigo:#4338ca; --indigo-bg:#eef2ff; --indigo-line:#c7d2fe;
+    --rose:#be123c; --rose-bg:#fff1f2;
+    --paper:#ffffff; --wash:#f6f8fb;
+    --kl:#0e7490; --rr:#b91c1c;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink); background:var(--paper); font-size:12px; line-height:1.5;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .page{ position:relative; padding:24px 28px 28px; page-break-after:always; }
+  .page:last-child{ page-break-after:auto; }
+  h1,h2,h3,h4{ margin:0; line-height:1.2; }
+  p{ margin:0 0 8px; }
+  .eyebrow{ font-size:9.5px; letter-spacing:.16em; text-transform:uppercase; font-weight:800; color:var(--blue); }
+  .muted{ color:var(--slate); }
+  .small{ font-size:10.5px; } .tiny{ font-size:9.5px; }
+
+  .cover{ display:flex; flex-direction:column; min-height:930px; }
+  .cover .top{ flex:1; display:flex; flex-direction:column; justify-content:center; }
+  .cover h1{ font-size:40px; font-weight:900; letter-spacing:-.02em; margin:10px 0 6px; }
+  .cover .lede{ font-size:15px; color:var(--slate); max-width:590px; margin-top:10px; }
+  .pillrow{ display:flex; gap:8px; flex-wrap:wrap; margin-top:22px; }
+  .pill{ font-size:10.5px; font-weight:700; border:1px solid var(--line); border-radius:999px; padding:5px 11px; color:var(--slate); background:var(--wash); }
+  .pill b{ color:var(--ink); }
+  .cover .hero{ margin-top:26px; }
+  .scorecard{ border:1px solid var(--line); border-radius:16px; padding:14px 18px; background:linear-gradient(160deg,#ffffff,#f3f6ff); display:flex; align-items:center; justify-content:space-between; max-width:520px; }
+  .team{ display:flex; align-items:center; gap:10px; font-weight:800; font-size:13px; }
+  .crest{ width:34px; height:34px; border-radius:9px; display:grid; place-items:center; color:#fff; font-weight:900; font-size:12px; }
+  .crest.kl{ background:var(--kl); } .crest.rr{ background:var(--rr); }
+  .crest.sm{ width:22px; height:22px; border-radius:6px; font-size:9px; }
+  .bigscore{ font-size:30px; font-weight:900; }
+  .cover .foot{ border-top:1px solid var(--line); padding-top:14px; display:flex; justify-content:space-between; align-items:flex-end; }
+  .badgeReview{ display:inline-block; font-size:10px; font-weight:800; color:var(--amber); background:var(--amber-bg); border:1px solid #fed7aa; border-radius:999px; padding:5px 11px; }
+
+  .sectionhead{ border-bottom:2px solid var(--ink); padding-bottom:8px; margin-bottom:16px; display:flex; align-items:baseline; justify-content:space-between; }
+  .sectionhead h2{ font-size:20px; font-weight:900; letter-spacing:-.01em; }
+  .sectionhead .step{ font-size:10px; font-weight:800; color:var(--mute); letter-spacing:.12em; text-transform:uppercase; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .grid12{ display:grid; grid-template-columns:1.02fr .98fr; gap:20px; align-items:start; }
+  .card{ border:1px solid var(--line); border-radius:12px; padding:13px 15px; background:var(--paper); }
+  .card h3{ font-size:12.5px; font-weight:800; margin-bottom:5px; }
+  .card.blue{ background:var(--blue-bg); border-color:var(--blue-line); }
+  .card.green{ background:var(--green-bg); border-color:#a7f3d0; }
+  .card.indigo{ background:var(--indigo-bg); border-color:var(--indigo-line); }
+  .card.wash{ background:var(--wash); }
+  ul.clean{ margin:0; padding-left:16px; } ul.clean li{ margin:3px 0; }
+  .kicker{ font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; font-weight:800; color:var(--mute); margin-bottom:6px; }
+  .noteflag{ border-left:3px solid var(--blue); background:var(--blue-bg); border-radius:0 8px 8px 0; padding:9px 12px; font-size:10.5px; }
+  .chip{ font-size:9.5px; background:#f1f5f9; border:1px solid var(--line); border-radius:999px; padding:3px 8px; }
+
+  /* recorder */
+  .device{ border:1px solid var(--line); border-radius:20px; padding:11px; background:var(--wash); }
+  .device.rec{ zoom:.78; }
+  .screen{ background:#fff; border:1px solid var(--line2); border-radius:14px; padding:10px; display:flex; flex-direction:column; gap:8px; }
+  .glass{ background:linear-gradient(160deg,#ffffff,#f3f6ff); border:1px solid var(--blue-line); border-radius:12px; padding:9px 11px; display:flex; flex-direction:column; gap:7px; }
+  .gr{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .glbl{ font-size:11px; font-weight:800; }
+  .fakesel{ font-size:10px; border:1px solid var(--line); border-radius:8px; padding:5px 8px; background:#fff; color:var(--ink); display:inline-flex; align-items:center; gap:5px; }
+  .fakesel .car{ color:var(--mute); }
+  .seg{ display:flex; gap:3px; background:#eef0f3; border-radius:8px; padding:3px; }
+  .seg span{ font-size:9px; font-weight:800; padding:5px 8px; border-radius:6px; color:#6b7280; }
+  .seg span.on{ background:var(--blue); color:#fff; }
+  .teamcard{ border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .teamhead{ padding:8px 10px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .teamhead.h{ background:#ecfeff; border-bottom:1px solid #cffafe; }
+  .teamhead.a{ background:#fef2f2; border-bottom:1px solid #fee2e2; }
+  .teamname{ font-weight:900; font-size:11px; display:flex; align-items:center; gap:6px; }
+  .rolesel{ font-size:8px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; border:1px solid var(--line); border-radius:6px; padding:3px 6px; background:#fff; }
+  .rolesel.h{ color:#0369a1; } .rolesel.a{ color:#b91c1c; }
+  .scorepill{ display:flex; align-items:center; gap:5px; font-size:9px; color:#6b7280; font-weight:800; }
+  .scorebox{ border:1px solid var(--line); border-radius:7px; padding:2px 9px; font-weight:900; font-size:13px; color:var(--ink); background:#fff; }
+  .pslot{ display:flex; align-items:center; gap:7px; padding:6px 10px; border-top:1px solid #f1f5f9; }
+  .pnum{ width:13px; text-align:center; font-size:9px; font-weight:800; color:var(--mute); }
+  .pname{ flex:1; font-size:10px; border:1px solid var(--line); border-radius:7px; padding:5px 7px; background:#fff; display:flex; align-items:center; justify-content:space-between; }
+  .pname .car{ color:var(--mute); } .pname.empty{ color:var(--mute); border-style:dashed; }
+  .statbtn{ font-size:9px; font-weight:800; border:1px solid var(--indigo-line); background:var(--indigo-bg); color:var(--indigo); border-radius:999px; padding:4px 8px; white-space:nowrap; }
+  .statbtn.off{ opacity:.4; } .statbtn b{ font-weight:900; }
+  .nextbtn{ text-align:center; font-size:10px; font-weight:800; color:var(--blue); border:1px dashed #bfdbfe; border-radius:10px; padding:7px; }
+  .submitbtn{ text-align:center; font-size:11px; font-weight:900; color:#fff; background:var(--ink); border-radius:10px; padding:9px; letter-spacing:.02em; }
+
+  /* popup */
+  .popcard{ border:1px solid var(--line); border-radius:14px; background:#fff; box-shadow:0 10px 26px rgba(2,6,23,.12); overflow:hidden; }
+  .pophead{ background:var(--ink); color:#fff; padding:10px 12px; }
+  .pophead b{ font-size:12px; } .pophead p{ margin:2px 0 0; font-size:9px; color:#94a3b8; }
+  .popbody{ padding:11px 12px; }
+  .statgrid{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .stat{ display:flex; align-items:center; justify-content:space-between; border:1px solid var(--line); border-radius:9px; padding:6px 8px; }
+  .stat .nm{ font-size:10.5px; font-weight:700; }
+  .stat .ct{ display:flex; align-items:center; gap:6px; }
+  .stat .cnt{ font-weight:900; font-size:11px; min-width:9px; text-align:center; }
+  .stat .plus{ width:17px; height:17px; border-radius:5px; background:var(--blue); color:#fff; font-weight:900; display:grid; place-items:center; font-size:11px; }
+  .stat.hot{ border-color:var(--blue); background:var(--blue-bg); }
+  .popfoot{ display:flex; justify-content:space-between; align-items:center; margin-top:9px; }
+  .doneb{ font-size:10px; font-weight:800; background:var(--ink); color:#fff; border-radius:999px; padding:6px 15px; }
+
+  .steps{ display:flex; flex-direction:column; gap:8px; }
+  .stepitem{ display:flex; gap:9px; }
+  .stepitem b{ font-size:11.5px; } .stepitem p{ margin:1px 0 0; font-size:10.5px; color:var(--slate); }
+  .dot{ width:17px; height:17px; flex:none; border-radius:999px; background:var(--blue); color:#fff; font-size:9px; font-weight:900; display:grid; place-items:center; margin-top:1px; }
+  .dot.g{ background:var(--green); } .dot.i{ background:var(--indigo); }
+
+  .report{ background:#0f172a; color:#e2e8f0; border-radius:12px; padding:12px 13px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:9px; line-height:1.6; white-space:pre; overflow:hidden; }
+  .report .h{ color:#93c5fd; } .report .d{ color:#94a3b8; } .report .y{ color:#fcd34d; } .report .g{ color:#6ee7b7; }
+  .copybtn{ float:right; font-size:9px; font-weight:800; border:1px solid var(--line); border-radius:999px; padding:4px 10px; color:var(--slate); background:#fff; }
+  table.tbl{ width:100%; border-collapse:collapse; font-size:10px; }
+  table.tbl th,table.tbl td{ text-align:left; padding:5px 6px; border-bottom:1px solid var(--line2); }
+  table.tbl th{ font-size:8.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--mute); }
+  table.tbl td.num,table.tbl th.num{ text-align:right; font-variant-numeric:tabular-nums; }
+  .cap{ font-size:9px; color:var(--mute); margin-top:6px; }
+  .pos{ color:var(--green); font-weight:700; } .neg{ color:var(--rose); font-weight:700; }
+
+  /* payout table */
+  table.rate{ width:100%; border-collapse:collapse; font-size:10px; }
+  table.rate th,table.rate td{ padding:4px 7px; border-bottom:1px solid var(--line2); text-align:left; }
+  table.rate th{ font-size:8px; letter-spacing:.05em; text-transform:uppercase; color:var(--mute); }
+  table.rate td.n,table.rate th.n{ text-align:right; font-variant-numeric:tabular-nums; font-weight:700; }
+  table.rate tr.sep td{ border-top:1px solid var(--line); }
+
+  table.dec{ width:100%; border-collapse:collapse; font-size:11px; }
+  table.dec th,table.dec td{ text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  table.dec td:first-child{ font-weight:800; white-space:nowrap; width:32%; }
+  .yes{ color:var(--green); font-weight:800; } .no{ color:#dc2626; font-weight:800; }
+  .arrow{ text-align:center; color:var(--mute); font-weight:900; font-size:18px; }
+  .beforeafter{ display:grid; grid-template-columns:1fr 26px 1fr; gap:8px; align-items:center; }
+  .tag{ font-size:8px; font-weight:900; letter-spacing:.04em; text-transform:uppercase; padding:2px 6px; border-radius:6px; }
+  .tag.lock{ color:#fff; background:var(--ink); } .tag.new{ color:var(--green); background:var(--green-bg); border:1px solid #a7f3d0; }
+  .n2{ width:17px; height:17px; flex:none; border-radius:999px; background:var(--blue); color:#fff; font-size:9px; font-weight:900; display:inline-grid; place-items:center; vertical-align:middle; }
+  .n2.lock{ background:var(--ink); }
+  .mtitle{ display:flex; align-items:center; gap:7px; font-size:11px; font-weight:800; }
+  .mcard{ border:1px solid var(--line); border-radius:11px; padding:8px 10px; }
+  .between{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+</style>
+</head>
+<body>
+
+<!-- ============================ COVER ============================ -->
+<section class="page cover">
+  <div class="top">
+    <div class="eyebrow">KFANDRA · KLCFERRSXVSG1 · Admin tool</div>
+    <h1>KLCSRA</h1>
+    <div style="font-size:17px; font-weight:800; color:var(--slate); margin-top:-2px;">KLC Stats Recording App</div>
+    <p class="lede">An admin-only screen for recording a KLC match — football, rugby or a variation — the clubs, who played, the score, and every player's stats. It totals each player's <b>Kroopies</b> and <b>MMG points</b>, hands you a copy-ready report, keeps the season tables, and feeds the balance sheets — all fixed in-app.</p>
+
+    <div class="pillrow">
+      <span class="pill"><b>Who:</b> Admins only</span>
+      <span class="pill"><b>Sports:</b> Football · Rugby · Variation</span>
+      <span class="pill"><b>Per player:</b> 13-stat popup → KR + MMG</span>
+      <span class="pill"><b>Feeds:</b> Balance sheets + MMG</span>
+      <span class="pill"><b>Finalised:</b> Submit &amp; lock</span>
+    </div>
+
+    <div class="hero">
+      <div class="kicker" style="margin-bottom:8px;">The unit of work — one recorded match</div>
+      <div class="scorecard">
+        <div class="team"><span class="crest kl">KL</span> Kraken Leviathans</div>
+        <div style="text-align:center;">
+          <div class="bigscore">2 – 1</div>
+          <div class="tiny muted" style="letter-spacing:.05em;">FOOTBALL · 60 MIN · SAT 9 AUG 2026</div>
+        </div>
+        <div class="team" style="flex-direction:row-reverse;"><span class="crest rr">RR</span> Rusty Rabonas</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div>
+      <div class="badgeReview">Draft proposal · mockups, not final UI</div>
+      <p class="tiny muted" style="margin-top:8px; max-width:450px;">Revised to the KFANDRA spec sheet + follow-ups (points/KR payouts, combined matches, Submit &amp; lock). Screens are wireframe mockups in the app's house style; real crests, names &amp; players are used in-app.</p>
+    </div>
+    <div class="tiny muted" style="text-align:right;">Version 0.3 · 10 Aug 2026<br>Example match &amp; figures are illustrative</div>
+  </div>
+</section>
+
+<!-- ============================ OVERVIEW ============================ -->
+<section class="page">
+  <div class="sectionhead"><h2>What it is, at a glance</h2><span class="step">Overview</span></div>
+
+  <div class="grid2" style="margin-bottom:16px;">
+    <div class="card">
+      <div class="kicker">The problem today</div>
+      <p class="small">Match details live in people's heads and scattered messages. Turning them into website updates, MMG points and balance-sheet numbers means re-typing everything by hand — and tallying every stat manually.</p>
+    </div>
+    <div class="card blue">
+      <div class="kicker" style="color:var(--blue);">What KLCSRA does</div>
+      <p class="small">One admin records the match once — sport, clubs, squads and every player's stats. The app totals each player's <b>KR &amp; MMG</b>, produces a report to copy out, keeps season tables, feeds the balance sheets, then <b>locks on Submit</b>.</p>
+    </div>
+  </div>
+
+  <div class="kicker">What gets captured per match</div>
+  <div class="card wash" style="margin-bottom:14px;">
+    <div class="grid2" style="grid-template-columns:repeat(3,1fr); gap:12px;">
+      <div><b class="small">Sport</b><p class="tiny muted" style="margin:2px 0 0;">Football, Rugby, or a Variation. Drives which stats appear.</p></div>
+      <div><b class="small">Date &amp; duration</b><p class="tiny muted" style="margin:2px 0 0;">Match date; duration typed in minutes.</p></div>
+      <div><b class="small">Two clubs + venue role</b><p class="tiny muted" style="margin:2px 0 0;">Each side a club, tagged Home / Away / Neutral.</p></div>
+      <div><b class="small">Score per team</b><p class="tiny muted" style="margin:2px 0 0;">Final score entered as a number per side.</p></div>
+      <div><b class="small">Up to 6 players / side</b><p class="tiny muted" style="margin:2px 0 0;">Picked as "J. Karanth". Empty slots blank. Grows to 11 + subs later.</p></div>
+      <div><b class="small">Per-player stats</b><p class="tiny muted" style="margin:2px 0 0;">A tap-to-add popup of 13 stats, each paying KR + MMG.</p></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="kicker">Three things it produces</div>
+      <ul class="clean small">
+        <li><b>Copy-ready match report</b> for the website.</li>
+        <li><b>Season tables</b> — leaderboards + standings (auto).</li>
+        <li><b>Per-player KR &amp; MMG totals</b> — KR fills the balance sheet; MMG shown to copy into MMG.</li>
+      </ul>
+    </div>
+    <div class="card indigo">
+      <div class="kicker" style="color:var(--indigo);">Fixed in-app · players do nothing</div>
+      <p class="small">Every payout, result and standing is computed by the app from what's recorded. Managers/players don't re-enter anything; once you <b>Submit</b>, the match locks (only coach+ can reopen).</p>
+    </div>
+  </div>
+
+  <div class="noteflag" style="margin-top:14px;">
+    <b>Access:</b> KLCSRA sits inside the existing <b>Admin</b> area (staff only), next to the Club Balance Sheet review. Managers and players never see it — though an admin can hand a Manager the device to fill the live match; they still can't edit a submitted one.
+  </div>
+</section>
+
+<!-- ============================ RECORD A MATCH ============================ -->
+<section class="page">
+  <div class="sectionhead"><h2>Recording a match</h2><span class="step">Screen 1 · The recorder</span></div>
+  <p class="small muted" style="margin-bottom:12px; max-width:660px;">Your stacked mobile layout — one scrolling screen, Home block then Away block, autosaving as you go, with a <b>Submit</b> at the bottom that finalises and locks the match. Example: a low-turnout day, so lower slots are empty.</p>
+
+  <div class="grid12">
+    <div class="device rec">
+      <div class="screen">
+        <div class="glass">
+          <div class="gr"><span class="glbl">Date</span><span class="fakesel">Sat 9 Aug 2026 <span class="car">▾</span></span></div>
+          <div class="gr"><span class="glbl">Sport</span><span class="seg"><span class="on">Football</span><span>Rugby</span><span>Variation</span></span></div>
+          <div class="gr"><span class="glbl">Duration</span><span class="fakesel">60 min</span></div>
+        </div>
+
+        <div class="teamcard">
+          <div class="teamhead h">
+            <span class="teamname"><span class="crest kl sm">KL</span> Kraken Leviathans <span class="rolesel h">Home ▾</span></span>
+            <span class="scorepill">Score <span class="scorebox">2</span></span>
+          </div>
+          <div class="pslot"><span class="pnum">1</span><span class="pname">J. Karanth <span class="car">▾</span></span><span class="statbtn">G<b>1</b> · Ass<b>1</b></span></div>
+          <div class="pslot"><span class="pnum">2</span><span class="pname">P. Gurhani <span class="car">▾</span></span><span class="statbtn">G<b>1</b></span></div>
+          <div class="pslot"><span class="pnum">3</span><span class="pname">S. Khan <span class="car">▾</span></span><span class="statbtn">Stats ＋</span></div>
+          <div class="pslot"><span class="pnum">4</span><span class="pname">L. Sharma <span class="car">▾</span></span><span class="statbtn">YC<b>1</b></span></div>
+          <div class="pslot"><span class="pnum">5</span><span class="pname">A. Bansal <span class="car">▾</span></span><span class="statbtn">Stats ＋</span></div>
+          <div class="pslot"><span class="pnum">6</span><span class="pname empty">＋ select player</span><span class="statbtn off">Stats ＋</span></div>
+        </div>
+
+        <div class="teamcard">
+          <div class="teamhead a">
+            <span class="teamname"><span class="crest rr sm">RR</span> Rusty Rabonas <span class="rolesel a">Away ▾</span></span>
+            <span class="scorepill">Score <span class="scorebox">1</span></span>
+          </div>
+          <div class="pslot"><span class="pnum">1</span><span class="pname">A. Sawant <span class="car">▾</span></span><span class="statbtn">G<b>1</b></span></div>
+          <div class="pslot"><span class="pnum">2</span><span class="pname">N. Sarda <span class="car">▾</span></span><span class="statbtn">Ass<b>1</b></span></div>
+          <div class="pslot"><span class="pnum">3</span><span class="pname empty">＋ select player</span><span class="statbtn off">Stats ＋</span></div>
+          <div class="pslot"><span class="pnum">4</span><span class="pname empty">＋ select player</span><span class="statbtn off">Stats ＋</span></div>
+        </div>
+
+        <div class="nextbtn">＋ Next match  ·  or scroll ↓</div>
+        <div class="submitbtn">Submit &amp; lock this match ✓</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="kicker">How an admin fills it in</div>
+      <div class="steps">
+        <div class="stepitem"><span class="dot">1</span><div><b>Date, sport &amp; duration</b><p>Pick date, tap the sport, type the minutes.</p></div></div>
+        <div class="stepitem"><span class="dot">2</span><div><b>The two clubs + role</b><p>A club per side, each tagged Home / Away / Neutral.</p></div></div>
+        <div class="stepitem"><span class="dot">3</span><div><b>Score per side</b><p>Enter each team's final score (a number — independent of the tallies, so rugby works).</p></div></div>
+        <div class="stepitem"><span class="dot">4</span><div><b>Squads — up to 6 each</b><p>Fill slots from the member list. Leave unused slots empty.</p></div></div>
+        <div class="stepitem"><span class="dot i">5</span><div><b>Each player's stats</b><p>Tap <b>Stats</b> → the popup (next page). The button shows a live tally, e.g. <b>G1 · Ass1</b>.</p></div></div>
+        <div class="stepitem"><span class="dot g">6</span><div><b>Submit &amp; lock</b><p>Finalises the match, computes all KR/MMG, and makes it read-only. Only <b>coach / super-admin</b> can reopen.</p></div></div>
+      </div>
+      <div class="noteflag" style="margin-top:12px;">
+        <b>Autosave, then Submit.</b> Every edit saves as you go (offline-safe) so nothing's lost mid-match. <b>Submit</b> is the deliberate lock — a helper Manager can fill the live match but can't touch a submitted one.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ STATS POPUP ============================ -->
+<section class="page">
+  <div class="sectionhead"><h2>The per-player stats popup</h2><span class="step">Screen 1 · Stats</span></div>
+  <p class="small muted" style="margin-bottom:14px; max-width:660px;">Tap a stat to record it against that player — tap again to add another (a hat-trick is three taps → <b>G3</b>). Each stat carries a Kroopies &amp; MMG value, so the app totals the payout automatically.</p>
+
+  <div class="grid12">
+    <div>
+      <div class="kicker">Popup for one player — Football selected</div>
+      <div style="max-width:320px;">
+        <div class="popcard">
+          <div class="pophead"><b>J. Karanth — Kraken Leviathans</b><p>Tap a stat to add · tap a count to undo</p></div>
+          <div class="popbody">
+            <div class="statgrid">
+              <div class="stat hot"><span class="nm">Goals</span><span class="ct"><span class="cnt">1</span><span class="plus">+</span></span></div>
+              <div class="stat hot"><span class="nm">Ass. <span class="muted">Assist</span></span><span class="ct"><span class="cnt">1</span><span class="plus">+</span></span></div>
+              <div class="stat"><span class="nm">PA <span class="muted">Pre-Asst</span></span><span class="ct"><span class="cnt">0</span><span class="plus">+</span></span></div>
+              <div class="stat"><span class="nm">Save</span><span class="ct"><span class="cnt">0</span><span class="plus">+</span></span></div>
+              <div class="stat"><span class="nm">YC <span class="muted">Yellow</span></span><span class="ct"><span class="cnt">0</span><span class="plus">+</span></span></div>
+              <div class="stat"><span class="nm">RC <span class="muted">Red</span></span><span class="ct"><span class="cnt">0</span><span class="plus">+</span></span></div>
+              <div class="stat"><span class="nm">BC <span class="muted">Blue</span></span><span class="ct"><span class="cnt">0</span><span class="plus">+</span></span></div>
+              <div class="stat"><span class="nm">LC <span class="muted">Late Ch.</span></span><span class="ct"><span class="cnt">0</span><span class="plus">+</span></span></div>
+              <div class="stat"><span class="nm">OG <span class="muted">Own Goal</span></span><span class="ct"><span class="cnt">0</span><span class="plus">+</span></span></div>
+              <div class="stat"><span class="nm">OA <span class="muted">Own Ast</span></span><span class="ct"><span class="cnt">0</span><span class="plus">+</span></span></div>
+              <div class="stat"><span class="nm">OPA <span class="muted">Own PA</span></span><span class="ct"><span class="cnt">0</span><span class="plus">+</span></span></div>
+            </div>
+            <div class="popfoot"><span class="tiny muted">Try &amp; Tackle hidden — football</span><span class="doneb">Done</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="noteflag" style="margin-top:12px;">
+        <b>Done</b> closes this player's popup. It is <b>not</b> Submit — the match-level <b>Submit &amp; lock</b> lives at the bottom of the recorder.
+      </div>
+    </div>
+
+    <div>
+      <div class="kicker">Sport-aware — the popup adapts</div>
+      <div class="card" style="margin-bottom:10px;">
+        <ul class="clean small">
+          <li><b>Football:</b> Goals, Ass., PA, <b>Save</b>, YC, RC, BC, LC, OG, OA, OPA</li>
+          <li><b>Rugby:</b> <b>Try's</b>, <b>Tackle</b>, Ass., PA, YC, RC, BC, LC</li>
+          <li><b>Variation:</b> all stats</li>
+        </ul>
+        <p class="tiny muted" style="margin-top:5px;">Which stats show per sport is editable in config.</p>
+      </div>
+      <div class="card green">
+        <h3 style="color:var(--green);">Answering your sheet directly</h3>
+        <p class="small">Yes to both questions on the sheet: a <b>tap-to-add popup works</b> (no separate dropdown per stat), and it <b>records more than one event</b> — 2 goals, 3 goals, however many. Live counts, undo, and the payout totals itself.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ POINTS, PAYOUTS & STANDINGS ============================ -->
+<section class="page">
+  <div class="sectionhead"><h2>Points, payouts &amp; standings</h2><span class="step">The rules · all configurable</span></div>
+  <p class="small muted" style="margin-bottom:14px; max-width:680px;">Every number here lives in config (admin-editable), reusing the app's existing MMG points table. These are the agreed starting values.</p>
+
+  <div class="grid12">
+    <div>
+      <div class="kicker">Per-stat payout — Kroopies (KR) &amp; MMG points</div>
+      <div class="card" style="padding:10px 12px;">
+        <table class="rate">
+          <thead><tr><th>Stat</th><th class="n">KR</th><th class="n">MMG</th></tr></thead>
+          <tbody>
+            <tr><td>Goal</td><td class="n pos">20</td><td class="n pos">500</td></tr>
+            <tr><td>Try</td><td class="n pos">25</td><td class="n pos">500</td></tr>
+            <tr><td>Assist</td><td class="n pos">10</td><td class="n pos">200</td></tr>
+            <tr><td>Pre-Assist</td><td class="n pos">5</td><td class="n pos">100</td></tr>
+            <tr><td>Tackle</td><td class="n pos">5</td><td class="n pos">100</td></tr>
+            <tr><td>Save</td><td class="n pos">5</td><td class="n pos">200</td></tr>
+            <tr class="sep"><td>Yellow Card</td><td class="n neg">−10</td><td class="n neg">−200</td></tr>
+            <tr><td>Red Card</td><td class="n neg">−20</td><td class="n neg">−500</td></tr>
+            <tr><td>Blue Card</td><td class="n neg">−30</td><td class="n neg">−1000</td></tr>
+            <tr><td>Late Challenge</td><td class="n neg">−5</td><td class="n neg">−100</td></tr>
+            <tr><td>Own Goal</td><td class="n neg">−20</td><td class="n neg">−500</td></tr>
+            <tr><td>Own Assist</td><td class="n neg">−10</td><td class="n neg">−200</td></tr>
+            <tr><td>Own Pre-Assist</td><td class="n neg">−5</td><td class="n neg">−100</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="cap">KR fills each player's loanee amount on their club's balance sheet; MMG is totalled per player to copy into MMG.</p>
+    </div>
+
+    <div>
+      <div class="kicker">League standings points</div>
+      <div class="card" style="margin-bottom:10px;">
+        <p class="small" style="margin-bottom:5px;"><b>By match size</b> (total players in the match):</p>
+        <ul class="clean small">
+          <li><b>6 or more players:</b> Win <b>3</b> · Draw <b>1</b> · Loss <b>0</b></li>
+          <li><b>Fewer than 6:</b> Win <b>0.2</b> · Draw <b>0.05</b> · Loss <b>0</b></li>
+        </ul>
+        <p class="small" style="margin:7px 0 0;"><b>Margin bonus:</b> win by <b>≥20</b> → <span class="pos">+1</span> to the winner, <span class="neg">−1</span> to the loser.</p>
+      </div>
+
+      <div class="kicker">Combined match (two halves)</div>
+      <div class="card indigo">
+        <p class="small" style="margin-bottom:6px;">Two sides carry across the halves; each half is a normal 1-v-1. Half-win = <b>0.2</b>; aggregate-score winner = <b>+0.1</b> to both its clubs.</p>
+        <p class="tiny muted" style="margin:0 0 5px;">Example: KL+BOCI vs DP+SOG — H1 KL beat DP, H2 SOG beat BOCI, KL+BOCI won on aggregate:</p>
+        <table class="tbl">
+          <thead><tr><th>Club</th><th class="num">Half</th><th class="num">Agg.</th><th class="num">Total</th></tr></thead>
+          <tbody>
+            <tr><td>KL</td><td class="num">0.2</td><td class="num">0.1</td><td class="num"><b>0.3</b></td></tr>
+            <tr><td>BOCI</td><td class="num">—</td><td class="num">0.1</td><td class="num"><b>0.1</b></td></tr>
+            <tr><td>SOG</td><td class="num">0.2</td><td class="num">—</td><td class="num"><b>0.2</b></td></tr>
+            <tr><td>DP</td><td class="num">—</td><td class="num">—</td><td class="num"><b>0</b></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ OUTPUTS ============================ -->
+<section class="page">
+  <div class="sectionhead"><h2>What you get out</h2><span class="step">Screen 2 · Reports &amp; tables</span></div>
+  <p class="small muted" style="margin-bottom:14px; max-width:660px;">Copy-ready text and always-current season tables — including each player's totalled KR &amp; MMG.</p>
+
+  <div class="grid12">
+    <div>
+      <div class="kicker">Per-match report — one tap to copy</div>
+      <div class="card" style="padding:12px;">
+        <button class="copybtn">Copy report</button>
+        <div class="report"><span class="h">Kraken Leviathans 2 – 1 Rusty Rabonas</span>
+<span class="d">Football · 60 min · Sat 9 Aug 2026</span>
+
+<span class="d">KRAKEN LEVIATHANS (Home)</span>
+  J. Karanth  1G 1A    <span class="g">+30 / 700</span>
+  P. Gurhani  1G       <span class="g">+20 / 500</span>
+  L. Sharma   1YC      <span class="y">−10 / −200</span>
+
+<span class="d">RUSTY RABONAS (Away)</span>
+  A. Sawant   1G       <span class="g">+20 / 500</span>
+  N. Sarda    1A       <span class="g">+10 / 200</span></div>
+      </div>
+      <p class="cap">Exact wording is easy to tune. Each line: player · stats · <b>+KR / MMG</b> for the match.</p>
+    </div>
+
+    <div>
+      <div class="kicker">Season leaderboards — auto</div>
+      <div class="card" style="margin-bottom:10px;">
+        <table class="tbl">
+          <thead><tr><th>Top scorers</th><th class="num">G</th><th class="num">T</th><th class="num">Ass</th><th class="num">PA</th></tr></thead>
+          <tbody>
+            <tr><td>J. Karanth</td><td class="num">7</td><td class="num">0</td><td class="num">2</td><td class="num">1</td></tr>
+            <tr><td>A. Sawant</td><td class="num">5</td><td class="num">0</td><td class="num">1</td><td class="num">0</td></tr>
+            <tr><td>P. Gurhani</td><td class="num">4</td><td class="num">0</td><td class="num">1</td><td class="num">0</td></tr>
+          </tbody>
+        </table>
+        <p class="cap">Plus a discipline table (YC/RC/BC/LC), own-goals, saves/tackles, and KR &amp; MMG leaderboards — every stat is per-player.</p>
+      </div>
+
+      <div class="kicker">League standings — PF / PA / PDIFF</div>
+      <div class="card">
+        <table class="tbl">
+          <thead><tr><th>Club</th><th class="num">P</th><th class="num">W</th><th class="num">D</th><th class="num">L</th><th class="num">PF</th><th class="num">PA</th><th class="num">PDIFF</th><th class="num">Pts</th></tr></thead>
+          <tbody>
+            <tr><td>Kraken Leviathans</td><td class="num">5</td><td class="num">4</td><td class="num">1</td><td class="num">0</td><td class="num">14</td><td class="num">5</td><td class="num">+9</td><td class="num"><b>13</b></td></tr>
+            <tr><td>Rusty Rabonas</td><td class="num">5</td><td class="num">2</td><td class="num">1</td><td class="num">2</td><td class="num">11</td><td class="num">9</td><td class="num">+2</td><td class="num"><b>7</b></td></tr>
+            <tr><td>Paper Tigers</td><td class="num">5</td><td class="num">2</td><td class="num">0</td><td class="num">3</td><td class="num">8</td><td class="num">10</td><td class="num">−2</td><td class="num"><b>6</b></td></tr>
+          </tbody>
+        </table>
+        <p class="cap"><b>PF/PA/PDIFF</b> = Points For / Against / Difference (renamed from GF/GA/GD). Pts uses the size-tiered rule + margin bonus.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ BALANCE SHEET INTEGRATION ============================ -->
+<section class="page">
+  <div class="sectionhead"><h2>How it feeds the Club Balance Sheets</h2><span class="step">Screen 3 · Integration</span></div>
+  <p class="small muted" style="margin-bottom:14px; max-width:680px;">Recording &amp; submitting a match fills each club's balance entry for that date — results <b>and</b> the KR each player earned. One-way (recorder → sheet); the Manager is left with only the Club Bonus.</p>
+
+  <div class="kicker">A club's balance sheet for the match date — before vs after</div>
+  <div class="beforeafter" style="margin-bottom:16px;">
+    <div class="device" style="padding:9px;">
+      <div class="tiny" style="text-align:center; font-weight:800; color:var(--mute); margin-bottom:6px;">BEFORE · manager types everything</div>
+      <div class="screen" style="gap:6px;">
+        <div class="between mcard"><span class="mtitle"><span class="n2">2</span> Matches played</span><span class="fakesel" style="width:40px; justify-content:center;">—</span></div>
+        <div class="between mcard"><span class="mtitle"><span class="n2">3</span> Matches won</span><span class="fakesel" style="width:40px; justify-content:center;">—</span></div>
+        <div class="mcard"><span class="mtitle"><span class="n2">4</span> Players (loanees)</span><p class="tiny muted" style="margin:5px 0 0;">empty — pick each, type each KR</p></div>
+        <div class="between mcard"><span class="mtitle"><span class="n2">7</span> Club Bonus</span><span class="fakesel" style="width:40px; justify-content:center;">—</span></div>
+      </div>
+    </div>
+
+    <div class="arrow">→</div>
+
+    <div class="device" style="padding:9px;">
+      <div class="tiny" style="text-align:center; font-weight:800; color:var(--green); margin-bottom:6px;">AFTER · match fills results + KR</div>
+      <div class="screen" style="gap:6px;">
+        <div class="between mcard" style="background:var(--wash);"><span class="mtitle"><span class="n2 lock">2</span> Matches played</span><span style="display:flex; align-items:center; gap:6px;"><b>1</b><span class="tag lock">from match</span></span></div>
+        <div class="between mcard" style="background:var(--wash);"><span class="mtitle"><span class="n2 lock">3</span> Matches won</span><span style="display:flex; align-items:center; gap:6px;"><b>1</b><span class="tag lock">from match</span></span></div>
+        <div class="mcard"><span class="mtitle"><span class="n2">4</span> Players (loanees) <span class="tag new">KR auto-filled</span></span>
+          <div style="margin-top:6px; display:flex; flex-direction:column; gap:4px;">
+            <div class="between"><span class="fakesel" style="flex:1;">J. Karanth</span><span class="fakesel pos" style="width:52px; justify-content:center;">30 KR</span></div>
+            <div class="between"><span class="fakesel" style="flex:1;">P. Gurhani</span><span class="fakesel pos" style="width:52px; justify-content:center;">20 KR</span></div>
+            <div class="between"><span class="fakesel" style="flex:1;">L. Sharma</span><span class="fakesel neg" style="width:52px; justify-content:center;">−10 KR</span></div>
+          </div>
+        </div>
+        <div class="between mcard"><span class="mtitle"><span class="n2">7</span> Club Bonus</span><span class="fakesel" style="width:52px; justify-content:center;">edit ▾</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card green">
+      <h3 style="color:var(--green);">Fixed in-app — players do nothing</h3>
+      <p class="small">Results (played/W/D/L from the score) <b>and</b> each player's <b>KR</b> land automatically on the club's dated entry, then lock on Submit. Managers no longer type loanee amounts.</p>
+    </div>
+    <div class="card">
+      <h3>What the Manager still owns</h3>
+      <ul class="clean small">
+        <li><b>Club Bonus</b> — the one field the recorder doesn't set.</li>
+        <li>That's it — everything else is match-derived.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-top:12px;">
+    <div class="card wash">
+      <div class="kicker">Safe by design</div>
+      <ul class="clean small">
+        <li><b>One-way:</b> recorder → sheet.</li>
+        <li><b>Locks on Submit:</b> no edits after, unless coach+ reopens.</li>
+        <li><b>Always in step:</b> the sheet can't disagree with the match.</li>
+      </ul>
+    </div>
+    <div class="card wash">
+      <div class="kicker">MMG side</div>
+      <p class="small muted">MMG points per player are <b>totalled and shown to copy</b> into the MMG system (which already has its own points table). Direct MMG write-back can come later if you want it.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ SCOPE & DECISIONS ============================ -->
+<section class="page">
+  <div class="sectionhead"><h2>Scope, decisions &amp; what's next</h2><span class="step">For sign-off</span></div>
+
+  <div class="kicker">Everything decided</div>
+  <table class="dec" style="margin-bottom:14px;">
+    <tbody>
+      <tr><td>Who / where</td><td>Admins only, in the Admin area, at <b>/admin/klc/matches</b>.</td></tr>
+      <tr><td>Sports</td><td>Football, Rugby, Variation — drives the stat popup.</td></tr>
+      <tr><td>Match setup</td><td>Date, duration (typed min), two clubs each Home/Away/Neutral, score entered per team.</td></tr>
+      <tr><td>Squads</td><td>Up to 6/side (→11+subs later), players as "initial + surname".</td></tr>
+      <tr><td>Stats</td><td>13-stat tap-to-add popup (multi-event, undo), filtered by sport, each paying KR + MMG.</td></tr>
+      <tr><td>Standings</td><td>PF/PA/PDIFF columns. Size-tiered points (≥6 → 3/1/0, &lt;6 → 0.2/0.05/0) + ≥20-margin ±1. All configurable.</td></tr>
+      <tr><td>Combined match</td><td>Two halves; 0.2 per half-win, +0.1 to the aggregate winner's clubs.</td></tr>
+      <tr><td>KR → balance</td><td>Each player's KR auto-fills their loanee amount for the club they played; locks on Submit.</td></tr>
+      <tr><td>MMG</td><td>Totalled per player, shown to copy into MMG (auto-write later, optional).</td></tr>
+      <tr><td>Finalise</td><td>Per-match <b>Submit &amp; lock</b>; only coach/super-admin can reopen.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="grid2">
+    <div class="card indigo">
+      <div class="kicker" style="color:var(--indigo);">Minor confirmations (won't block build)</div>
+      <ul class="clean small">
+        <li>Exact <b>website report</b> wording.</li>
+        <li>The <b>sport → stat</b> lists (Save in football, Try/Tackle in rugby).</li>
+        <li>KR unit into the loanee row — final KR vs pre-rate share.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="kicker">Sized for later</div>
+      <ul class="clean small">
+        <li><b>6 → 11-a-side + subs</b> — slots scale.</li>
+        <li><b>New stats / sports / rates</b> — all in config.</li>
+        <li><b>Direct MMG write-back</b> — a later phase.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="kicker" style="margin-top:16px;">What happens after sign-off</div>
+  <div class="grid2" style="grid-template-columns:repeat(3,1fr);">
+    <div class="card"><b class="small">1 · Data model</b><p class="tiny muted" style="margin:3px 0 0;">Match / half / side / appearance / stat tables + KR &amp; MMG rate config, reusing clubs, players &amp; the MMG points table.</p></div>
+    <div class="card"><b class="small">2 · Build &amp; test</b><p class="tiny muted" style="margin:3px 0 0;">Recorder + stats popup, Submit/lock, payouts, reports, season tables, balance-sheet link — tests first.</p></div>
+    <div class="card"><b class="small">3 · Try on real matches</b><p class="tiny muted" style="margin:3px 0 0;">Record live KLC games, compare to the sheets/website, refine.</p></div>
+  </div>
+
+  <div class="noteflag" style="margin-top:16px;">
+    <b>Green-lit.</b> KLCSRA records a football or rugby match once — clubs, squads, every player's stats — totals the Kroopies &amp; MMG, writes the website report and season tables, feeds the balance sheets, and locks on Submit. Built by an admin, in the app you already have.
+  </div>
+</section>
+
+</body>
+</html>

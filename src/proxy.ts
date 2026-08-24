@@ -7,9 +7,14 @@ import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth/session";
  * Session verification uses jose, which runs in the edge runtime.
  *
  * /mockups/* stays public so design references remain viewable during V1.
+ *
+ * /ingest/* is the PostHog reverse proxy (see next.config.ts rewrites). It must
+ * be public: analytics fire before sign-in, and redirecting them to /login made
+ * the SDK JSON.parse the login HTML and throw on every pre-login page load. It
+ * carries no app data -- the rewrite forwards straight to PostHog.
  */
 
-const PUBLIC_PREFIXES = ["/login", "/mockups"];
+const PUBLIC_PREFIXES = ["/login", "/mockups", "/ingest"];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PREFIXES.some(

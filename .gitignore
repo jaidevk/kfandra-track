@@ -50,3 +50,6 @@ supabase/.temp/
 *.db
 .beads-credential-key
 tsconfig.tsbuildinfo
+
+# Brainstorming visual-companion scratch
+.superpowers/

@@ -1,9 +1,9 @@
 # Diet Nutrition Info: Design
 
 **Date:** 2026-10-16
-**Status:** Spec for review. It feeds into `superpowers:writing-plans`.
+**Status:** Reviewed 2026-10-16. Implementation plan: `docs/superpowers/plans/2026-10-16-diet-nutrition.md`.
 **Source:** KFANDRA email of 2026-10-02 plus two attachments: *Athlete Diet Nutrition Matrix v2* ("the 2nd one is more thorough") and *Comprehensive Food Nutrition Guide*. The source PDFs stay local; they are not committed because the repo is public.
-**Brainstormed with Jaidev on 2026-10-16.** All decisions are recorded in §1.
+**Brainstormed with Jaidev on 2026-10-16.** All decisions are recorded in §1. D11–D15 came from the implementation review the same day; §10 lists the defaults chosen for the smaller questions.
 **Estimate:** about 1 week.
 
 ---
@@ -26,6 +26,11 @@ After a player logs a meal, and again at the end of the day, show them what they
 | D8 | KFANDRA sees **everyone**: totals and flags are added to the existing `/admin/diet` by-date and by-player pages, plus a new **team grid** (players × last 7 days). |
 | D9 | Values are maintained through an **admin edit screen**, not migrations. This follows the "rules not hard-coded" convention and overlaps Helper-nog. |
 | D10 | Nutrition is **for guidance only**. Both PDFs are AI-generated, so a one-line disclaimer appears in the sheets. There are no daily targets, because KFANDRA gave none. |
+| D11 | **The date picker stays.** Players can still fill in past days. The recap shows only the player's **latest** logged day before today, once. Earlier unseen days are never shown, and filling in a day after its recap was seen does not show it again. |
+| D12 | **Nutrition counts from a start date only.** `app_config.diet_nutrition_start_date` is set to the IST date the migration runs. Days before it show no totals anywhere, and no old records are migrated or snapshotted. Totals use the catalogue's current values, so an edit in the food editor changes every day since the start date. |
+| D13 | **One source for the seed.** KFANDRA's numbers are typed once into `src/lib/diet/nutrition-seed.ts`, exactly as the PDFs give them, with the weight each number refers to. The SQL block in the migration is generated from that file, and a unit test checks that the two match and that every food converts back to KFANDRA's number. |
+| D14 | **Paneer and meat use the unit "100 g".** One tap is 100 g and the 0.5 step is 50 g. Whey and mass gainer use "1 scoop" with placeholder weights of 30 g and 100 g; the per-scoop totals equal the matrix whatever the weight. Paneer is one food ("Paneer", boiled values) plus "Paneer, fried". |
+| D15 | **Duplicate foods are merged; different dishes stay separate.** `chicken-grilled` becomes "Chicken breast (skinless)" (unit 100 g), and the new meat rows join the existing "Non-Veg" section, so there is no "Meat" section. `roti` becomes "Roti, whole wheat". `paneer-sabzi`, `aloo-bhaji`, `dal` and the plain/sugared drink pairs stay separate foods. No food is deactivated. |
 
 ## 2. Current state
 
@@ -50,22 +55,27 @@ After a player logs a meal, and again at the end of the day, show them what they
 | sodium_mg_per_100g | numeric(7,1), nullable | only where KFANDRA gave sodium. Shown in the note, not totalled. |
 | verdict | text, nullable | check `in ('good','watch','avoid')` |
 | nutrition_note | text, nullable | KFANDRA's note, for example "Hidden Trap. Added oil and high-glycemic potato mash." |
-| nutrition_source | text, nullable | `matrix_v2`, `guide`, `email_2026_10_02`, `kfandra` |
+| nutrition_source | text, nullable | `matrix_v2`, `email_2026_10_02`, `app_default` (water), `kfandra` |
 | nutrition_updated_at / nutrition_updated_by | timestamptz / uuid → players | |
 
 - **Check constraint:** the four macro columns and `grams_per_unit` are either all null or all non-null. This avoids half-counted foods.
-- The **seed** keeps KFANDRA's numbers readable. Each row is written as *source values over a basis weight* and converted in SQL, for example `kcal_per_100g = 67 * 100 / 25` for white bread (67 kcal per 25 g slice). That makes it easy for a reviewer to check against the PDF.
+- The **seed** keeps KFANDRA's numbers readable (D13). `src/lib/diet/nutrition-seed.ts` lists the **whole catalogue in display order**, and each counted food carries *source values over a basis weight*, for example white bread is 67 kcal per 25 g slice. The migration's generated block upserts every food (name, unit, section, `sort_order`, converted per-100 g values, verdict, note) and carries a comment with the source values on each row.
 
 ### 3.2 Catalogue changes (same migration)
-- **Splits**, keeping existing keys so past logs stay valid:
+- **Splits**, keeping existing keys so past logs stay valid. Logs from before the start date are not counted (D12), so the renames cannot miscount them.
   - `dosa` is renamed "Dosa, plain", and `masala-dosa` is added.
   - `biscuits` is renamed "Glucose biscuits", and `cream-biscuits` is added.
-  - `wada-pav` is added. `vada` stays as it is, as medu vada, which is not counted.
-- **New foods** from the PDFs are listed in Appendix A. New sections are "Nuts & Seeds", "Vegetables & Salad", "Meat (100 g)" and "Supplements". The rest go into existing sections.
+  - `wada-pav` is added. `vada` is renamed "Medu vada" and is not counted.
+- **Merges** (D15): `chicken-grilled` becomes "Chicken breast (skinless)", unit "100 g". `roti` becomes "Roti, whole wheat".
+- **New foods** from the PDFs are listed in Appendix A. New sections are "Vegetables & Salad" (after Dals & Sabzi), "Nuts & Seeds" (after Dairy) and "Supplements" (after Beverages). Meat goes into "Non-Veg". `sort_order` is renumbered across the whole catalogue.
 
 ### 3.3 Recap tracking
-- Add `diet_logs.recap_seen_at timestamptz null`. The recap for date D is due when the player has a `diet_logs` row for D with at least one item and `recap_seen_at` is null.
-- Because this is stored server-side, the recap shows **once per player**, even across devices.
+- Add `diet_logs.recap_seen_at timestamptz null`.
+- When `/diet` renders, the server finds the player's **latest** `diet_logs` row with `log_date` before today, on or after the start date, and with at least one item. If its `recap_seen_at` is null, the recap is shown (D11). Older days are ignored.
+- Because this is stored server-side, the recap shows **once per player**, even across devices. Autosave upserts only `narration`, so it never clears `recap_seen_at`.
+
+### 3.4 Start date
+- `app_config` row `diet_nutrition_start_date`, a JSON string `"YYYY-MM-DD"`, seeded with the IST date the migration runs (D12). A missing or invalid value means nutrition is off everywhere.
 
 ## 4. Calculation (pure, `src/lib/diet/nutrition.ts`, TDD)
 
@@ -84,7 +94,8 @@ dayNutrition(draft, foodById): same shape, summed over non-skipped meals
   - mixed counted and uncounted items
   - custom items
   - skipped meals
-  - every seeded food round-tripping to KFANDRA's source number within 0.5 kcal (a contract test over the seed basis table)
+  - every seeded food round-tripping to KFANDRA's source number within 0.5 kcal and 0.05 g (contract test over `nutrition-seed.ts`)
+  - the migration's generated block equals what `nutrition-seed.ts` renders (contract test; `WRITE_NUTRITION_SEED=1` rewrites the block)
 
 ## 5. Player UX (`/diet`)
 
@@ -98,8 +109,8 @@ dayNutrition(draft, foodById): same shape, summed over non-skipped meals
    - a **Done** button
 
    It does not appear for skipped or empty meals.
-3. **Day card** at the top of the Diet page: today's kcal and P/C/F with the counted ratio. It updates live as items are logged.
-4. **End-of-day recap:** the first time Diet is opened on a new IST day, if yesterday's recap is due, a sheet shows yesterday's totals by meal and the flagged foods. Closing it sets `recap_seen_at`.
+3. **Day card** at the top of the Diet page: the **selected date's** kcal and P/C/F with the counted ratio. It updates live as items are logged. It is hidden for dates before the start date and when nothing is logged.
+4. **Recap:** when Diet is opened and the latest earlier logged day is unseen (§3.3), a sheet shows that day's totals by meal and the flagged foods. Closing it sets `recap_seen_at`.
 5. All copy lives in `src/content/strings.ts` and is light-style, matching the house look. In UI copy the name is "KFANDRA", never "Coach".
 
 ## 6. KFANDRA UX (`/admin/diet`)
@@ -110,9 +121,10 @@ dayNutrition(draft, foodById): same shape, summed over non-skipped meals
    - Each cell shows kcal, protein in grams, and a red badge with the flagged count.
    - Empty cells mean nothing was logged.
    - Tapping a cell opens that player's day.
-   - Sorted by player name. A week switcher goes back in time.
+   - Rows are players with at least one diet log in the week, sorted by name. A footer counts the players who logged nothing.
+   - The week is the 7 IST days ending on `?end=` (default today). The switcher moves by 7 days.
 4. **Food editor** at `/admin/diet/foods`: a list grouped by section with an "uncounted only" filter.
-   - Editable per food: per-100 g values, grams per unit, sodium, verdict, note, and whether it is active.
+   - Editable per food: grams per unit, kcal/protein/carbs/fat **per unit** (what KFANDRA thinks in; converted to per 100 g on save), sodium per unit, verdict, note, and whether it is active. Clearing all values makes the food uncounted. The name, unit label and section are not editable here.
    - Saving stamps `nutrition_updated_*` and sets the source to `kfandra`.
    - Only the editor role (`isEditorRole`) can edit. Other staff can view.
 
@@ -141,6 +153,14 @@ dayNutrition(draft, foodById): same shape, summed over non-skipped meals
 7. Admin: food editor `/admin/diet/foods`.
 8. Usage guide and admin guide updates, plus e2e: log a meal → summary; next day → recap; editing a food changes the totals.
 
+## 10. Implementation defaults (chosen 2026-10-16)
+1. **Inactive foods keep counting.** The diet page loads inactive foods into the lookup (not the tiles), so deactivating a food does not drop it from past totals.
+2. **Nothing counted shows "—"**, not "0 kcal", on the meal sheet, day card, recap and admin cells. The meal sheet still appears so the player sees the "0 of N counted" line and any flags.
+3. **The meal sheet** compares the meal's items when it was opened with the items on Done/Back, as a multiset of (food, count). A change that nets to zero is not a change. Reset and Skip from the hub never open it.
+4. **The midnight slot** follows the IST date it was logged on. A snack logged at 01:00 belongs to the new day.
+5. **Who can edit foods:** `isEditorRole`, which today is all staff. Any save in the editor sets `nutrition_source = 'kfandra'`.
+6. **One calculation.** `nutrition.ts` works on a `DietDraft` plus a key-to-food map. The admin repository maps its rows into `DietDraft`s, so the player and admin screens share it.
+
 ---
 
 ## Appendix A: food mapping (proposed; verdicts for KFANDRA to confirm)
@@ -152,7 +172,7 @@ Source: **M** = Athlete Matrix v2, **E** = KFANDRA email table. "Basis" is the w
 |---|---|---|---|---|
 | White bread (`white-bread`) | 1 slice → 25 | M White Bread | 25 g | watch |
 | Brown bread (`brown-bread`) | 1 slice → 25 | M Brown Bread | 25 g | good |
-| Roti / phulka (`roti`) | 1 piece → 40 | M Roti (Whole Wheat) | 40 g | good |
+| Roti, whole wheat (`roti`, renamed) | 1 piece → 40 | M Roti (Whole Wheat) | 40 g | good |
 | Dal / varan (`dal`) | 1 waati → 150 | M Toor Dal (Boiled) | 100 g | good |
 | Plain rice (`plain-rice`) | 1 waati → 150 | M White Rice (Boiled) | 100 g | watch |
 | Milk (`milk`) | 1 glass → 200 | M Cow Milk (Whole) | 100 g | good |
@@ -167,6 +187,7 @@ Source: **M** = Athlete Matrix v2, **E** = KFANDRA email table. "Basis" is the w
 | Idli (`idli`) | 1 piece → 40 | E Idli | 100 g | good |
 | Dosa, plain (`dosa`) | 1 piece → 80 | E Plain Dosa | 100 g | good |
 | Glucose biscuits (`biscuits`) | 1 piece → 6 | E Glucose Biscuits | 100 g | avoid |
+| Chicken breast, skinless (`chicken-grilled`, merged) | 100 g → 100 | M Chicken Breast (Skinless, Raw) | 100 g | good |
 | Chivda (`chivda`) | 1 waati → 50 | E Chivda | 100 g | avoid |
 | Laddu (`laddu`) | 1 piece → 50 | M Motichoor Laddu | 50 g | avoid |
 | Gulab jamun (`gulab-jamun`) | 1 piece → 50 | M Gulab Jamun | 50 g | avoid |
@@ -181,8 +202,8 @@ Source: **M** = Athlete Matrix v2, **E** = KFANDRA email table. "Basis" is the w
 | Almonds, Pistachios, Cashews, Peanuts, Walnuts | 5 pieces → 6 / 4 / 8 / 5 / 10 | M Nuts (per 5) | per 5 pieces | good |
 | Soya chunks (boiled) | 5 pieces → 10 | M Soya (Boiled) | per 5 pieces | good |
 | Soya chunks (fried) | 5 pieces → 10 | M Soya (Fried) | per 5 pieces | avoid |
-| Paneer (raw / boiled) | 100 g | M Paneer rows | 100 g | good |
-| Paneer (fried) | 100 g | M Paneer (Fried) | 100 g | watch |
+| Paneer | 100 g → 100 | M Paneer (Boiled/Steamed) | 100 g | good |
+| Paneer, fried | 100 g → 100 | M Paneer (Fried) | 100 g | watch |
 | Greek yoghurt | 1 waati → 150 | M Greek Yoghurt | 100 g | good |
 | Skimmed milk | 1 glass → 200 | M Cow Milk (Skimmed) | 100 g | good |
 | Ghee | 1 tsp → 5 | M Ghee | 100 g | watch |
@@ -194,15 +215,15 @@ Source: **M** = Athlete Matrix v2, **E** = KFANDRA email table. "Basis" is the w
 | Potato boiled / sweet potato boiled / arbi boiled | 1 waati → 150 | M boiled rows | 100 g | good |
 | Potato fried / chips, Arbi fried | 1 waati → 100 | M fried rows | 100 g | avoid |
 | Vegetables & salad: cucumber, tomato, carrot, onion, lettuce, cabbage, spinach, beans (boiled), corn, bell pepper, pumpkin, cauliflower | 1 waati → 100 | M veg rows (raw) | 100 g | good |
-| Chicken breast (skinless), Chicken (with skin), Chicken (fried) | 100 g | M meat rows | 100 g | good / watch / avoid |
-| Pork (lean / with fat), Beef (lean), Buff (lean) | 100 g | M meat rows | 100 g | good / watch / watch / good |
+| Chicken (with skin), Chicken (fried) | 100 g → 100 | M meat rows | 100 g | watch / avoid |
+| Pork (lean / with fat), Beef (lean), Buff (lean) | 100 g → 100 | M meat rows | 100 g | good / watch / watch / good |
 | Jackfruit, Grapes, Pineapple | 1 waati → 150 | M/E fruit rows | 100 g | good |
 | Orange | 1 piece → 100 | M Oranges | 100 g | good |
 | Black coffee / Black tea | 1 cup → 100 | M rows | 100 g | good |
 | Diet soda | 1 glass → 200 | M Diet/Zero Soda | 100 g | watch |
-| Whey shake / Mass gainer | 1 scoop | M rows | per scoop | good / watch |
+| Whey shake / Mass gainer | 1 scoop → 30 / 100 | M rows | per scoop | good / watch |
 | Sugar / Jaggery | 1 tsp → 4 / 5 | M rows | per tsp | avoid / watch |
 | Chocolate cake | 1 slice → 60 | M Chocolate Cake | 60 g | avoid |
 
 ### Stays "not counted" until KFANDRA supplies values
-Paratha, naan, bhakri, bhendi bhaji, mixed sabzi, aloo bhaji, paneer sabzi, chana/chole (dish), khichadi, pulao/biryani, curd rice, cheese slice, mixed fruit, all eggs, chicken/mutton/fish curry, fish fried, prawns, tandoori, chicken grilled (cooked), juice, coconut water, lassi, sports drink, poha, upma, vada (medu), samosa, sandwich, maggi, modak, barfi, jalebi, kheer, shrikhand, ice cream, chocolate.
+Paratha, naan, bhakri, bhendi bhaji, mixed sabzi, aloo bhaji, paneer sabzi, chana/chole (dish), khichadi, pulao/biryani, curd rice, cheese slice, mixed fruit, all eggs, chicken/mutton/fish curry, fish fried, prawns, tandoori, juice, coconut water, lassi, sports drink, poha, upma, medu vada, samosa, sandwich, maggi, modak, barfi, jalebi, kheer, shrikhand, ice cream, chocolate.

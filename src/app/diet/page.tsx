@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentPlayer } from "@/lib/auth/current-user";
-import { loadDietCatalog } from "@/lib/diet/config";
+import { loadDietCatalog, loadNutritionStartDate } from "@/lib/diet/config";
 import { loadDietLog } from "@/lib/diet/repository";
 import { loadPlayerFoods } from "@/lib/diet/personal-foods-repository";
 import { todayKey } from "@/lib/diet/dates";
@@ -17,10 +17,11 @@ export default async function DietPage() {
   if (!player) redirect("/login?next=/diet");
 
   const dateKey = todayKey();
-  const [catalog, draft, personalFoods] = await Promise.all([
+  const [catalog, draft, personalFoods, nutritionStart] = await Promise.all([
     loadDietCatalog(),
     loadDietLog(player.id, dateKey),
     loadPlayerFoods(player.id),
+    loadNutritionStartDate(),
   ]);
 
   return (
@@ -30,6 +31,8 @@ export default async function DietPage() {
       initialDraft={draft}
       catalog={catalog}
       initialPersonalFoods={personalFoods}
+      nutritionStart={nutritionStart}
+      recap={null}
     />
   );
 }

@@ -43,3 +43,9 @@ export function dateLabel(dateKey: string): string {
   const date = new Date(y, mo - 1, d, 12, 0, 0);
   return `${WEEKDAYS[date.getDay()]} ${d} ${MONTHS[mo - 1]} ${y}`;
 }
+
+/** Shift a YYYY-MM-DD key by whole days (UTC arithmetic, no DST drift). */
+export function shiftDateKey(dateKey: string, days: number): string {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}

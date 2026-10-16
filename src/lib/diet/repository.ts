@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { DietDraft, LoggedItem, MealLog } from "./types";
+import type { DietDraft, MealLog } from "./types";
+import { mealRowsToMeals, type MealRow } from "./rows";
 import { emptyDraft } from "./types";
 
 /**
@@ -44,33 +45,7 @@ export async function loadDietLog(
     )
     .eq("diet_log_id", log.id);
 
-  const meals: Record<string, MealLog> = {};
-  for (const m of mealRows ?? []) {
-    // Supabase types embedded relations as arrays; the FK guarantees one row.
-    const slot = Array.isArray(m.meal_slots) ? m.meal_slots[0] : m.meal_slots;
-    const slotKey = slot?.key;
-    if (!slotKey) continue;
-
-    const items: LoggedItem[] = (m.diet_log_items ?? [])
-      .slice()
-      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-      .map((it) => {
-        const food = Array.isArray(it.food_catalog)
-          ? it.food_catalog[0]
-          : it.food_catalog;
-        return {
-          id: it.id,
-          foodKey: food?.key ?? null,
-          customName: it.custom_name ?? undefined,
-          customUnit: it.custom_unit ?? undefined,
-          customNotes: it.custom_notes ?? undefined,
-          count: Number(it.count),
-        };
-      });
-
-    meals[slotKey] = { skipped: m.skipped, items };
-  }
-
+  const meals = mealRowsToMeals((mealRows ?? []) as unknown as MealRow[]);
   return { meals, narration: log.narration ?? "" };
 }
 
@@ -184,4 +159,42 @@ export async function saveDietLog(
 /** A slot is worth persisting once it is skipped or has any logged items. */
 function isTouched(meal: MealLog): boolean {
   return meal.skipped || meal.items.length > 0;
+}
+
+/**
+ * The recap due for a player (spec D11, §3.3): their LATEST diet day before
+ * today, on/after the nutrition start date, with at least one item. Due only
+ * if not yet seen; older unseen days are deliberately ignored.
+ */
+export async function findDueRecap(
+  playerId: string,
+  todayKey: string,
+  startDate: string | null,
+): Promise<{ dateKey: string; draft: DietDraft } | null> {
+  if (!startDate) return null;
+  const admin = createAdminClient();
+  // !inner joins drop days with no items (a skipped-only day has no recap).
+  const { data } = await admin
+    .from("diet_logs")
+    .select("log_date, recap_seen_at, diet_log_meals!inner(diet_log_items!inner(id))")
+    .eq("player_id", playerId)
+    .lt("log_date", todayKey)
+    .gte("log_date", startDate)
+    .order("log_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data || data.recap_seen_at) return null;
+  return { dateKey: data.log_date, draft: await loadDietLog(playerId, data.log_date) };
+}
+
+/** Stamp the recap for (player, day) as seen. Idempotent. */
+export async function markRecapSeen(playerId: string, dateKey: string): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("diet_logs")
+    .update({ recap_seen_at: new Date().toISOString() })
+    .eq("player_id", playerId)
+    .eq("log_date", dateKey)
+    .is("recap_seen_at", null);
+  if (error) throw new Error(`Failed to mark recap seen: ${error.message}`);
 }

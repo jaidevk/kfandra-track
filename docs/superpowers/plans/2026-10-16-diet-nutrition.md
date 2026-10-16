@@ -11,16 +11,33 @@
 **Spec:** `docs/superpowers/specs/2026-10-16-diet-nutrition-design.md` (decisions D1–D15, defaults in §10). Read it first.
 
 **Ground rules for the engineer**
+- **Work on the branch `feat/diet-nutrition`** (Task 0). Nothing goes to `main` until the PR in Task 16 is merged, and that happens only after the production migration.
 - TDD: write the test, watch it fail, implement, watch it pass. `npm run test -- <path>` runs one file.
-- One task = one bead = one commit. End each commit message with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
-- Use `bd` for tracking (`bd update <id> --claim`, `bd close <id>`), never TodoWrite.
+- One task = one bead = one commit. The beads already exist: epic `Helper-3q3`, and Task N is `Helper-3q3.N` (dependencies match this plan). Start a task with `bd update Helper-3q3.N --claim`, finish with `bd close Helper-3q3.N`. Never use TodoWrite. End each commit message with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - UI copy goes in `src/content/strings.ts`, which non-programmers edit, so it holds **plain strings only** (no functions, no placeholders). In UI copy the name is "KFANDRA", never "Coach".
 - `src/lib/diet/config.ts` and `repository.ts` are `server-only`. Never import them from a client component; pure helpers go in their own modules.
 - Local Supabase must be running (`npx supabase start`) for Tasks 3, 14 and 15.
 
 ---
 
+### Task 0: Branch
+
+**Step 1:** Make sure `main` is clean and current, then create the feature branch (already created on 2026-10-16; just switch to it if it exists):
+
+```bash
+git checkout main && git pull --rebase
+git checkout -b feat/diet-nutrition   # or: git checkout feat/diet-nutrition
+```
+
+All task commits land on this branch. Push it whenever useful (`git push -u origin feat/diet-nutrition`); pushing a branch only creates a Vercel preview, never a production deploy.
+
+**Step 2:** Check that local Supabase is up (`npx supabase status`). If Docker doesn't respond, restart Docker Desktop first.
+
+---
+
 ### Task 1: Seed data file (KFANDRA's numbers, typed once)
+
+**Bead:** `Helper-3q3.1`
 
 **Files:**
 - Create: `src/lib/diet/nutrition-seed.ts`
@@ -385,6 +402,8 @@ git commit -m "feat(diet): KFANDRA nutrition seed data with round-trip test"
 
 ### Task 2: SQL renderer and the migration
 
+**Bead:** `Helper-3q3.2`
+
 **Files:**
 - Create: `src/lib/diet/nutrition-seed-sql.ts`
 - Create: `supabase/migrations/20261016120000_diet_nutrition.sql`
@@ -612,6 +631,8 @@ git commit -m "feat(diet): nutrition migration with generated catalogue seed"
 
 ### Task 3: Apply the migration and regenerate DB types
 
+**Bead:** `Helper-3q3.3`
+
 **Files:**
 - Modify: `src/lib/supabase/database.types.ts` (generated)
 
@@ -644,6 +665,8 @@ git commit -m "chore(diet): regenerate Supabase types for nutrition columns"
 ---
 
 ### Task 4: Types, start date and date helpers
+
+**Bead:** `Helper-3q3.4`
 
 **Files:**
 - Modify: `src/lib/diet/types.ts`
@@ -769,6 +792,8 @@ git commit -m "feat(diet): nutrition types, start-date parser, shiftDateKey"
 ---
 
 ### Task 5: Pure nutrition calculation
+
+**Bead:** `Helper-3q3.5`
 
 **Files:**
 - Create: `src/lib/diet/nutrition.ts`
@@ -1029,6 +1054,8 @@ git commit -m "feat(diet): pure nutrition calculation (meal, day, flags, change 
 
 ### Task 6: Row mappers shared by player and admin loaders
 
+**Bead:** `Helper-3q3.6`
+
 **Files:**
 - Create: `src/lib/diet/rows.ts`
 - Test: `src/lib/diet/rows.test.ts`
@@ -1281,6 +1308,8 @@ git commit -m "refactor(diet): shared row mappers; catalogue loads nutrition and
 ---
 
 ### Task 7: Strings and shared nutrition UI pieces
+
+**Bead:** `Helper-3q3.7`
 
 **Files:**
 - Modify: `src/content/strings.ts` (add a `dietNutrition` block just above the `/** Admin section chrome` comment)
@@ -1545,6 +1574,8 @@ git commit -m "feat(diet): nutrition strings and UI pieces (dot, chips, day card
 
 ### Task 8: Player page: verdict dots, day card, meal summary sheet
 
+**Bead:** `Helper-3q3.8`
+
 **Files:**
 - Modify: `src/app/diet/page.tsx`
 - Modify: `src/app/diet/diet-entry.tsx`
@@ -1650,6 +1681,8 @@ git commit -m "feat(diet): verdict dots, day nutrition card and meal summary she
 ---
 
 ### Task 9: Recap (latest unseen day, once)
+
+**Bead:** `Helper-3q3.9`
 
 **Files:**
 - Modify: `src/lib/diet/repository.ts` (add `findDueRecap`, `markRecapSeen`)
@@ -1770,6 +1803,8 @@ git commit -m "feat(diet): once-only recap of the latest logged day"
 ---
 
 ### Task 10: Admin by-date and by-player totals
+
+**Bead:** `Helper-3q3.10`
 
 **Files:**
 - Modify: `src/lib/admin/activity-repository.ts:52-94,138-160`
@@ -1954,6 +1989,8 @@ git commit -m "feat(admin): nutrition totals and flags on diet by-date and by-pl
 
 ### Task 11: Admin team grid
 
+**Bead:** `Helper-3q3.11`
+
 **Files:**
 - Modify: `src/lib/admin/activity-repository.ts` (add `getTeamNutritionGrid`)
 - Create: `src/app/admin/diet/nutrition/page.tsx`
@@ -2098,6 +2135,14 @@ git commit -m "feat(admin): team nutrition grid (players x 7 days)"
 
 ### Task 12: Food editor: pure validation and conversion
 
+**Bead:** `Helper-3q3.12`
+
+**Rules (kept simple, there are only a few editors):**
+- Numbers are typed **per unit** with **at most one decimal** (`0.5`, `12`, `4.5`). A comma is read as a decimal point. Anything else is rejected with a plain message instead of reaching the database.
+- The five core numbers (grams, kcal, protein, carbs, fat) are all filled or all empty. Empty means "not counted".
+- Sanity caps, checked **per 100 g** after conversion: kcal ≤ 900, protein/carbs/fat ≤ 100 g each, sodium ≤ 5000 mg. These catch the likely slip of typing a per-100 g chart figure into a per-unit box on a small unit, and keep values inside the column sizes.
+- **Numbers are written only when a number field changed.** Saving a verdict, note or visibility change leaves the stored values untouched, so display rounding can never drift them (for example ghee's 4.975 g fat per tsp shows as 5, and an unrelated save must not store 100 g per 100 g).
+
 **Files:**
 - Create: `src/lib/diet/nutrition-edit.ts`
 - Test: `src/lib/diet/nutrition-edit.test.ts`
@@ -2107,24 +2152,53 @@ git commit -m "feat(admin): team nutrition grid (players x 7 days)"
 ```ts
 // src/lib/diet/nutrition-edit.test.ts
 import { describe, it, expect } from "vitest";
-import { perUnitView, toFoodPatch, validateFoodEdit, type FoodEditInput } from "./nutrition-edit";
+import {
+  parseDecimal, perUnitView, toFoodPatch, validateFoodEdit,
+  type FoodEditInput, type RawNumbers,
+} from "./nutrition-edit";
 
-const milk: FoodEditInput = {
-  gramsPerUnit: 200, kcal: 124, protein: 6.4, carbs: 9.6, fat: 6.6, sodiumMg: null,
-  verdict: "good", note: "Vit D", isActive: true,
-};
+const milkNumbers: RawNumbers = { gramsPerUnit: "200", kcal: "124", protein: "6.4", carbs: "9.6", fat: "6.6", sodiumMg: "" };
+const milk: FoodEditInput = { numbers: milkNumbers, verdict: "good", note: "Vit D", isActive: true };
+const cleared: RawNumbers = { gramsPerUnit: "", kcal: "", protein: "", carbs: "", fat: "", sodiumMg: "" };
+
+describe("parseDecimal", () => {
+  it("reads integers and one decimal", () => {
+    expect(parseDecimal("12")).toBe(12);
+    expect(parseDecimal("0.5")).toBe(0.5);
+    expect(parseDecimal(" 4.5 ")).toBe(4.5);
+  });
+  it("reads a comma as a decimal point", () => expect(parseDecimal("1,5")).toBe(1.5));
+  it("treats empty as null", () => expect(parseDecimal("  ")).toBeNull());
+  it("rejects text, negatives and two decimals", () => {
+    expect(parseDecimal("abc")).toBe("invalid");
+    expect(parseDecimal("-1")).toBe("invalid");
+    expect(parseDecimal("1.25")).toBe("invalid");
+  });
+});
 
 describe("validateFoodEdit", () => {
   it("accepts a full row", () => expect(validateFoodEdit(milk)).toBeNull());
   it("accepts an all-empty row (not counted)", () => {
-    expect(validateFoodEdit({ ...milk, gramsPerUnit: null, kcal: null, protein: null, carbs: null, fat: null })).toBeNull();
+    expect(validateFoodEdit({ ...milk, numbers: cleared })).toBeNull();
+  });
+  it("accepts a save with unchanged numbers", () => {
+    expect(validateFoodEdit({ ...milk, numbers: null })).toBeNull();
+  });
+  it("rejects text and too many decimals with a plain message", () => {
+    expect(validateFoodEdit({ ...milk, numbers: { ...milkNumbers, gramsPerUnit: "abc" } })).toMatch(/one decimal/i);
+    expect(validateFoodEdit({ ...milk, numbers: { ...milkNumbers, fat: "6.66" } })).toMatch(/one decimal/i);
   });
   it("rejects a half-filled row", () => {
-    expect(validateFoodEdit({ ...milk, fat: null })).toMatch(/all of/i);
+    expect(validateFoodEdit({ ...milk, numbers: { ...milkNumbers, fat: "" } })).toMatch(/all of/i);
   });
-  it("rejects zero grams and negative values", () => {
-    expect(validateFoodEdit({ ...milk, gramsPerUnit: 0 })).toMatch(/grams/i);
-    expect(validateFoodEdit({ ...milk, protein: -1 })).toMatch(/negative/i);
+  it("rejects zero grams", () => {
+    expect(validateFoodEdit({ ...milk, numbers: { ...milkNumbers, gramsPerUnit: "0" } })).toMatch(/grams/i);
+  });
+  it("rejects impossible per-100 g values (a chart figure typed per unit)", () => {
+    // 5 g tsp of ghee typed as 897 kcal per tsp = 17940 kcal per 100 g.
+    const ghee: RawNumbers = { gramsPerUnit: "5", kcal: "897", protein: "0", carbs: "0", fat: "5", sodiumMg: "" };
+    expect(validateFoodEdit({ ...milk, numbers: ghee })).toMatch(/kcal/i);
+    expect(validateFoodEdit({ ...milk, numbers: { ...milkNumbers, protein: "201" } })).toMatch(/protein/i);
   });
   it("rejects a long note", () => {
     expect(validateFoodEdit({ ...milk, note: "x".repeat(301) })).toMatch(/note/i);
@@ -2133,21 +2207,26 @@ describe("validateFoodEdit", () => {
 
 describe("toFoodPatch", () => {
   it("converts per-unit values to per 100 g", () => {
-    expect(toFoodPatch(milk)).toMatchObject({
+    expect(toFoodPatch(milk)).toEqual({
       grams_per_unit: 200, kcal_per_100g: 62, protein_g_per_100g: 3.2, carbs_g_per_100g: 4.8, fat_g_per_100g: 3.3,
       sodium_mg_per_100g: null, verdict: "good", nutrition_note: "Vit D", is_active: true,
     });
   });
   it("writes all-null for a cleared row and trims an empty note to null", () => {
-    expect(toFoodPatch({ ...milk, gramsPerUnit: null, kcal: null, protein: null, carbs: null, fat: null, note: "  " }))
+    expect(toFoodPatch({ ...milk, numbers: cleared, note: "  " }))
       .toMatchObject({ grams_per_unit: null, kcal_per_100g: null, nutrition_note: null });
+  });
+  it("leaves the numbers out when they were not changed", () => {
+    expect(toFoodPatch({ ...milk, numbers: null, verdict: "watch" })).toEqual({
+      verdict: "watch", nutrition_note: "Vit D", is_active: true,
+    });
   });
 });
 
 describe("perUnitView", () => {
-  it("is the inverse of toFoodPatch for display", () => {
-    expect(perUnitView({ grams_per_unit: 200, kcal_per_100g: 62, protein_g_per_100g: 3.2, carbs_g_per_100g: 4.8, fat_g_per_100g: 3.3, sodium_mg_per_100g: null }))
-      .toEqual({ gramsPerUnit: 200, kcal: 124, protein: 6.4, carbs: 9.6, fat: 6.6, sodiumMg: null });
+  it("shows per-unit values to one decimal", () => {
+    expect(perUnitView({ grams_per_unit: 5, kcal_per_100g: 897, protein_g_per_100g: 0, carbs_g_per_100g: 0, fat_g_per_100g: 99.5, sodium_mg_per_100g: null }))
+      .toEqual({ gramsPerUnit: 5, kcal: 44.9, protein: 0, carbs: 0, fat: 5, sodiumMg: null });
   });
 });
 ```
@@ -2165,16 +2244,18 @@ import type { Verdict } from "./types";
 
 /**
  * The food editor works PER UNIT (what KFANDRA thinks in: "one glass of milk
- * is 124 kcal") and stores PER 100 G (spec D1). Pure; unit-tested.
+ * is 124 kcal") and stores PER 100 G (spec D1). Inputs arrive as the raw
+ * strings typed in the form and are parsed here, so the server action never
+ * hands the database something it can't store. Pure; unit-tested.
  */
 
+export const NUMBER_FIELDS = ["gramsPerUnit", "kcal", "protein", "carbs", "fat", "sodiumMg"] as const;
+export type NumberField = (typeof NUMBER_FIELDS)[number];
+export type RawNumbers = Record<NumberField, string>;
+
 export interface FoodEditInput {
-  gramsPerUnit: number | null;
-  kcal: number | null;
-  protein: number | null;
-  carbs: number | null;
-  fat: number | null;
-  sodiumMg: number | null;
+  /** Raw per-unit strings, or null when no number field was changed. */
+  numbers: RawNumbers | null;
   verdict: Verdict | null;
   note: string;
   isActive: boolean;
@@ -2189,50 +2270,86 @@ export interface Per100Row {
   sodium_mg_per_100g: number | null;
 }
 
-export interface FoodPatch extends Per100Row {
+export type FoodPatch = Partial<Per100Row> & {
   verdict: Verdict | null;
   nutrition_note: string | null;
   is_active: boolean;
-}
+};
 
 const round2 = (x: number) => Math.round(x * 100) / 100;
 const round1 = (x: number) => Math.round(x * 10) / 10;
 
-export function validateFoodEdit(i: FoodEditInput): string | null {
-  const core = [i.gramsPerUnit, i.kcal, i.protein, i.carbs, i.fat];
-  const filled = core.filter((v) => v !== null).length;
-  if (filled !== 0 && filled !== core.length) return "Fill in all of grams, kcal, protein, carbs and fat, or clear them all.";
-  if (i.gramsPerUnit !== null && (i.gramsPerUnit <= 0 || i.gramsPerUnit > 2000)) return "Grams per unit must be between 0 and 2000.";
-  for (const v of [i.kcal, i.protein, i.carbs, i.fat, i.sodiumMg]) {
-    if (v !== null && (!Number.isFinite(v) || v < 0)) return "Values cannot be negative.";
+/** "12" / "0.5" / "1,5" → number; "" → null; anything else → "invalid". */
+export function parseDecimal(raw: string): number | null | "invalid" {
+  const s = raw.trim().replace(",", ".");
+  if (s === "") return null;
+  return /^\d+(\.\d)?$/.test(s) ? Number(s) : "invalid";
+}
+
+type Parsed = Record<NumberField, number | null>;
+
+function parseAll(raw: RawNumbers): Parsed | null {
+  const out = {} as Parsed;
+  for (const k of NUMBER_FIELDS) {
+    const v = parseDecimal(raw[k]);
+    if (v === "invalid") return null;
+    out[k] = v;
   }
-  if (i.kcal !== null && i.kcal > 5000) return "kcal per unit looks too high (max 5000).";
+  return out;
+}
+
+const CAPS: Array<[Exclude<NumberField, "gramsPerUnit">, number, string]> = [
+  ["kcal", 900, "kcal"],
+  ["protein", 100, "Protein"],
+  ["carbs", 100, "Carbs"],
+  ["fat", 100, "Fat"],
+  ["sodiumMg", 5000, "Sodium"],
+];
+
+export function validateFoodEdit(i: FoodEditInput): string | null {
   if (i.note.trim().length > 300) return "Note too long (max 300 characters).";
+  if (i.numbers === null) return null;
+  const p = parseAll(i.numbers);
+  if (!p) return "Use numbers with at most one decimal, e.g. 0.5 or 12.";
+  const core = [p.gramsPerUnit, p.kcal, p.protein, p.carbs, p.fat];
+  const filled = core.filter((v) => v !== null).length;
+  if (filled === 0) return p.sodiumMg === null ? null : "Sodium needs the other values too.";
+  if (filled !== core.length) return "Fill in all of grams, kcal, protein, carbs and fat, or clear them all.";
+  const g = p.gramsPerUnit!;
+  if (g <= 0) return "Grams per unit must be more than 0.";
+  for (const [k, cap, label] of CAPS) {
+    const v = p[k];
+    if (v !== null && (v * 100) / g > cap) {
+      return `${label} is more than ${cap} per 100 g. Check you entered the amount for one unit, not per 100 g.`;
+    }
+  }
   return null;
 }
 
+/** Build the DB update. Call only after validateFoodEdit returned null. */
 export function toFoodPatch(i: FoodEditInput): FoodPatch {
-  const g = i.gramsPerUnit;
+  const base = { verdict: i.verdict, nutrition_note: i.note.trim() || null, is_active: i.isActive };
+  if (i.numbers === null) return base;
+  const p = parseAll(i.numbers)!;
+  const g = p.gramsPerUnit;
   const per100 = (v: number | null, r: (x: number) => number) => (v === null || g === null ? null : r((v * 100) / g));
   return {
     grams_per_unit: g,
-    kcal_per_100g: per100(i.kcal, round2),
-    protein_g_per_100g: per100(i.protein, round2),
-    carbs_g_per_100g: per100(i.carbs, round2),
-    fat_g_per_100g: per100(i.fat, round2),
-    sodium_mg_per_100g: per100(i.sodiumMg, round1),
-    verdict: i.verdict,
-    nutrition_note: i.note.trim() || null,
-    is_active: i.isActive,
+    kcal_per_100g: per100(p.kcal, round2),
+    protein_g_per_100g: per100(p.protein, round2),
+    carbs_g_per_100g: per100(p.carbs, round2),
+    fat_g_per_100g: per100(p.fat, round2),
+    sodium_mg_per_100g: per100(p.sodiumMg, round1),
+    ...base,
   };
 }
 
-/** Per-100 g row → per-unit numbers for the form (rounded for display). */
-export function perUnitView(r: Per100Row) {
+/** Per-100 g row → per-unit numbers for display, to one decimal. */
+export function perUnitView(r: Per100Row): Record<NumberField, number | null> {
   const g = r.grams_per_unit === null ? null : Number(r.grams_per_unit);
   const unit = (v: number | null) => (v === null || g === null ? null : round1((Number(v) * g) / 100));
   return {
-    gramsPerUnit: g,
+    gramsPerUnit: g === null ? null : round1(g),
     kcal: unit(r.kcal_per_100g),
     protein: unit(r.protein_g_per_100g),
     carbs: unit(r.carbs_g_per_100g),
@@ -2251,12 +2368,14 @@ Expected: PASS.
 
 ```bash
 git add src/lib/diet/nutrition-edit.ts src/lib/diet/nutrition-edit.test.ts
-git commit -m "feat(diet): per-unit food edit validation and conversion"
+git commit -m "feat(diet): per-unit food edit parsing, checks and conversion"
 ```
 
 ---
 
 ### Task 13: Food editor: repository, action, page
+
+**Bead:** `Helper-3q3.13`
 
 **Files:**
 - Create: `src/lib/admin/food-repository.ts`
@@ -2400,7 +2519,7 @@ export default async function FoodsPage({ searchParams }: { searchParams: Promis
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateFoodNutrition } from "@/lib/admin/food-actions";
-import { perUnitView, type FoodEditInput } from "@/lib/diet/nutrition-edit";
+import { NUMBER_FIELDS, perUnitView, type FoodEditInput, type NumberField, type RawNumbers } from "@/lib/diet/nutrition-edit";
 import type { FoodEditRow } from "@/lib/admin/food-repository";
 import type { Verdict } from "@/lib/diet/types";
 
@@ -2456,23 +2575,21 @@ function FoodRow({ food, canEdit }: { food: FoodEditRow; canEdit: boolean }) {
   );
 }
 
-const toNum = (s: string): number | null => (s.trim() === "" ? null : Number(s));
 const toStr = (n: number | null): string => (n === null ? "" : String(n));
 
 function EditForm({ food, onDone }: { food: FoodEditRow; onDone: () => void }) {
   const router = useRouter();
   const view = perUnitView(food);
-  const [vals, setVals] = useState({
-    gramsPerUnit: toStr(view.gramsPerUnit), kcal: toStr(view.kcal), protein: toStr(view.protein),
-    carbs: toStr(view.carbs), fat: toStr(view.fat), sodiumMg: toStr(view.sodiumMg),
-  });
+  // Initial strings, kept to detect whether any number was actually edited.
+  const initial = Object.fromEntries(NUMBER_FIELDS.map((k) => [k, toStr(view[k])])) as RawNumbers;
+  const [vals, setVals] = useState<RawNumbers>(initial);
   const [verdict, setVerdict] = useState<Verdict | "">(food.verdict ?? "");
   const [note, setNote] = useState(food.note ?? "");
   const [isActive, setIsActive] = useState(food.isActive);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const fields: Array<[keyof typeof vals, string]> = [
+  const fields: Array<[NumberField, string]> = [
     ["gramsPerUnit", `Grams per ${food.unit}`], ["kcal", "kcal per unit"], ["protein", "Protein g per unit"],
     ["carbs", "Carbs g per unit"], ["fat", "Fat g per unit"], ["sodiumMg", "Sodium mg per unit"],
   ];
@@ -2480,11 +2597,9 @@ function EditForm({ food, onDone }: { food: FoodEditRow; onDone: () => void }) {
   async function save() {
     setSaving(true);
     setError(null);
-    const input: FoodEditInput = {
-      gramsPerUnit: toNum(vals.gramsPerUnit), kcal: toNum(vals.kcal), protein: toNum(vals.protein),
-      carbs: toNum(vals.carbs), fat: toNum(vals.fat), sodiumMg: toNum(vals.sodiumMg),
-      verdict: verdict || null, note, isActive,
-    };
+    // Send numbers only if one changed, so a verdict/note save can't drift them (Task 12).
+    const numbersChanged = NUMBER_FIELDS.some((k) => vals[k] !== initial[k]);
+    const input: FoodEditInput = { numbers: numbersChanged ? vals : null, verdict: verdict || null, note, isActive };
     const res = await updateFoodNutrition(food.id, input);
     setSaving(false);
     if (!res.ok) return setError(res.error);
@@ -2536,7 +2651,7 @@ function EditForm({ food, onDone }: { food: FoodEditRow; onDone: () => void }) {
 
 **Step 5: Verify**
 
-Run: `npm run lint && npx tsc --noEmit && npm run test`. Then as a kfandra user open `/admin/diet/foods`: edit Milk's kcal from 124 to 130, save, and check `select kcal_per_100g, nutrition_source from food_catalog where key='milk'` returns `65, kfandra`. Set it back to 124. Try "Uncounted only". Clear all five values on a food and save; it should show "not counted".
+Run: `npm run lint && npx tsc --noEmit && npm run test`. Then as a kfandra user open `/admin/diet/foods`: edit Milk's kcal from 124 to 130, save, and check `select kcal_per_100g, nutrition_source from food_catalog where key='milk'` returns `65, kfandra`. Set it back to 124. Try "Uncounted only". Clear all five values on a food and save; it should show "not counted". Change only Ghee's verdict and save: its `fat_g_per_100g` must still be 99.5. Type `abc` or `1.25` into a number box: you get the one-decimal message, not a database error.
 
 **Step 6: Commit**
 
@@ -2548,6 +2663,8 @@ git commit -m "feat(admin): food values editor (per-unit input, per-100 g storag
 ---
 
 ### Task 14: End-to-end spec
+
+**Bead:** `Helper-3q3.14`
 
 **Files:**
 - Modify: `e2e/helpers/db.ts` (diet helpers)
@@ -2741,6 +2858,8 @@ git commit -m "test(e2e): diet nutrition summary, recap and food editor"
 
 ### Task 15: Guides
 
+**Bead:** `Helper-3q3.15`
+
 **Files:**
 - Modify: `docs/usage-guide.md` (§5 Diet)
 - Modify: `docs/admin-guide.md` (§5 Diet)
@@ -2788,26 +2907,79 @@ git commit -m "docs: usage and admin guides for diet nutrition"
 
 ---
 
-### Task 16: Final verification and push
+### Task 16: Final verification, PR, production migration, merge
 
-**Step 1: Quality gates**
+**Bead:** `Helper-3q3.16`
+
+Deploy order matters. Vercel deploys `main` automatically, but migrations are applied by hand (`docs/developer-guide.md` §"Apply a schema change"). From Task 6 on, the code selects the new `food_catalog` columns, so **if the code reaches production before the migration, the Diet page loses its food list.** The migration only adds columns and rows and updates catalogue rows, so the old code keeps working once it's applied. Therefore: **migration first, then merge.**
+
+**Step 1: Quality gates on the branch**
 
 Run: `npm run lint && npx tsc --noEmit && npm run test && npm run build && npm run test:e2e`
-Expected: all green. Use @superpowers:verification-before-completion: paste the actual output and don't claim success without it.
+Expected: all green. Use @superpowers:verification-before-completion: paste the actual output; don't claim success without it.
 
 **Step 2: Review**
 
-Use @superpowers:requesting-code-review on the branch.
+Use @superpowers:requesting-code-review on `feat/diet-nutrition` against `main`.
 
-**Step 3: Deploy note for the PR description**
-
-- The migration seeds `diet_nutrition_start_date` with the IST date it runs on production. Confirm that's the intended go-live date, or update the `app_config` row afterwards.
-- KFANDRA's open questions (spec §8) are not blocking; answers come in through the food editor, not code.
-
-**Step 4: Close beads and push** (per CLAUDE.md session completion)
+**Step 3: Open the PR (do not merge yet)**
 
 ```bash
-bd close <ids>
-git pull --rebase && bd dolt push && git push
+git push -u origin feat/diet-nutrition
+gh pr create --base main --title "feat(diet): nutrition totals and KFANDRA guidance" --body "<summary, test output, deploy steps below>"
+```
+
+The PR body lists the deploy steps (4–7) so whoever merges follows them. End it with:
+`🤖 Generated with [Claude Code](https://claude.com/claude-code)`
+
+Wait for the Vercel preview build check to pass. Previews only prove the build: the Supabase and session env vars are set for **Production only** (checked with `vercel env ls` on 2026-10-16), so preview pages that read data won't work and can't touch the production database.
+
+**Step 4: Check production's catalogue for dashboard edits**
+
+The migration upserts every food's name, emoji, unit, unit detail, section, order and is_active. If anyone edited foods in the Supabase dashboard, those edits would be silently undone. Compare production with the original seed (read-only; see @querying-production-data):
+
+```sql
+select key, name, emoji, unit, unit_detail, section_label, sort_order, is_active
+from food_catalog
+order by sort_order;
+```
+
+Compare against `supabase/migrations/20260607120008_seed_diet_catalog.sql` (63 rows, all active). If anything differs, or there are extra keys, stop: copy the production values into `src/lib/diet/nutrition-seed.ts`, regenerate the block (Task 2 Step 5), re-run the tests and push to the PR before continuing.
+
+**Step 5: Apply the migration to production**
+
+```bash
+npx supabase migration list --linked   # 20261016120000 shows as local-only
+npx supabase db push                   # may prompt for the DB password: run it as `! npx supabase db push`
+npx supabase migration list --linked   # now applied remotely too
+```
+
+Then check production:
+
+```sql
+select value from app_config where key = 'diet_nutrition_start_date';   -- today's IST date
+select count(*) filter (where kcal_per_100g is not null), count(*) from food_catalog;  -- 83, 122
+```
+
+The live app (still the old code) should still load Diet normally.
+
+**Step 6: Merge the PR**
+
+```bash
+gh pr merge --squash --delete-branch
+```
+
+Vercel deploys `main`. Wait for the production deployment check to pass (`gh pr checks` / the commit status on `main`).
+
+**Step 7: Smoke-test production**
+
+On https://kfandra-track.vercel.app: open Diet, log a counted food, close the meal and check the summary sheet; open `/admin/diet/nutrition` and `/admin/diet/foods` as a staff user. Log the test entry under your own account and remove it afterwards.
+
+**Step 8: Close beads and sync**
+
+```bash
+bd close Helper-3q3.16 Helper-3q3
+git checkout main && git pull --rebase
+bd dolt push
 git status   # must show "up to date with origin"
 ```

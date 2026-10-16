@@ -285,3 +285,81 @@ export async function resetKlcsraData(): Promise<void> {
   await deleteAllMatches();
   await deleteSeededPlayers();
 }
+
+// ── diet nutrition ──────────────────────────────────────────────────────────
+
+const START_KEY = "diet_nutrition_start_date";
+
+export async function getNutritionStart(): Promise<unknown> {
+  const rows = await sql<{ value: unknown }>("select value from app_config where key = $1", [START_KEY]);
+  return rows[0]?.value ?? null;
+}
+
+/** Move the start date to N IST days ago, so "yesterday" counts. */
+export async function setNutritionStartDaysAgo(days: number): Promise<void> {
+  await sql(
+    `insert into app_config (key, value) values ($1, to_jsonb(to_char((now() at time zone 'Asia/Kolkata')::date - $2::int, 'YYYY-MM-DD')))
+     on conflict (key) do update set value = excluded.value`,
+    [START_KEY, days],
+  );
+}
+
+export async function restoreNutritionStart(value: unknown): Promise<void> {
+  if (value === null) await sql("delete from app_config where key = $1", [START_KEY]);
+  else await sql("update app_config set value = $2::jsonb where key = $1", [START_KEY, JSON.stringify(value)]);
+}
+
+/** Insert yesterday's (IST) diet log with one catalogue item in one slot. */
+export async function insertYesterdayDietItem(playerId: string, slotKey: string, foodKey: string, count: number): Promise<void> {
+  await sql(
+    `with log as (
+       insert into diet_logs (player_id, log_date)
+       values ($1, (now() at time zone 'Asia/Kolkata')::date - 1)
+       returning id
+     ), meal as (
+       insert into diet_log_meals (diet_log_id, meal_slot_id)
+       select log.id, s.id from log, meal_slots s where s.key = $2
+       returning id
+     )
+     insert into diet_log_items (diet_log_meal_id, food_item_id, count)
+     select meal.id, f.id, $4 from meal, food_catalog f where f.key = $3`,
+    [playerId, slotKey, foodKey, count],
+  );
+}
+
+export async function getYesterdayRecapSeenAt(playerId: string): Promise<string | null> {
+  const rows = await sql<{ recap_seen_at: string | null }>(
+    `select recap_seen_at from diet_logs where player_id = $1 and log_date = (now() at time zone 'Asia/Kolkata')::date - 1`,
+    [playerId],
+  );
+  return rows[0]?.recap_seen_at ?? null;
+}
+
+export type FoodSnapshot = Record<string, unknown>;
+
+export async function snapshotFood(key: string): Promise<FoodSnapshot> {
+  const rows = await sql(
+    `select grams_per_unit, kcal_per_100g, protein_g_per_100g, carbs_g_per_100g, fat_g_per_100g,
+            sodium_mg_per_100g, verdict, nutrition_note, nutrition_source, nutrition_updated_at, nutrition_updated_by, is_active
+     from food_catalog where key = $1`,
+    [key],
+  );
+  return rows[0];
+}
+
+export async function restoreFood(key: string, s: FoodSnapshot): Promise<void> {
+  await sql(
+    `update food_catalog set grams_per_unit = $2, kcal_per_100g = $3, protein_g_per_100g = $4, carbs_g_per_100g = $5,
+       fat_g_per_100g = $6, sodium_mg_per_100g = $7, verdict = $8, nutrition_note = $9, nutrition_source = $10,
+       nutrition_updated_at = $11, nutrition_updated_by = $12, is_active = $13
+     where key = $1`,
+    [key, s.grams_per_unit, s.kcal_per_100g, s.protein_g_per_100g, s.carbs_g_per_100g, s.fat_g_per_100g,
+      s.sodium_mg_per_100g, s.verdict, s.nutrition_note, s.nutrition_source, s.nutrition_updated_at,
+      s.nutrition_updated_by, s.is_active],
+  );
+}
+
+export async function getFoodKcalPer100g(key: string): Promise<number> {
+  const rows = await sql<{ kcal_per_100g: string }>("select kcal_per_100g from food_catalog where key = $1", [key]);
+  return Number(rows[0].kcal_per_100g);
+}

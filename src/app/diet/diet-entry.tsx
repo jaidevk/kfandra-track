@@ -36,12 +36,21 @@ import {
 } from "@/lib/diet/draft";
 import {
   loadDietLogAction,
+  markRecapSeenAction,
   saveDietLogAction,
   savePlayerFoodAction,
 } from "@/lib/diet/actions";
 import { dateLabel, todayKey } from "@/lib/diet/dates";
 import { AnalyticsEvent, capture } from "@/lib/observability/analytics";
 import { Breadcrumb } from "@/components/breadcrumb";
+import {
+  dayNutrition,
+  isNutritionDay,
+  mealItemsChanged,
+  mealNutrition,
+  type NutritionSummary,
+} from "@/lib/diet/nutrition";
+import { DayNutritionCard, MealSummarySheet, RecapSheet, VerdictDot } from "./nutrition-ui";
 
 type SyncStatus = "idle" | "saving" | "saved" | "error";
 
@@ -53,9 +62,13 @@ export default function DietEntry({
   initialDraft,
   catalog,
   initialPersonalFoods,
+  nutritionStart,
+  recap,
 }: {
   playerName: string;
   initialDate: string;
+  nutritionStart: string | null;
+  recap: { dateKey: string; draft: DietDraft } | null;
   initialDraft: DietDraft;
   catalog: DietCatalog;
   initialPersonalFoods: PlayerFoodItem[];
@@ -67,6 +80,42 @@ export default function DietEntry({
   const [status, setStatus] = useState<SyncStatus>("idle");
   const [switching, setSwitching] = useState(false);
   const [openSlot, setOpenSlot] = useState<string | null>(null); // null = hub
+
+  const nutritionOn = isNutritionDay(dateKey, nutritionStart);
+  // Items in the open meal when it was opened, to decide whether closing it
+  // should show the summary sheet (spec §10.3).
+  const openedItems = useRef<LoggedItem[]>([]);
+  const [summarySlot, setSummarySlot] = useState<string | null>(null);
+
+  // Once-only recap of the latest earlier logged day (spec D11).
+  const [recapOpen, setRecapOpen] = useState(recap !== null);
+  const closeRecap = useCallback(() => {
+    setRecapOpen(false);
+    if (recap) void markRecapSeenAction(recap.dateKey);
+  }, [recap]);
+
+  const openMealSlot = useCallback(
+    (slotKey: string) => {
+      openedItems.current = getMeal(draft, slotKey).items;
+      setOpenSlot(slotKey);
+    },
+    [draft],
+  );
+
+  const closeMeal = useCallback(() => {
+    if (openSlot) {
+      const meal = getMeal(draft, openSlot);
+      if (
+        nutritionOn &&
+        !meal.skipped &&
+        meal.items.length > 0 &&
+        mealItemsChanged(openedItems.current, meal.items)
+      ) {
+        setSummarySlot(openSlot);
+      }
+    }
+    setOpenSlot(null);
+  }, [draft, openSlot, nutritionOn]);
 
   const foodById = useMemo(() => indexFoods(catalog), [catalog]);
 
@@ -123,6 +172,7 @@ export default function DietEntry({
     const res = await loadDietLogAction(nextDate);
     if (res.ok) {
       skipSave.current = true; // loading isn't an edit
+      setSummarySlot(null);
       setDateKey(nextDate);
       setDraft(res.data.draft);
       setStatus("idle");
@@ -142,7 +192,7 @@ export default function DietEntry({
           foodById={foodById}
           personalFoods={personalFoods}
           status={status}
-          onBack={() => setOpenSlot(null)}
+          onBack={closeMeal}
           onTap={(foodKey) => {
             mutate((d) => tapFood(d, openMeal.key, foodKey));
             capture(AnalyticsEvent.DietMealLogged, { slot: openMeal.key, source: "catalog" });
@@ -178,12 +228,39 @@ export default function DietEntry({
           foodById={foodById}
           status={status}
           currentSlot={currentSlot}
-          onOpen={(slotKey) => setOpenSlot(slotKey)}
+          onOpen={openMealSlot}
+          nutrition={nutritionOn ? dayNutrition(draft, foodById) : null}
           onToggleSkip={(slotKey) =>
             mutate((d) => setSkipped(d, slotKey, !getMeal(d, slotKey).skipped))
           }
           onNarration={(narration) => mutate((d) => ({ ...d, narration }))}
           onReset={() => mutate(() => emptyDraft())}
+        />
+      )}
+
+      {summarySlot && (
+        <MealSummarySheet
+          slotName={catalog.slots.find((s) => s.key === summarySlot)?.name ?? ""}
+          summary={mealNutrition(getMeal(draft, summarySlot), foodById)}
+          onDone={() => setSummarySlot(null)}
+        />
+      )}
+
+      {recap && recapOpen && (
+        <RecapSheet
+          dateLabel={dateLabel(recap.dateKey)}
+          day={dayNutrition(recap.draft, foodById)}
+          meals={catalog.slots
+            .filter((s) => {
+              const m = recap.draft.meals[s.key];
+              return m && !m.skipped && m.items.length > 0;
+            })
+            .map((s) => ({
+              key: s.key,
+              name: s.name,
+              summary: mealNutrition(recap.draft.meals[s.key], foodById),
+            }))}
+          onClose={closeRecap}
         />
       )}
     </div>
@@ -206,6 +283,7 @@ function DietHub({
   onToggleSkip,
   onNarration,
   onReset,
+  nutrition,
 }: {
   playerName: string;
   dateKey: string;
@@ -220,6 +298,7 @@ function DietHub({
   onToggleSkip: (slotKey: string) => void;
   onNarration: (narration: string) => void;
   onReset: () => void;
+  nutrition: NutritionSummary | null;
 }) {
   const totalItems = dayTotalUnits(draft);
   const touched = loggedMealCount(draft);
@@ -277,6 +356,8 @@ function DietHub({
           Tap a meal to log what you ate. Saved as you go — no submit needed.
         </p>
       </div>
+
+      {nutrition && <DayNutritionCard summary={nutrition} />}
 
       <Breadcrumb label="Diet" />
 
@@ -570,8 +651,9 @@ function MealDetail({
                         {item.emoji ?? "🍴"}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[12px] font-semibold leading-tight text-gray-900">
+                        <p className="flex items-center gap-1.5 text-[12px] font-semibold leading-tight text-gray-900">
                           {item.name}
+                          <VerdictDot verdict={item.verdict} />
                         </p>
                         <p className="text-[10px] leading-tight text-gray-600">
                           {item.unit}

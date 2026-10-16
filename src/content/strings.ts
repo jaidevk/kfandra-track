@@ -111,6 +111,24 @@ export const strings = {
     pleaseWait: "Please wait…",
   },
 
+  /** Diet nutrition (calories & macros), shown after logging food. */
+  dietNutrition: {
+    dayCardTitle: "Nutrition",
+    of: "of",
+    itemsCounted: "items counted",
+    protein: "P",
+    carbs: "C",
+    fat: "F",
+    flaggedHeading: "KFANDRA says",
+    disclaimer: "Guidance only. Values are approximate, from KFANDRA’s food charts.",
+    done: "Done",
+    recapTitle: "Your day",
+    recapMealsHeading: "By meal",
+    verdictGood: "Good choice",
+    verdictWatch: "Watch",
+    verdictAvoid: "Avoid",
+  },
+
   /** Admin section chrome (staff-only screens). */
   admin: {
     title: "Admin",

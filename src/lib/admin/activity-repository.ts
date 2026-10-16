@@ -3,6 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { loadDietCatalog, loadNutritionStartDate } from "@/lib/diet/config";
 import { indexFoods, type DietDraft, type FoodItemInfo } from "@/lib/diet/types";
 import { mealRowsToMeals, type MealRow } from "@/lib/diet/rows";
+import { listPlayers } from "./submissions-repository";
+import { shiftDateKey } from "@/lib/diet/dates";
 import {
   dayNutrition,
   isNutritionDay,
@@ -203,4 +205,44 @@ export async function getDietDay(date: string): Promise<DietDayRow[]> {
       nutrition: on ? dayNutrition(toDraft(r.diet_log_meals), ctx.foods) : null,
     }))
     .sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
+
+/* ── Team nutrition grid ─────────────────────────────────────────────── */
+
+export type TeamGridCell = { nutrition: NutritionSummary | null } | null; // null = nothing logged
+export type TeamGrid = {
+  days: string[];
+  rows: Array<{ playerId: string; displayName: string; cells: TeamGridCell[] }>;
+  silentPlayers: number;
+};
+
+/** Players × the 7 IST days ending on `endDate` (spec §6.3). */
+export async function getTeamNutritionGrid(endDate: string): Promise<TeamGrid> {
+  const days = Array.from({ length: 7 }, (_, i) => shiftDateKey(endDate, i - 6));
+  const admin = createAdminClient();
+  const [res, players, ctx] = await Promise.all([
+    admin
+      .from("diet_logs")
+      .select(
+        "player_id, log_date, diet_log_meals(skipped, meal_slots(key), diet_log_items(id, custom_name, custom_unit, custom_notes, count, sort_order, food_catalog(key)))",
+      )
+      .gte("log_date", days[0])
+      .lte("log_date", endDate),
+    listPlayers(),
+    loadNutritionContext(),
+  ]);
+
+  const byPlayer = new Map<string, Map<string, TeamGridCell>>();
+  for (const r of res.data ?? []) {
+    const cells = byPlayer.get(r.player_id) ?? new Map<string, TeamGridCell>();
+    cells.set(r.log_date, {
+      nutrition: isNutritionDay(r.log_date, ctx.startDate) ? dayNutrition(toDraft(r.diet_log_meals), ctx.foods) : null,
+    });
+    byPlayer.set(r.player_id, cells);
+  }
+
+  const rows = players
+    .filter((p) => byPlayer.has(p.id))
+    .map((p) => ({ playerId: p.id, displayName: p.displayName, cells: days.map((d) => byPlayer.get(p.id)!.get(d) ?? null) }));
+  return { days, rows, silentPlayers: players.length - rows.length };
 }

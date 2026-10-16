@@ -87,7 +87,7 @@ Add a new table, `club_ledger_entries`:
 
 ### 3.2 Existing balance sheet → derived and read-only
 - `club_balance_sheets` and `club_player_shares` become **write-locked for managers**. Drop the manager write policies and keep select.
-- On **league match submit** (Phase 5), write ledger entries per club:
+- On **league match submit** (Phase 5), write ledger entries per club (both clubs get `ticket_sales`, Q1):
   - `match_fee`: −10 per match played
   - `match_win`: +20 per win
   - `loanee_payout`: the final per-player KR from the recorder, which per spec v0.4 overwrites the loanee amounts
@@ -118,7 +118,7 @@ Add a new table, `club_ledger_entries`:
   - Set by KFANDRA in the recorder (KFANDRA role only).
   - Required before **Submit** for league matches.
 - **Draw on submit** (once):
-  1. For the **selling club(s)** (Q1), pick `seats = random_int(band.min, band.max)` using a server-side CSPRNG.
+  1. For **each club in the match** (both sell, Q1), pick `seats = random_int(band.min, band.max)` using a server-side CSPRNG.
   2. Cap at that club's capacity on `entry_date`.
   3. Store `klc_match_ticket_sales(match_id, club_id, rating, band_min, band_max, seats_sold, price_kr, revenue_kr, drawn_at)`, unique `(match_id, club_id)`.
   4. Write a `ticket_sales` ledger entry: +revenue, qty seats, unit price.
@@ -161,13 +161,13 @@ Add a new table, `club_ledger_entries`:
 
 | # | Question | Default |
 |---|---|---|
-| Q1 | **Who sells tickets?** Only the home club? What if a match is marked neutral? In combined matches, which club or clubs sell? | Home club only. Neutral or combined: each half's home club sells |
-| Q2 | **The bands top out at 10,000**, the starting capacity. If bands stay fixed, buying seats never sells more tickets. Should the bands grow with the stadium (for example, as a % of capacity)? | Fixed bands, capped at capacity. **This needs KFANDRA's decision** |
+| Q1 | **Who sells tickets?** | **Decided (Jaidev, 2026-10-16): both clubs sell.** Open with KFANDRA: one rating per match for both clubs? separate draw per club, each capped at its own stadium? each club's own price? combined matches: every club that played sells? |
+| Q2 | **The bands top out at 10,000**, the starting capacity. Should the bands grow with the stadium? | **Asking KFANDRA** (simple version: "should a bigger stadium sell more tickets?") |
 | Q3 | Once seats are drawn for a match, is the number final even if the match is reopened? | Final unless the rating changes |
 | Q4 | Is the ticket price per club **per session** (set before 04:00 that day), or per match? If not set: free, or last price? | Per session. Carry forward the last price, else free |
 | Q5 | Can a club **buy seats without enough Kroopies**? Can a balance go below zero? | No. The balance must cover the purchase. Other balances may go negative |
 | Q6 | Who can buy seats: the club manager, KFANDRA, or both? | Both |
-| Q7 | **Opening balance**: how many Kroopies does each club start S2 with? Should S1 totals carry over? | KFANDRA enters an opening balance per club |
+| Q7 | **Opening balance**: how many Kroopies does each club start S2 with? Should S1 totals carry over? | **Asking KFANDRA** |
 | Q8 | With the sheet locked, **how are mistakes fixed**? Only by KFANDRA adding a correction (visible to the club)? | Yes. KFANDRA-only adjustment entries with a note |
 | Q9 | Do **managers still enter anything** (loanee numbers, club bonus)? Or does all of it come from matches and KFANDRA? | Nothing. Loanee KR comes from matches, the bonus from KFANDRA |
 | Q10 | Do **friendlies** sell tickets? | No |

@@ -93,8 +93,8 @@
 ### 3.3 Points calculation (pure, TDD)
 - New `computeMatchPoints({ sport, totalPlayers, homeScore, awayScore }, rules)` returns `{ tier, home, away }`.
 - Result: higher score wins, equal scores draw.
-- Session cap (R4): after computing points per club per session (= `entry_date`, Q4), order that club's league matches in the capped tier by `submitted_at`. Matches past the cap score **0** and get an `overCap: true` flag shown in the table detail and the recorder.
-- Combined matches (default for Q6): **each half is its own result** for the two clubs in that half. A club appearing in both halves gets two results.
+- Session cap (R4, Q4): the recorder never blocks a match. After computing points per club per session (= `entry_date`, Q4), order that club's league matches in the capped tier by `submitted_at`. Matches past the cap score **0** and get an `overCap: true` flag shown in the table detail and the recorder.
+- Combined matches (Q6, leaning, confirming with KFANDRA): **each half is its own result** for the two clubs in that half. A club appearing in both halves gets two results.
 - `round4()` is kept for the fractional points.
 
 ### 3.4 League tables (R5/R6)
@@ -142,7 +142,7 @@
 
 ### 3.7 Recorder touches
 - Show the tier ("7+ / 4–6 / 2–3") and the computed points in the submit preview.
-- Warn when submitting a match that is over the session cap.
+- Show (do not block) an "over limit, 0 points" note when a match is over the session cap.
 
 ### 3.8 Tests
 - Unit tests:
@@ -165,12 +165,12 @@
 
 | # | Question | Default |
 |---|---|---|
-| Q1 | Do the new points **replace** the old winning-margin bonus/penalty and the combined-match half bonuses? Is a loss always 0? | Replace both, loss = 0 |
+| Q1 | Do the new points **replace** the old winning-margin bonus/penalty and the combined-match half bonuses? Is a loss always 0? | **Decided (Jaidev, 2026-10-16): yes, replace both. Loss = 0.** |
 | Q2 | Multi-Game Variation earns points but has no table of its own. Should it be in the combined table only? | Combined only |
-| Q3 | **Player count**: both teams together, or per team? (The recorder holds 6 per side, so 7+ per team isn't possible yet.) Do Football/Fooba and Rugby Sox with fewer than 7 players earn anything? | Both teams together. Football/Fooba/Rugby Sox under 7 count as played with 0 points |
-| Q4 | **Session cap**: is it per club per session? Are extra matches recorded with 0 points, or blocked? Is a session the same as a date? | Per club, per date. Extra matches get 0 points (shown as "over cap") |
+| Q3 | **Player count**: both teams together, or per team? Do Football/Fooba and Rugby Sox with fewer than 7 players earn anything? | **Decided: total players across both teams.** Under-7 Football/Fooba/Rugby Sox: played, 0 points (default) |
+| Q4 | **Session cap**: what happens to matches beyond 3 (4–6 players) or 2 (2–3 players) in a session? | **Decided: the app never blocks recording; what happened on the ground is the source.** Extra matches are recorded and flagged "over limit" with 0 points (default; ground time limits this in practice). Session = date, per club |
 | Q5 | **Tie-breakers** when points are level | Difference, then scored, then name |
-| Q6 | **Combined matches** (clubs swap at half time): is each half a separate result, or one result? | Each half separate |
+| Q6 | **Combined matches** (clubs swap at half time): is each half a separate result, or one result? | **Leaning: each half separate. Confirming with KFANDRA.** |
 | Q7 | **Goals vs tries**: Fooba main and rebound goals both count as goals? Combined-table difference = goals and tries together? | Yes and yes |
 | Q8 | Do **friendlies** appear in tables/leaderboards? | No (except the MMG board) |
 | Q9 | What does the **"common list"** mean? Read-only views for all players? | Read-only for all players. Recording stays staff-only |

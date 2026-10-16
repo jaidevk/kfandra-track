@@ -30,6 +30,7 @@ export function expectNoErrors(errors: string[]) {
     /favicon/i,
     /Failed to load resource.*404/i, // missing mock assets, not logic bugs
     /Download the React DevTools/i,
+    /\[PostHog\.js\].*Failed to fetch/i, // analytics network noise in local runs
   ];
   const real = errors.filter((e) => !ignorable.some((re) => re.test(e)));
   expect(real, `Unexpected runtime errors:\n${real.join("\n")}`).toEqual([]);

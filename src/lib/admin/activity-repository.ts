@@ -1,5 +1,14 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { loadDietCatalog, loadNutritionStartDate } from "@/lib/diet/config";
+import { indexFoods, type DietDraft, type FoodItemInfo } from "@/lib/diet/types";
+import { mealRowsToMeals, type MealRow } from "@/lib/diet/rows";
+import {
+  dayNutrition,
+  isNutritionDay,
+  mealNutrition,
+  type NutritionSummary,
+} from "@/lib/diet/nutrition";
 
 /* ── Per-player gym detail ──────────────────────────────────────────────── */
 
@@ -52,43 +61,73 @@ export async function getPlayerGym(playerId: string): Promise<GymDay[]> {
 /* ── Per-player diet detail ─────────────────────────────────────────────── */
 
 export type DietItem = { name: string; count: number };
-export type DietMeal = { slot: string; skipped: boolean; items: DietItem[] };
-export type DietDay = { date: string; narration: string | null; meals: DietMeal[] };
+export type DietMeal = {
+  slot: string;
+  skipped: boolean;
+  items: DietItem[];
+  nutrition: NutritionSummary | null;
+};
+export type DietDay = {
+  date: string;
+  narration: string | null;
+  meals: DietMeal[];
+  nutrition: NutritionSummary | null;
+};
+
+/** Foods lookup + start date, loaded once per admin page. */
+export async function loadNutritionContext(): Promise<{
+  foods: Record<string, FoodItemInfo>;
+  startDate: string | null;
+}> {
+  const [catalog, startDate] = await Promise.all([loadDietCatalog(), loadNutritionStartDate()]);
+  return { foods: indexFoods(catalog), startDate };
+}
+
+function toDraft(mealRows: unknown): DietDraft {
+  return { meals: mealRowsToMeals((mealRows ?? []) as MealRow[]), narration: "" };
+}
 
 export async function getPlayerDiet(playerId: string): Promise<DietDay[]> {
   const admin = createAdminClient();
-  const { data } = await admin
-    .from("diet_logs")
-    .select(
-      "log_date, narration, diet_log_meals(skipped, meal_slots(name, sort_order), diet_log_items(count, custom_name, food_catalog(name)))",
-    )
-    .eq("player_id", playerId)
-    .order("log_date", { ascending: false });
+  const [{ data }, ctx] = await Promise.all([
+    admin
+      .from("diet_logs")
+      .select(
+        "log_date, narration, diet_log_meals(skipped, meal_slots(key, name, sort_order), diet_log_items(id, count, custom_name, custom_unit, custom_notes, sort_order, food_catalog(key, name)))",
+      )
+      .eq("player_id", playerId)
+      .order("log_date", { ascending: false }),
+    loadNutritionContext(),
+  ]);
 
-  return (data ?? []).map((d) => ({
-    date: d.log_date,
-    narration: d.narration,
-    meals: ((d.diet_log_meals as Array<Record<string, unknown>>) ?? [])
-      .map((m) => {
-        const slot = m.meal_slots as { name: string; sort_order: number } | null;
-        return {
-          slot: slot?.name ?? "Meal",
-          slotOrder: slot?.sort_order ?? 0,
-          skipped: Boolean(m.skipped),
-          items: ((m.diet_log_items as Array<Record<string, unknown>>) ?? []).map(
-            (it) => {
+  return (data ?? []).map((d) => {
+    const on = isNutritionDay(d.log_date, ctx.startDate);
+    const draft = toDraft(d.diet_log_meals);
+    return {
+      date: d.log_date,
+      narration: d.narration,
+      nutrition: on ? dayNutrition(draft, ctx.foods) : null,
+      meals: ((d.diet_log_meals as Array<Record<string, unknown>>) ?? [])
+        .map((m) => {
+          const slot = m.meal_slots as { key: string; name: string; sort_order: number } | null;
+          return {
+            slot: slot?.name ?? "Meal",
+            slotOrder: slot?.sort_order ?? 0,
+            skipped: Boolean(m.skipped),
+            nutrition: on && slot ? mealNutrition(draft.meals[slot.key], ctx.foods) : null,
+            items: ((m.diet_log_items as Array<Record<string, unknown>>) ?? []).map((it) => {
               const food = it.food_catalog as { name: string } | null;
               return {
                 name: (it.custom_name as string) ?? food?.name ?? "Item",
                 count: Number(it.count),
               };
-            },
-          ),
-        };
-      })
-      .sort((a, b) => a.slotOrder - b.slotOrder)
-      .map((m) => ({ slot: m.slot, skipped: m.skipped, items: m.items })),
-  }));
+            }),
+          };
+        })
+        .sort((a, b) => a.slotOrder - b.slotOrder)
+        .map((m) => ({ slot: m.slot, skipped: m.skipped, items: m.items, nutrition: m.nutrition })),
+    };
+  });
 }
 
 /* ── By-date overviews (all players on one day, per type) ───────────────── */
@@ -139,20 +178,29 @@ export type DietDayRow = {
   playerId: string;
   displayName: string;
   meals: number;
+  nutrition: NutritionSummary | null;
 };
 
 /** Each player who logged diet on `date`, with a summary. */
 export async function getDietDay(date: string): Promise<DietDayRow[]> {
   const admin = createAdminClient();
-  const [res, names] = await Promise.all([
-    admin.from("diet_logs").select("player_id, diet_log_meals(id)").eq("log_date", date),
+  const [res, names, ctx] = await Promise.all([
+    admin
+      .from("diet_logs")
+      .select(
+        "player_id, diet_log_meals(skipped, meal_slots(key), diet_log_items(id, custom_name, custom_unit, custom_notes, count, sort_order, food_catalog(key)))",
+      )
+      .eq("log_date", date),
     activePlayerNames(),
+    loadNutritionContext(),
   ]);
+  const on = isNutritionDay(date, ctx.startDate);
   return (res.data ?? [])
     .map((r) => ({
       playerId: r.player_id,
       displayName: names.get(r.player_id) ?? "Unknown",
       meals: ((r.diet_log_meals as unknown[]) ?? []).length,
+      nutrition: on ? dayNutrition(toDraft(r.diet_log_meals), ctx.foods) : null,
     }))
     .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }

@@ -5,6 +5,7 @@ import {
   getDietDay,
   getPlayerDiet,
 } from "@/lib/admin/activity-repository";
+import { formatKcal } from "@/lib/diet/nutrition";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,20 @@ async function Index() {
       <div>
         <h2 className="text-lg font-bold text-gray-900">Diet</h2>
         <p className="text-[11px] text-gray-600">Daily logs — not scored, just a record.</p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Link
+          href="/admin/diet/nutrition"
+          className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-800 hover:bg-gray-50"
+        >
+          Team nutrition grid
+        </Link>
+        <Link
+          href="/admin/diet/foods"
+          className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-800 hover:bg-gray-50"
+        >
+          Food values
+        </Link>
       </div>
       <section>
         <h3 className="mb-2 text-sm font-bold text-gray-900">By date</h3>
@@ -90,12 +105,16 @@ async function ByDate({ date }: { date: string }) {
       {rows.length === 0 ? (
         <p className="text-sm text-gray-600">No diet logs on this day.</p>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-300 bg-white">
+        <div className="overflow-x-auto rounded-xl border border-gray-300 bg-white">
           <table className="w-full text-sm">
             <thead className="bg-amber-100 text-[11px] uppercase tracking-wide text-amber-900">
               <tr>
                 <th className="px-3 py-2 text-left font-semibold">Player</th>
-                <th className="px-3 py-2 text-right font-semibold">Meals logged</th>
+                <th className="px-3 py-2 text-right font-semibold">Meals</th>
+                <th className="px-3 py-2 text-right font-semibold">kcal</th>
+                <th className="px-3 py-2 text-right font-semibold">P / C / F</th>
+                <th className="px-3 py-2 text-right font-semibold">Counted</th>
+                <th className="px-3 py-2 text-right font-semibold">⚑</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -110,6 +129,24 @@ async function ByDate({ date }: { date: string }) {
                     </Link>
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">{r.meals}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {r.nutrition ? formatKcal(r.nutrition) : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {r.nutrition && r.nutrition.counted > 0
+                      ? `${Math.round(r.nutrition.totals.protein)} / ${Math.round(r.nutrition.totals.carbs)} / ${Math.round(r.nutrition.totals.fat)}`
+                      : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {r.nutrition ? `${r.nutrition.counted}/${r.nutrition.total}` : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {r.nutrition && r.nutrition.flagged.length > 0 ? (
+                      <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[11px] font-bold text-red-700">
+                        {r.nutrition.flagged.length}
+                      </span>
+                    ) : null}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -132,8 +169,16 @@ async function ByPlayer({ playerId }: { playerId: string }) {
       ) : (
         <div className="space-y-2">
           {diet.map((d) => (
-            <div key={d.date} className="rounded-xl border border-gray-200 bg-white p-3">
+            <div key={d.date} id={d.date} className="rounded-xl border border-gray-200 bg-white p-3">
               <p className="text-sm font-semibold text-gray-900">{fmtDate(d.date)}</p>
+              {d.nutrition && (
+                <p className="text-[12px] text-gray-700">
+                  {formatKcal(d.nutrition)}
+                  {d.nutrition.counted > 0 &&
+                    ` · P ${Math.round(d.nutrition.totals.protein)} g · C ${Math.round(d.nutrition.totals.carbs)} g · F ${Math.round(d.nutrition.totals.fat)} g`}
+                  {` · ${d.nutrition.counted}/${d.nutrition.total} counted`}
+                </p>
+              )}
               <ul className="mt-1.5 space-y-1">
                 {d.meals.map((m, i) => (
                   <li key={i} className="text-[13px] text-gray-700">
@@ -145,9 +190,27 @@ async function ByPlayer({ playerId }: { playerId: string }) {
                     ) : (
                       m.items.map((it) => `${it.name}${it.count > 1 ? ` ×${it.count}` : ""}`).join(", ")
                     )}
+                    {m.nutrition && m.nutrition.counted > 0 ? (
+                      <span className="text-gray-600"> · {formatKcal(m.nutrition)}</span>
+                    ) : null}
                   </li>
                 ))}
               </ul>
+              {d.nutrition && d.nutrition.flagged.length > 0 && (
+                <details className="mt-1.5 text-[12px]">
+                  <summary className="cursor-pointer font-semibold text-red-700">
+                    {d.nutrition.flagged.length} flagged
+                  </summary>
+                  <ul className="mt-1 space-y-0.5">
+                    {d.nutrition.flagged.map((f) => (
+                      <li key={f.foodKey}>
+                        <span className="font-medium">{f.name}</span> ({f.verdict})
+                        {f.note ? ` — ${f.note}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
               {d.narration && (
                 <p className="mt-1.5 text-[12px] italic text-gray-600">“{d.narration}”</p>
               )}

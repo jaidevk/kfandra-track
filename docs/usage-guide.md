@@ -94,6 +94,14 @@ missed). For each meal, **tap the foods** you ate to log them; tap again / use
 the steppers to set how many. You can add a custom item if something isn't on
 the list. Diet saves automatically — no scoring, just a record.
 
+**Nutrition.** When you finish a meal (tap **Done**), a sheet shows its calories
+and protein / carbs / fat, how many of the items have values, and KFANDRA's note
+on any food marked *watch* (amber dot) or *avoid* (red dot). Green dots are good
+choices. The card at the top of Diet shows the day so far. The next time you open
+Diet, you'll see a one-time recap of your last logged day. Foods without values
+yet, and your own custom foods, are logged but not counted. Numbers are guidance
+only.
+
 ---
 
 ## 6. Good to know

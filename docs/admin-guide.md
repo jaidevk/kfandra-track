@@ -67,6 +67,17 @@ Open **Diet** (daily logs — not scored):
 
 - **By date** → pick a day to see everyone who logged diet; tap a name to drill in.
 - **By player** → pick a name to see every diet day (meals + the foods logged).
+- **Totals** → every day now shows kcal, protein / carbs / fat, how many items
+  were counted, and a red badge for foods marked *watch* or *avoid*. Days before
+  nutrition started show no totals.
+- **Team nutrition grid** → players down the side, the last 7 days across. Each
+  cell shows kcal and protein; tap it to open that player's day. Use **← Week** /
+  **Week →** to move.
+- **Food values** → change any food's numbers **per unit** (e.g. one glass of
+  milk), its verdict (good / watch / avoid), its note, or hide it from players.
+  Clear all the numbers to make a food "not counted". **Uncounted only** lists the
+  foods still waiting for values. Changes apply to every day since nutrition
+  started.
 
 ## 6. Scoring
 

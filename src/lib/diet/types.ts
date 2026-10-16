@@ -76,6 +76,18 @@ export interface MealSlotInfo {
   endMin: number;
 }
 
+/** KFANDRA's guidance tag for a food (spec D6). */
+export type Verdict = "good" | "watch" | "avoid";
+
+/** Per-100 g macros plus the weight of one unit. All-or-nothing (D5). */
+export interface FoodNutrition {
+  gramsPerUnit: number;
+  kcalPer100g: number;
+  proteinPer100g: number;
+  carbsPer100g: number;
+  fatPer100g: number;
+}
+
 export interface FoodItemInfo {
   key: string;
   name: string;
@@ -84,6 +96,11 @@ export interface FoodItemInfo {
   unit: string;
   /** Optional sub-label, e.g. "200 ml". */
   unitDetail: string | null;
+  /** Null/absent = not counted. */
+  nutrition?: FoodNutrition | null;
+  verdict?: Verdict | null;
+  /** KFANDRA's note, shown with watch/avoid flags. */
+  note?: string | null;
 }
 
 export interface FoodSection {
@@ -94,12 +111,14 @@ export interface FoodSection {
 export interface DietCatalog {
   slots: MealSlotInfo[];
   sections: FoodSection[];
+  /** Inactive foods: not shown as tiles, but still used to total past logs. */
+  inactive?: FoodItemInfo[];
 }
 
 /** Flat key → item lookup for rendering logged rows. */
 export function indexFoods(catalog: DietCatalog): Record<string, FoodItemInfo> {
   return Object.fromEntries(
-    catalog.sections.flatMap((s) => s.items).map((i) => [i.key, i]),
+    [...catalog.sections.flatMap((s) => s.items), ...(catalog.inactive ?? [])].map((i) => [i.key, i]),
   );
 }
 

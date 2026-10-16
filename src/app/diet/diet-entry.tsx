@@ -36,6 +36,7 @@ import {
 } from "@/lib/diet/draft";
 import {
   loadDietLogAction,
+  markRecapSeenAction,
   saveDietLogAction,
   savePlayerFoodAction,
 } from "@/lib/diet/actions";
@@ -49,7 +50,7 @@ import {
   mealNutrition,
   type NutritionSummary,
 } from "@/lib/diet/nutrition";
-import { DayNutritionCard, MealSummarySheet, VerdictDot } from "./nutrition-ui";
+import { DayNutritionCard, MealSummarySheet, RecapSheet, VerdictDot } from "./nutrition-ui";
 
 type SyncStatus = "idle" | "saving" | "saved" | "error";
 
@@ -85,6 +86,13 @@ export default function DietEntry({
   // should show the summary sheet (spec §10.3).
   const openedItems = useRef<LoggedItem[]>([]);
   const [summarySlot, setSummarySlot] = useState<string | null>(null);
+
+  // Once-only recap of the latest earlier logged day (spec D11).
+  const [recapOpen, setRecapOpen] = useState(recap !== null);
+  const closeRecap = useCallback(() => {
+    setRecapOpen(false);
+    if (recap) void markRecapSeenAction(recap.dateKey);
+  }, [recap]);
 
   const openMealSlot = useCallback(
     (slotKey: string) => {
@@ -235,6 +243,24 @@ export default function DietEntry({
           slotName={catalog.slots.find((s) => s.key === summarySlot)?.name ?? ""}
           summary={mealNutrition(getMeal(draft, summarySlot), foodById)}
           onDone={() => setSummarySlot(null)}
+        />
+      )}
+
+      {recap && recapOpen && (
+        <RecapSheet
+          dateLabel={dateLabel(recap.dateKey)}
+          day={dayNutrition(recap.draft, foodById)}
+          meals={catalog.slots
+            .filter((s) => {
+              const m = recap.draft.meals[s.key];
+              return m && !m.skipped && m.items.length > 0;
+            })
+            .map((s) => ({
+              key: s.key,
+              name: s.name,
+              summary: mealNutrition(recap.draft.meals[s.key], foodById),
+            }))}
+          onClose={closeRecap}
         />
       )}
     </div>

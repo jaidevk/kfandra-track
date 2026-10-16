@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentPlayer } from "@/lib/auth/current-user";
 import { loadDietCatalog, loadNutritionStartDate } from "@/lib/diet/config";
-import { loadDietLog } from "@/lib/diet/repository";
+import { findDueRecap, loadDietLog } from "@/lib/diet/repository";
 import { loadPlayerFoods } from "@/lib/diet/personal-foods-repository";
 import { todayKey } from "@/lib/diet/dates";
 import DietEntry from "./diet-entry";
@@ -23,6 +23,7 @@ export default async function DietPage() {
     loadPlayerFoods(player.id),
     loadNutritionStartDate(),
   ]);
+  const recap = await findDueRecap(player.id, dateKey, nutritionStart);
 
   return (
     <DietEntry
@@ -32,7 +33,7 @@ export default async function DietPage() {
       catalog={catalog}
       initialPersonalFoods={personalFoods}
       nutritionStart={nutritionStart}
-      recap={null}
+      recap={recap}
     />
   );
 }

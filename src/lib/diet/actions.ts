@@ -1,7 +1,7 @@
 "use server";
 
 import { getCurrentPlayer } from "@/lib/auth/current-user";
-import { loadDietLog, saveDietLog } from "./repository";
+import { loadDietLog, markRecapSeen, saveDietLog } from "./repository";
 import { loadPlayerFoods, upsertPlayerFood } from "./personal-foods-repository";
 import { isValidDateKey } from "./dates";
 import type { DietDraft, PlayerFoodItem } from "./types";
@@ -64,6 +64,19 @@ export async function savePlayerFoodAction(food: {
   try {
     const foods = await upsertPlayerFood(player.id, food);
     return { ok: true, data: { foods } };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Save failed." };
+  }
+}
+
+/** Dismiss the recap for a day (spec §5.4). */
+export async function markRecapSeenAction(dateKey: string): Promise<ActionResult> {
+  const player = await getCurrentPlayer();
+  if (!player) return { ok: false, error: NOT_SIGNED_IN };
+  if (!isValidDateKey(dateKey)) return { ok: false, error: BAD_DATE };
+  try {
+    await markRecapSeen(player.id, dateKey);
+    return { ok: true, data: undefined };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Save failed." };
   }

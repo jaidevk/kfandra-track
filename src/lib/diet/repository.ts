@@ -160,3 +160,41 @@ export async function saveDietLog(
 function isTouched(meal: MealLog): boolean {
   return meal.skipped || meal.items.length > 0;
 }
+
+/**
+ * The recap due for a player (spec D11, §3.3): their LATEST diet day before
+ * today, on/after the nutrition start date, with at least one item. Due only
+ * if not yet seen; older unseen days are deliberately ignored.
+ */
+export async function findDueRecap(
+  playerId: string,
+  todayKey: string,
+  startDate: string | null,
+): Promise<{ dateKey: string; draft: DietDraft } | null> {
+  if (!startDate) return null;
+  const admin = createAdminClient();
+  // !inner joins drop days with no items (a skipped-only day has no recap).
+  const { data } = await admin
+    .from("diet_logs")
+    .select("log_date, recap_seen_at, diet_log_meals!inner(diet_log_items!inner(id))")
+    .eq("player_id", playerId)
+    .lt("log_date", todayKey)
+    .gte("log_date", startDate)
+    .order("log_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data || data.recap_seen_at) return null;
+  return { dateKey: data.log_date, draft: await loadDietLog(playerId, data.log_date) };
+}
+
+/** Stamp the recap for (player, day) as seen. Idempotent. */
+export async function markRecapSeen(playerId: string, dateKey: string): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("diet_logs")
+    .update({ recap_seen_at: new Date().toISOString() })
+    .eq("player_id", playerId)
+    .eq("log_date", dateKey)
+    .is("recap_seen_at", null);
+  if (error) throw new Error(`Failed to mark recap seen: ${error.message}`);
+}

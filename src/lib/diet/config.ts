@@ -1,6 +1,8 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { DietCatalog, FoodSection, MealSlotInfo } from "./types";
+import type { DietCatalog, FoodItemInfo, FoodSection, MealSlotInfo } from "./types";
+import { FOOD_CATALOG_COLUMNS, foodRowToInfo, type FoodCatalogRow } from "./rows";
+import { NUTRITION_START_KEY, parseStartDate } from "./nutrition-start";
 
 /**
  * Server-side loader for the admin-editable diet catalogue (meal slots + food
@@ -21,8 +23,7 @@ export async function loadDietCatalog(): Promise<DietCatalog> {
       .order("sort_order", { ascending: true }),
     admin
       .from("food_catalog")
-      .select("key, name, emoji, unit, unit_detail, section_label, sort_order")
-      .eq("is_active", true)
+      .select(FOOD_CATALOG_COLUMNS)
       .order("sort_order", { ascending: true }),
   ]);
 
@@ -35,24 +36,36 @@ export async function loadDietCatalog(): Promise<DietCatalog> {
     endMin: r.end_min,
   }));
 
-  // Group foods by section_label, keeping first-seen order (rows already sorted).
+  // Active foods become tiles, grouped by section in first-seen order. Inactive
+  // foods are kept only for the lookup, so past logs still total (spec §10.1).
   const sections: FoodSection[] = [];
   const byLabel = new Map<string, FoodSection>();
+  const inactive: FoodItemInfo[] = [];
   for (const r of foodsRes.data ?? []) {
+    const info = foodRowToInfo(r as FoodCatalogRow);
+    if (!r.is_active) {
+      inactive.push(info);
+      continue;
+    }
     let section = byLabel.get(r.section_label);
     if (!section) {
       section = { label: r.section_label, items: [] };
       byLabel.set(r.section_label, section);
       sections.push(section);
     }
-    section.items.push({
-      key: r.key,
-      name: r.name,
-      emoji: r.emoji,
-      unit: r.unit,
-      unitDetail: r.unit_detail,
-    });
+    section.items.push(info);
   }
 
-  return { slots, sections };
+  return { slots, sections, inactive };
+}
+
+/** The IST date nutrition counts from, or null when unset/invalid (D12). */
+export async function loadNutritionStartDate(): Promise<string | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("app_config")
+    .select("value")
+    .eq("key", NUTRITION_START_KEY)
+    .maybeSingle();
+  return parseStartDate(data?.value ?? null);
 }

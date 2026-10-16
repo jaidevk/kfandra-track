@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { DietDraft, LoggedItem, MealLog } from "./types";
+import type { DietDraft, MealLog } from "./types";
+import { mealRowsToMeals, type MealRow } from "./rows";
 import { emptyDraft } from "./types";
 
 /**
@@ -44,33 +45,7 @@ export async function loadDietLog(
     )
     .eq("diet_log_id", log.id);
 
-  const meals: Record<string, MealLog> = {};
-  for (const m of mealRows ?? []) {
-    // Supabase types embedded relations as arrays; the FK guarantees one row.
-    const slot = Array.isArray(m.meal_slots) ? m.meal_slots[0] : m.meal_slots;
-    const slotKey = slot?.key;
-    if (!slotKey) continue;
-
-    const items: LoggedItem[] = (m.diet_log_items ?? [])
-      .slice()
-      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-      .map((it) => {
-        const food = Array.isArray(it.food_catalog)
-          ? it.food_catalog[0]
-          : it.food_catalog;
-        return {
-          id: it.id,
-          foodKey: food?.key ?? null,
-          customName: it.custom_name ?? undefined,
-          customUnit: it.custom_unit ?? undefined,
-          customNotes: it.custom_notes ?? undefined,
-          count: Number(it.count),
-        };
-      });
-
-    meals[slotKey] = { skipped: m.skipped, items };
-  }
-
+  const meals = mealRowsToMeals((mealRows ?? []) as unknown as MealRow[]);
   return { meals, narration: log.narration ?? "" };
 }
 

@@ -2932,7 +2932,7 @@ gh pr create --base main --title "feat(diet): nutrition totals and KFANDRA guida
 The PR body lists the deploy steps (4–7) so whoever merges follows them. End it with:
 `🤖 Generated with [Claude Code](https://claude.com/claude-code)`
 
-Wait for the Vercel preview check to pass. Check which Supabase project the Preview environment points at (`vercel env ls`, `NEXT_PUBLIC_SUPABASE_URL` for Preview). If it's production, **don't open the preview's Diet page before Step 5**: it would hit the missing columns.
+Wait for the Vercel preview build check to pass. Previews only prove the build: the Supabase and session env vars are set for **Production only** (checked with `vercel env ls` on 2026-10-16), so preview pages that read data won't work and can't touch the production database.
 
 **Step 4: Check production's catalogue for dashboard edits**
 

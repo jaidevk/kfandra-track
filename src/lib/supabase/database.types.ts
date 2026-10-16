@@ -350,6 +350,7 @@ export type Database = {
           log_date: string
           narration: string | null
           player_id: string
+          recap_seen_at: string | null
           updated_at: string
         }
         Insert: {
@@ -358,6 +359,7 @@ export type Database = {
           log_date: string
           narration?: string | null
           player_id: string
+          recap_seen_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -366,6 +368,7 @@ export type Database = {
           log_date?: string
           narration?: string | null
           player_id?: string
+          recap_seen_at?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -380,45 +383,86 @@ export type Database = {
       }
       food_catalog: {
         Row: {
+          carbs_g_per_100g: number | null
           created_at: string
           emoji: string | null
+          fat_g_per_100g: number | null
+          grams_per_unit: number | null
           id: string
           is_active: boolean
+          kcal_per_100g: number | null
           key: string
           name: string
+          nutrition_note: string | null
+          nutrition_source: string | null
+          nutrition_updated_at: string | null
+          nutrition_updated_by: string | null
+          protein_g_per_100g: number | null
           section_label: string
+          sodium_mg_per_100g: number | null
           sort_order: number
           unit: string
           unit_detail: string | null
           updated_at: string
+          verdict: string | null
         }
         Insert: {
+          carbs_g_per_100g?: number | null
           created_at?: string
           emoji?: string | null
+          fat_g_per_100g?: number | null
+          grams_per_unit?: number | null
           id?: string
           is_active?: boolean
+          kcal_per_100g?: number | null
           key: string
           name: string
+          nutrition_note?: string | null
+          nutrition_source?: string | null
+          nutrition_updated_at?: string | null
+          nutrition_updated_by?: string | null
+          protein_g_per_100g?: number | null
           section_label: string
+          sodium_mg_per_100g?: number | null
           sort_order?: number
           unit: string
           unit_detail?: string | null
           updated_at?: string
+          verdict?: string | null
         }
         Update: {
+          carbs_g_per_100g?: number | null
           created_at?: string
           emoji?: string | null
+          fat_g_per_100g?: number | null
+          grams_per_unit?: number | null
           id?: string
           is_active?: boolean
+          kcal_per_100g?: number | null
           key?: string
           name?: string
+          nutrition_note?: string | null
+          nutrition_source?: string | null
+          nutrition_updated_at?: string | null
+          nutrition_updated_by?: string | null
+          protein_g_per_100g?: number | null
           section_label?: string
+          sodium_mg_per_100g?: number | null
           sort_order?: number
           unit?: string
           unit_detail?: string | null
           updated_at?: string
+          verdict?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "food_catalog_nutrition_updated_by_fkey"
+            columns: ["nutrition_updated_by"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       game_types: {
         Row: {

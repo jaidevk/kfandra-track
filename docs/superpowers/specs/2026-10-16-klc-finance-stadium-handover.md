@@ -19,7 +19,7 @@
 | F3 | **Ticket sales** connect directly to the Club Balance Sheet. | |
 | F4 | **Ticket price** ranges from free to **100 Kroopies**. | |
 | F5 | The ticket-sales pop-up is **editable until 04:00 on the day of the session/match**. | IST |
-| F6 | KFANDRA gives each match a **rating out of 10**. The number of tickets sold is **chosen at random** from the band for that rating (table below). | |
+| F6 | ~~KFANDRA gives each match a **rating out of 10**. The number of tickets sold is **chosen at random** from the band for that rating (table below).~~ **Superseded by KFANDRA, 2026-10-16:** each club in a match gets **its own rating**. A club's **first** match: KFANDRA enters tickets sold by hand. After that, tickets sold = f(club's rating, club's ticket price, KFANDRA's "ticket price limit"). The formula is **not decided yet** (KFANDRA: "the AI algorithm that we'll fix"). | See Q13–Q15 |
 | F7 | Clubs **buy 1,000 seats at a time for 10,000 KR** through the Balance Sheet, and capacity updates. | |
 | F8 | Future (not now): **F&B stalls, maintenance costs**, "and more". | The design must make these easy to add. |
 
@@ -39,6 +39,8 @@
 | 10 | 9,001 – 10,000 |
 
 Seats sold can never exceed the club's current capacity.
+
+> **Status (2026-10-16):** this band table is the original proposal. KFANDRA has replaced the random draw with a rating + price formula (F6), and a bigger stadium must be able to sell more than 10,000 (Q2). Keep the bands only as a possible input to that formula. **Ticket sales (§3.4 draw) are blocked until the formula is agreed.** The ledger, stadium, seat purchase and opening balance are not blocked.
 
 ---
 
@@ -114,7 +116,7 @@ Add a new table, `club_ledger_entries`:
   - Editable by the manager until **04:00 Asia/Kolkata on `session_date`**. Enforce this in the server action and by a DB trigger comparing `now()` to `(session_date + 04:00) at time zone 'Asia/Kolkata'`.
   - After the cutoff it is locked for everyone (F1).
   - No price set for a date → **carry forward the club's last price, else 0 (free)** (Q4).
-- **Match rating**: add `klc_matches.rating smallint check 1..10`.
+- **Match rating** (*superseded 2026-10-16: one rating **per club per match**, e.g. on `klc_match_ticket_sales`, not one on `klc_matches`; see F6/Q13–Q15*): add `klc_matches.rating smallint check 1..10`.
   - Set by KFANDRA in the recorder (KFANDRA role only).
   - Required before **Submit** for league matches.
 - **Draw on submit** (once):
@@ -159,20 +161,25 @@ Add a new table, `club_ledger_entries`:
 
 ## 4. Open questions for KFANDRA (defaults used until answered)
 
+KFANDRA replied on 2026-10-16 to Q1, Q2 and Q7. Q13–Q15 come from that reply and are being asked in a follow-up.
+
 | # | Question | Default |
 |---|---|---|
-| Q1 | **Who sells tickets?** | **Decided (Jaidev, 2026-10-16): both clubs sell.** Open with KFANDRA: one rating per match for both clubs? separate draw per club, each capped at its own stadium? each club's own price? combined matches: every club that played sells? |
-| Q2 | **The bands top out at 10,000**, the starting capacity. Should the bands grow with the stadium? | **Asking KFANDRA** (simple version: "should a bigger stadium sell more tickets?") |
+| Q1 | **Who sells tickets?** | **Answered (KFANDRA, 2026-10-16):** every club that plays sells, including all clubs in a combined match. Each club sets its **own price**. There are **two ratings per match, one per club** (not one shared rating). Each club's count is capped at its own stadium |
+| Q2 | **The bands top out at 10,000**, the starting capacity. Should the bands grow with the stadium? | **Answered (KFANDRA, 2026-10-16): yes.** Seats bought are added to the club's tally, and a bigger stadium must be able to sell more. How the count scales is part of the formula (Q13) |
 | Q3 | Once seats are drawn for a match, is the number final even if the match is reopened? | Final unless the rating changes |
 | Q4 | Is the ticket price per club **per session** (set before 04:00 that day), or per match? If not set: free, or last price? | Per session. Carry forward the last price, else free |
 | Q5 | Can a club **buy seats without enough Kroopies**? Can a balance go below zero? | No. The balance must cover the purchase. Other balances may go negative |
 | Q6 | Who can buy seats: the club manager, KFANDRA, or both? | Both |
-| Q7 | **Opening balance**: how many Kroopies does each club start S2 with? Should S1 totals carry over? | **Asking KFANDRA** |
+| Q7 | **Opening balance**: how many Kroopies does each club start S2 with? Should S1 totals carry over? | **Answered (KFANDRA, 2026-10-16):** the amount is secret and comes from pre-KLC sponsorship. **KFANDRA enters it as admin** (preferred), one per club per season, then it is locked. A manager-entered-once option is acceptable but not needed for v1. S1 carry-over: not answered, assume no |
 | Q8 | With the sheet locked, **how are mistakes fixed**? Only by KFANDRA adding a correction (visible to the club)? | Yes. KFANDRA-only adjustment entries with a note |
 | Q9 | Do **managers still enter anything** (loanee numbers, club bonus)? Or does all of it come from matches and KFANDRA? | Nothing. Loanee KR comes from matches, the bonus from KFANDRA |
 | Q10 | Do **friendlies** sell tickets? | No |
 | Q11 | Is the rating given **before or after** the match? Is it required for every league match? | After, before Submit. Required |
 | Q12 | Is there a **maximum stadium size**? | None |
+| Q13 | **Ticket formula**: how do rating, price and the "ticket price limit" give tickets sold? Is the limit a fair maximum price per rating? How does capacity above 10,000 come in? | **Asking KFANDRA.** Blocks §3.4 |
+| Q14 | **Who gives the two ratings**: KFANDRA, or each club? Before or after the match? | KFANDRA, after the match, before Submit |
+| Q15 | **"First match"** (tickets set by KFANDRA): a club's first official match ever, or its first in each season? | **Asking KFANDRA** |
 
 ---
 
@@ -189,7 +196,7 @@ Add a new table, `club_ledger_entries`:
 
 ## 7. KFANDRA checkpoint (acceptance)
 - A manager sets a ticket price the evening before. At 04:00 it locks.
-- KFANDRA records a league match, rates it 7, and submits. The home club's balance rises by seats × price, with seats between 2,001 and 5,000. The match fee, win and loanee lines appear.
+- KFANDRA records a league match, rates each club, and submits. Each club's balance rises by its seats × its price (seats from the agreed formula, or entered by KFANDRA for a club's first match). The match fee, win and loanee lines appear.
 - The manager cannot edit any balance-sheet figure. KFANDRA can add a correction, and it shows in the ledger with its note.
 - Buying 1,000 seats takes 10,000 KR off the balance and raises capacity to 11,000. With less than 10,000 KR the purchase is refused.
 - Reopening a match reverses its money lines. Resubmitting puts them back with the same ticket count.

@@ -53,3 +53,9 @@ tsconfig.tsbuildinfo
 
 # Brainstorming visual-companion scratch
 .superpowers/
+
+# Local-only source PDFs
+docs/Athlete_Diet_Nutrition_Matrix_v2.pdf
+docs/Comprehensive_Food_Nutrition_Guide.pdf
+docs/KFANDRA-Jacaranda-updates-2026-10-02.pdf
+.beads.gate.lock*

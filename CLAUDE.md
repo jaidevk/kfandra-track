@@ -22,6 +22,11 @@ bd close <id>         # Complete work
 - Run `bd prime` for detailed command reference and session close protocol
 - Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
 
+## Handovers
+
+- **Session start:** read `handover/README.md` and the newest handover it lists, then `bd ready`.
+- **Session end with work in flight:** run `/handover-capture` (`.claude/skills/handover-capture/SKILL.md`) before the push steps below.
+
 ## Session Completion
 
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.

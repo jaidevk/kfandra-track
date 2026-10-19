@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { createMatchAction } from "@/lib/klcsra/actions";
 import { SPORTS, SPORT_LABELS, type Sport } from "@/lib/klcsra/sport-stats";
 import { ErrorNote } from "./notice";
@@ -17,6 +18,7 @@ import { ErrorNote } from "./notice";
  */
 export function NewMatchForm({ today }: { today: string }) {
   const router = useRouter();
+  const hydrated = useHydrated();
   const [pending, startTransition] = useTransition();
   const [date, setDate] = useState(today);
   const [sport, setSport] = useState<Sport>("football");
@@ -43,6 +45,7 @@ export function NewMatchForm({ today }: { today: string }) {
   return (
     <div
       data-testid="new-match-form"
+      data-hydrated={hydrated}
       className="space-y-2.5 rounded-xl border border-gray-200 bg-white p-3"
     >
       <p className="text-[11px] font-bold uppercase tracking-wide text-gray-600">New match</p>

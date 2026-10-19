@@ -88,14 +88,24 @@ const MATCH_URL = /\/admin\/klc\/matches\/[0-9a-f-]{36}$/;
 /**
  * Create a match from the list page and land on its detail page.
  *
+ * Waits for the form to hydrate before touching it. The inputs are controlled,
+ * so a value filled into the server HTML is silently reset to the server's
+ * `today` when React takes over — and the match is then saved on the wrong
+ * date. The values are asserted again right before Submit for the same reason.
+ *
  * @returns the new match id (taken from the URL it navigated to).
  */
 export async function createMatch(page: Page, match: NewMatch): Promise<string> {
   await page.goto("/admin/klc/matches");
-  await page.getByTestId("new-match-date").fill(match.date);
-  await page.getByTestId("new-match-sport").selectOption(match.sport ?? "football");
+  await expect(page.getByTestId("new-match-form")).toHaveAttribute("data-hydrated", "true");
+  const date = page.getByTestId("new-match-date");
+  const sport = page.getByTestId("new-match-sport");
+  await date.fill(match.date);
+  await sport.selectOption(match.sport ?? "football");
   if (match.combined) await page.getByTestId("new-match-combined").check();
   if (match.friendly) await page.getByTestId("new-match-friendly").check();
+  await expect(date).toHaveValue(match.date);
+  await expect(sport).toHaveValue(match.sport ?? "football");
   await page.getByTestId("new-match-submit").click();
   await page.waitForURL(MATCH_URL);
   const id = page.url().split("/").pop();

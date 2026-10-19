@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useHydrated } from "@/hooks/use-hydrated";
 import {
   closeSeasonAction,
   createSeasonAction,
@@ -43,9 +44,10 @@ export default function SeasonsAdmin({
 }) {
   const active = seasons.find((s) => s.id === activeId) ?? null;
   const firstUpcoming = seasons.find((s) => s.status === "upcoming") ?? null;
+  const hydrated = useHydrated();
 
   return (
-    <div className="space-y-5">
+    <div data-testid="seasons-admin" data-hydrated={hydrated} className="space-y-5">
       <Link href="/admin/klc" className="text-[12px] text-gray-600 hover:underline">
         ← KLC admin
       </Link>

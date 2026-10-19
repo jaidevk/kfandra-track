@@ -32,6 +32,17 @@ function banner(page: Page, text: "Active season" | "No active season") {
   return page.getByText(text, { exact: true });
 }
 
+/**
+ * Open the seasons screen and wait for React to own it. Before hydration a
+ * click is dropped and a filled input is reset to its initial state (the date
+ * to today) — the server HTML already shows every banner, so waiting on those
+ * is not enough.
+ */
+async function openSeasons(page: Page) {
+  await page.goto("/admin/klc/seasons");
+  await expect(page.getByTestId("seasons-admin")).toHaveAttribute("data-hydrated", "true");
+}
+
 let seasonsBefore: db.SeasonRow[];
 
 test.beforeEach(async () => {
@@ -50,7 +61,7 @@ test.afterEach(async () => {
 test.describe("KLCSRA seasons", () => {
   test("Start turns an upcoming season into the active one", async ({ page }) => {
     await signInAs(page.context(), "admin");
-    await page.goto("/admin/klc/seasons");
+    await openSeasons(page);
 
     // Nothing active is a loud, red state — league Submit is blocked here.
     await expect(banner(page, "No active season")).toBeVisible();
@@ -72,19 +83,24 @@ test.describe("KLCSRA seasons", () => {
     await signInAs(page.context(), "admin");
     const seasonTwo = await db.activateSeason(SEASON_TWO);
 
-    await page.goto("/admin/klc/seasons");
+    await openSeasons(page);
     await expect(banner(page, "Active season")).toBeVisible();
 
     // Create a fresh season. New seasons are born `upcoming`, never active.
     const createPanel = page.locator("section").filter({ hasText: "Create a season" });
     await createPanel.getByPlaceholder("KLCFERRSXVSG3").fill(NEW_SEASON);
-    await createPanel.locator('input[type="date"]').fill("2026-09-01");
+    const startDate = createPanel.locator('input[type="date"]');
+    await startDate.fill("2026-09-01");
+    await expect(createPanel.getByPlaceholder("KLCFERRSXVSG3")).toHaveValue(NEW_SEASON);
+    await expect(startDate).toHaveValue("2026-09-01");
     await createPanel.getByRole("button", { name: "Create season", exact: true }).click();
 
     const created = seasonRow(page, NEW_SEASON);
     await expect(created).toBeVisible();
     await expect(created.getByText("upcoming", { exact: true })).toBeVisible();
-    expect((await db.findSeason(NEW_SEASON)).status).toBe("upcoming");
+    const stored = await db.findSeason(NEW_SEASON);
+    expect(stored.status).toBe("upcoming");
+    expect(stored.start_date).toBe("2026-09-01");
 
     // Starting it must say out loud which season it is about to close…
     await created.getByRole("button", { name: "Start", exact: true }).click();

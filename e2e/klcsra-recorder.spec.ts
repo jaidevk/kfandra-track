@@ -172,6 +172,7 @@ test.describe("KLCSRA recorder", () => {
     const stored = await db.getMatchRow(matchId);
     expect(stored?.status).toBe("submitted");
     expect(stored?.season_id).toBe(season.id);
+    expect(stored?.entry_date).toBe(MATCH_DATE);
 
     await page.goto("/admin/klc/matches");
     const row = rec.matchRow(page, matchId);

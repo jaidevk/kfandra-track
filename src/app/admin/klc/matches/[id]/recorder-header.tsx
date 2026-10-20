@@ -9,7 +9,7 @@ import { ErrorNote, SyncBadge, Tag, type SyncStatus } from "./recorder-shared";
 /**
  * Screen 2 — the recorder header.
  *
- * Sport is chips (4 across) because changing it re-filters the stat set, which
+ * Sport is chips (3 across) because changing it re-filters the stat set, which
  * is a decision worth showing rather than hiding in a `<select>`. Date and
  * Duration autosave on a debounce; the sport chip saves immediately so the
  * stats popup re-filters on the next server render.
@@ -73,7 +73,7 @@ export function RecorderHeader({
         {!locked && <SyncBadge status={sync} />}
       </div>
 
-      {/* Sport chips — 4 across. */}
+      {/* Sport chips — 3 across, 2 rows. */}
       <div>
         <p className="text-[10px] font-bold uppercase tracking-wide text-gray-600">Sport</p>
         <div
@@ -81,7 +81,7 @@ export function RecorderHeader({
           role="group"
           aria-label="Sport"
           data-sport={sport}
-          className="mt-1 grid grid-cols-4 gap-1.5"
+          className="mt-1 grid grid-cols-3 gap-1.5"
         >
           {SPORTS.map((s) => {
             const on = s === sport;

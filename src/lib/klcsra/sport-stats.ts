@@ -4,18 +4,30 @@
  * keys. DB loader lives in config.ts.
  */
 
+import { strings } from "@/content/strings";
 import { STAT_KEYS, type StatKey } from "./stat-rates";
 
-export type Sport = "football" | "rugby" | "fooba" | "variation";
+export type Sport =
+  | "football"
+  | "fooba"
+  | "rugby"
+  | "rugby_variation"
+  | "short_game_variation"
+  | "multi_game_variation";
 
-export const SPORTS: readonly Sport[] = ["football", "rugby", "fooba", "variation"];
+export const SPORTS: readonly Sport[] = [
+  "football", "fooba", "rugby",
+  "rugby_variation", "short_game_variation", "multi_game_variation",
+];
 
-export const SPORT_LABELS: Record<Sport, string> = {
-  football: "Football",
-  rugby: "Rugby",
-  fooba: "Fooba",
-  variation: "Variation",
-};
+/**
+ * Display labels live in content/strings.ts. `rugby` is shown as "Rugby Sox"
+ * (KFANDRA's name for it, 2026-10).
+ */
+export const SPORT_LABELS: Record<Sport, string> = strings.sports;
+
+/** Sports whose side score is tries (TF/TA), not goals (GF/GA). */
+export const TRY_SPORTS: ReadonlySet<Sport> = new Set<Sport>(["rugby", "rugby_variation"]);
 
 export type SportStats = Record<Sport, StatKey[]>;
 
@@ -40,7 +52,9 @@ export const DEFAULT_SPORT_STATS: SportStats = {
     "yellowCard", "redCard", "blueCard", "lateChallenge",
     "ownGoal", "ownAssist", "ownPreAssist",
   ],
-  variation: [...STAT_KEYS],
+  rugby_variation: [...STAT_KEYS],
+  short_game_variation: [...STAT_KEYS],
+  multi_game_variation: [...STAT_KEYS],
 };
 
 const KNOWN_STATS = new Set<string>(STAT_KEYS);
@@ -91,9 +105,8 @@ export function statsForSport(
   // `klc_matches.sport` is a CHECK-constrained text column, not an enum, so it
   // reaches TypeScript as `string` and every call site is an unchecked cast.
   // An unrecognised sport therefore has to degrade, not throw. Falling back to
-  // `variation` (every known stat) is the fail-safe direction: it never
-  // silently excludes a stat and so never silently zeroes a payout.
-  const allowed =
-    config[sport] ?? DEFAULT_SPORT_STATS[sport] ?? DEFAULT_SPORT_STATS.variation;
+  // every known stat is the fail-safe direction: it never silently excludes a
+  // stat and so never silently zeroes a payout.
+  const allowed = config[sport] ?? DEFAULT_SPORT_STATS[sport] ?? [...STAT_KEYS];
   return inCanonicalOrder(allowed);
 }

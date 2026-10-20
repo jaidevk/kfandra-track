@@ -1,8 +1,9 @@
 /**
  * Seed/defaults contract test.
  *
- * The migration seeds three JSON rule sets into `app_config`; the TypeScript
- * modules define the same three rule sets again as `DEFAULT_*` constants.
+ * The migrations seed four JSON rule sets into `app_config`; the TypeScript
+ * modules define the same four rule sets again as `DEFAULT_*` constants.
+ * `SQL_FOR` names the migration that owns each key's current value.
  * They are two hand-maintained copies of the same data and nothing links them:
  * if they drift, `parseStatRates` / `parseSportStats` / `parseStandingsRules`
  * silently substitute the default for the mismatched key and the payout comes
@@ -24,16 +25,27 @@ import { fileURLToPath } from "node:url";
 import { DEFAULT_STAT_RATES, STAT_KEYS } from "./stat-rates";
 import { DEFAULT_SPORT_STATS, SPORTS } from "./sport-stats";
 import { DEFAULT_STANDINGS_RULES } from "./standings-rules";
+import { DEFAULT_TABLE_GROUPS } from "./table-groups";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // src/lib/klcsra -> repo root
 const REPO_ROOT = resolve(HERE, "..", "..", "..");
-const MIGRATION_PATH = resolve(
-  REPO_ROOT,
-  "supabase/migrations/20260815120000_klcsra_core.sql",
+const CORE_SQL = readFileSync(
+  resolve(REPO_ROOT, "supabase/migrations/20260815120000_klcsra_core.sql"),
+  "utf8",
 );
-
-const SQL = readFileSync(MIGRATION_PATH, "utf8");
+/** Re-seeds the standings rules (v2) and sport stats, and adds table groups. */
+const LEAGUE_SQL = readFileSync(
+  resolve(REPO_ROOT, "supabase/migrations/20261020120000_klc_league_scoring.sql"),
+  "utf8",
+);
+/** The migration that owns each key's CURRENT value. */
+const SQL_FOR: Record<string, string> = {
+  klcsra_stat_rates: CORE_SQL,
+  klcsra_sport_stats: LEAGUE_SQL,
+  klcsra_standings_rules: LEAGUE_SQL,
+  klcsra_table_groups: LEAGUE_SQL,
+};
 
 const INSERT = "insert into public.app_config";
 
@@ -43,7 +55,7 @@ const INSERT = "insert into public.app_config";
  * the text between the first `'{` and the matching `}'` before `::jsonb`.
  */
 function extractSeededJsonLiteral(key: string): string {
-  const statements = SQL.split(INSERT).slice(1);
+  const statements = SQL_FOR[key].split(INSERT).slice(1);
   const statement = statements.find((s) => s.includes(`'${key}'`));
   if (statement === undefined) {
     throw new Error(`no "${INSERT}" statement seeds key '${key}'`);
@@ -68,13 +80,14 @@ function seededValue(key: string): unknown {
 }
 
 describe("migration seeds match TypeScript defaults", () => {
-  it("finds all three seeded rule sets in the migration", () => {
+  it("finds all four seeded rule sets in the migrations", () => {
     // Guards against the extraction silently yielding nothing, which would
     // make every assertion below vacuous.
     for (const key of [
       "klcsra_stat_rates",
       "klcsra_sport_stats",
       "klcsra_standings_rules",
+      "klcsra_table_groups",
     ]) {
       const value = seededValue(key);
       expect(typeof value, `${key} should parse to an object`).toBe("object");
@@ -96,7 +109,7 @@ describe("migration seeds match TypeScript defaults", () => {
     expect(seededValue("klcsra_sport_stats")).toEqual(DEFAULT_SPORT_STATS);
   });
 
-  it("klcsra_sport_stats covers exactly the four sports", () => {
+  it("klcsra_sport_stats covers exactly the six sports", () => {
     const seeded = seededValue("klcsra_sport_stats") as Record<string, unknown>;
     expect(Object.keys(seeded).sort()).toEqual([...SPORTS].sort());
   });
@@ -115,5 +128,11 @@ describe("migration seeds match TypeScript defaults", () => {
 
   it("klcsra_standings_rules deep-equals DEFAULT_STANDINGS_RULES", () => {
     expect(seededValue("klcsra_standings_rules")).toEqual(DEFAULT_STANDINGS_RULES);
+  });
+
+  it("klcsra_table_groups deep-equals DEFAULT_TABLE_GROUPS, in order", () => {
+    const seeded = seededValue("klcsra_table_groups") as Record<string, unknown>;
+    expect(seeded).toEqual(DEFAULT_TABLE_GROUPS);
+    expect(Object.keys(seeded)).toEqual(Object.keys(DEFAULT_TABLE_GROUPS));
   });
 });

@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { parseStatRates, type StatRates } from "./stat-rates";
 import { parseSportStats, type SportStats } from "./sport-stats";
 import { parseStandingsRules, type StandingsRules } from "./standings-rules";
+import { parseTableGroups, type TableGroups } from "./table-groups";
 
 // Types only. Re-exporting a VALUE from here would drag `server-only` into any
 // client bundle that imported it — `statsForSport` in particular is pure and
@@ -11,6 +12,7 @@ import { parseStandingsRules, type StandingsRules } from "./standings-rules";
 export type { StatRates } from "./stat-rates";
 export type { SportStats, Sport } from "./sport-stats";
 export type { StandingsRules } from "./standings-rules";
+export type { TableGroups } from "./table-groups";
 
 async function loadConfigValue(key: string): Promise<unknown> {
   const admin = createAdminClient();
@@ -35,4 +37,9 @@ export async function loadSportStats(): Promise<SportStats> {
 /** Load standings rules from app_config (key 'klcsra_standings_rules'). */
 export async function loadStandingsRules(): Promise<StandingsRules> {
   return parseStandingsRules(await loadConfigValue("klcsra_standings_rules"));
+}
+
+/** Load league table groups from app_config (key 'klcsra_table_groups'). */
+export async function loadTableGroups(): Promise<TableGroups> {
+  return parseTableGroups(await loadConfigValue("klcsra_table_groups"));
 }

@@ -746,6 +746,7 @@ export type Database = {
       klc_matches: {
         Row: {
           created_at: string
+          created_by: string | null
           duration_minutes: number | null
           entry_date: string
           id: string
@@ -760,6 +761,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           duration_minutes?: number | null
           entry_date: string
           id?: string
@@ -774,6 +776,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           duration_minutes?: number | null
           entry_date?: string
           id?: string
@@ -787,6 +790,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "klc_matches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "klc_matches_season_id_fkey"
             columns: ["season_id"]

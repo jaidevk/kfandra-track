@@ -59,6 +59,16 @@ export const strings = {
     },
   },
 
+  /** Match type labels (KLC league + recorder). */
+  sports: {
+    football: "Football",
+    fooba: "Fooba",
+    rugby: "Rugby Sox",
+    rugby_variation: "Rugby Variation",
+    short_game_variation: "Short Game Variation",
+    multi_game_variation: "Multi-Game Variation",
+  },
+
   /** Club Balance Sheet (KLCFERRSXVSG1) screens. */
   klc: {
     landingTitle: "KLCFERRSXVSG1",

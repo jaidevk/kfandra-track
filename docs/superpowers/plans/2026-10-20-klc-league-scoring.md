@@ -13,12 +13,11 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-20-klc-league-scoring-design.md`. Business rules live in `docs/superpowers/specs/2026-10-16-klc-league-scoring-handover.md` §1 and §4.
 
-### Deviations from the design doc (deliberate, smaller)
+### Follows the design doc in full (Jaidev, 2026-10-21: "no shortcuts")
 
-1. **No `league-repository.ts`.** The read functions go into the existing `src/lib/klcsra/repository.ts`, which already has the row-to-`MatchDraft` helpers. The pure adapters go in `league-data.ts`.
-2. **No mocked-client unit test for the "submitted only" filter.** This repo has no precedent for mocking Supabase, and every existing test is pure. e2e test 4 covers the filter instead (a player can't see a draft).
-3. **No friendly toggle on a draft.** `isFriendly` stays fixed at creation, as today. Nobody asked for it, and cutting it saves recorder UI work today.
-4. **The season pill doesn't open a picker.** It links to the Seasons tab, which *is* the picker.
+- `src/lib/klcsra/league-repository.ts` is the league read model (Task 10, Step 2), with a mocked-client unit test proving every query filters `status = 'submitted'`.
+- A draft's League/Friendly type can be changed in the recorder header (Task 11, Step 5 item 9; Task 12, Step 5 item 8).
+- The season pill opens a season picker (Task 14, Step 8).
 
 ### Conventions for every task
 
@@ -1922,7 +1921,90 @@ Replace the body of `getMatch` with:
   return data ? toMatchDraft(data as MatchDraftRow) : null;
 ```
 
-- [ ] **Step 2: Add `listSubmittedMatchDrafts`** (after `getMatch`)
+Export `MATCH_DRAFT_COLS`, `MatchDraftRow` and `toMatchDraft` (add `export`), because `league-repository.ts` reuses them.
+
+- [ ] **Step 2: Create `src/lib/klcsra/league-repository.ts` with `listSubmittedMatchDrafts`, TDD**
+
+First write `src/lib/klcsra/league-repository.test.ts`. It's the repo's first Supabase-mocking test, so keep the fake small and explicit:
+
+```ts
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.mock("server-only", () => ({}));
+
+/** Records every chained call per query; resolves to { data: [], error: null }. */
+const queries: { calls: [string, unknown[]][] }[] = [];
+function fakeQuery() {
+  const q = { calls: [] as [string, unknown[]][] };
+  queries.push(q);
+  const proxy: Record<string, unknown> = new Proxy({}, {
+    get(_t, prop: string) {
+      if (prop === "then") {
+        return (resolve: (v: unknown) => void) => resolve({ data: [], error: null });
+      }
+      return (...args: unknown[]) => { q.calls.push([prop, args]); return proxy; };
+    },
+  });
+  return proxy;
+}
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => ({ from: () => fakeQuery() }),
+}));
+
+import { listSubmittedMatchDrafts } from "./league-repository";
+import type { Season } from "./types";
+
+const season = (endDate: string | null): Season => ({
+  id: "s2", seasonNo: 2, name: "S2", startDate: "2026-08-22", endDate, status: "active",
+});
+const hasCall = (q: { calls: [string, unknown[]][] }, name: string, ...args: unknown[]) =>
+  q.calls.some(([n, a]) => n === name && JSON.stringify(a) === JSON.stringify(args));
+
+beforeEach(() => { queries.length = 0; });
+
+describe("listSubmittedMatchDrafts", () => {
+  it("every query filters status = submitted", async () => {
+    await listSubmittedMatchDrafts(season(null));
+    expect(queries).toHaveLength(2);
+    for (const q of queries) expect(hasCall(q, "eq", "status", "submitted")).toBe(true);
+  });
+
+  it("league query is by season; friendly query is by date window", async () => {
+    await listSubmittedMatchDrafts(season("2026-12-31"));
+    const [league, friendlies] = queries;
+    expect(hasCall(league, "eq", "season_id", "s2")).toBe(true);
+    expect(hasCall(friendlies, "eq", "is_friendly", true)).toBe(true);
+    expect(hasCall(friendlies, "gte", "entry_date", "2026-08-22")).toBe(true);
+    expect(hasCall(friendlies, "lte", "entry_date", "2026-12-31")).toBe(true);
+  });
+
+  it("an open season has no upper date bound", async () => {
+    await listSubmittedMatchDrafts(season(null));
+    expect(queries[1].calls.some(([n]) => n === "lte")).toBe(false);
+  });
+});
+```
+
+Run `npx vitest run src/lib/klcsra/league-repository.test.ts`. Expected: FAIL (module not found).
+
+Then create `src/lib/klcsra/league-repository.ts`:
+
+```ts
+import "server-only";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { MATCH_DRAFT_COLS, toMatchDraft, type MatchDraftRow } from "./repository";
+import type { MatchDraft, Season } from "./types";
+
+/**
+ * Read model for the public KLC League page. Server-only, service role.
+ *
+ * THE public-read guarantee (closes Helper-h9i): every query here filters
+ * `status = 'submitted'`, so drafts never reach /klc/league. The unit test
+ * asserts the filter on each query. Nothing else may read for the league page.
+ */
+```
+
+Its single export, `listSubmittedMatchDrafts`, is the function below. Run the test again. Expected: PASS.
 
 ```ts
 /**
@@ -2277,6 +2359,19 @@ export async function createMatchAction(
 
 8. In `reopenMatchAction`, replace the role check `if (player.role !== "super_admin" && player.role !== "kfandra") {` with `if (!canReopenMatch(player)) {`.
 
+9. **League/Friendly is editable on a draft** (design §5.2):
+   - Add `isFriendly?: boolean;` to `MatchMetaFields`.
+   - In `updateMatchMetaAction`, after the sport block, add:
+     ```ts
+       if (patch?.isFriendly !== undefined) {
+         if (typeof patch.isFriendly !== "boolean") return { ok: false, error: "Pick League or Friendly." };
+         fields.isFriendly = patch.isFriendly;
+       }
+     ```
+   - In `src/lib/klcsra/repository.ts`, add `isFriendly?: boolean;` to `MatchMetaPatch`, add `is_friendly?: boolean;` to the `fields` type, and add `if (patch.isFriendly !== undefined) fields.is_friendly = patch.isFriendly;`.
+   - Change `updateMatchMeta`'s doc comment to "`is_combined` is fixed at creation (halves exist); `is_friendly` may change while the match is a draft (a draft has no season tag, so `klc_matches_friendly_season_chk` holds)."
+   - Change the doc comment above `updateMatchMetaAction` to "Patch the match header. `is_combined` is fixed at creation; `is_friendly` may change on a draft."
+
 - [ ] **Step 6: Typecheck and run the tests**
 
 Run: `npx tsc --noEmit && npm run test`
@@ -2486,6 +2581,18 @@ In `src/app/klc/matches/[id]/page.tsx`:
    - In `src/app/klc/matches/[id]/submit-panel.tsx`, add `rules: StandingsRules` to the props type and the destructuring. It isn't used yet; Task 15 uses it.
 
 7. In `src/app/klc/matches/[id]/recorder-header.tsx`, the "No active season" link points at `/admin/klc/seasons`. Keep it: managers who click it are redirected home by the admin layout, which is acceptable.
+
+8. **Editable League/Friendly in the header.** In `recorder-header.tsx`:
+   - Widen `onMeta`'s patch type to `{ entryDate?: string; sport?: Sport; durationMinutes?: number | null; isFriendly?: boolean }`. Make the same change in `match-recorder.tsx`'s `onMeta` handler type.
+   - Add local state `const [friendly, setFriendly] = useState(match.isFriendly);`.
+   - Give `Segmented` an optional `onPick?: (index: number) => void` and `disabled?: boolean`. When `onPick` is given, render each segment as a `<button type="button" aria-pressed={on} disabled={disabled}>` that calls `onPick(i)`; otherwise keep today's read-only spans. The `data-testid` still rides the active segment.
+   - Make the "Type" segmented use `options={[{ on: !friendly, label: "League" }, { on: friendly, label: "Friendly", testId: "flag-friendly" }]}`, with `onPick={(i) => { const f = i === 1; if (f === friendly) return; setFriendly(f); onMeta({ isFriendly: f }, true); }}` and `disabled={locked}`. Add `data-testid="type-league"` and `data-testid="type-friendly"` on the two buttons so e2e can click them (keep `flag-friendly` on the active one by putting it on a wrapper span inside the button).
+   - "Format" stays read-only.
+   - Change the helper text to: `{friendly ? "Friendly — MMG only, no Kroopies are credited. " : ""}Format is fixed when the match is created.`
+   - Change the header's tag logic from `match.isFriendly` to `friendly`.
+   - Update the doc comment: "Type (League/Friendly) can change while the match is a draft; Format (Single/Combined) is fixed at creation because the half rows already exist."
+   - In the new-match form's footnote (`new-match-form.tsx`), change "Friendly matches carry no season and pay nothing out." to "Friendly matches carry no season and pay MMG only. You can switch League/Friendly until you submit."
+   - In `e2e/klc-league.spec.ts` (Task 16), the staff test also covers the toggle (see Task 16).
 
 - [ ] **Step 6: Point the e2e helpers at the new paths**
 
@@ -3067,15 +3174,7 @@ export default async function LeaguePage({
         <h1 className="font-[family-name:var(--font-display)] text-2xl font-black tracking-tight text-gray-900">
           {league.title}
         </h1>
-        {season && (
-          <Link
-            href={leagueHref(params, { tab: "seasons" })}
-            data-testid="league-season-pill"
-            className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-800"
-          >
-            S{season.seasonNo} · {season.name} ▾
-          </Link>
-        )}
+        {season && <SeasonPicker seasons={seasons} current={season} params={params} />}
       </div>
       <TabBar params={params} />
       {body}
@@ -3084,7 +3183,48 @@ export default async function LeaguePage({
 }
 ```
 
-`listClubs` here is `@/lib/klcsra/repository`'s version (`{ id, name, managerName }`). It fits `ClubRef` structurally.
+`listClubs` here is `@/lib/klcsra/repository`'s version (`{ id, name, managerName }`). It fits `ClubRef` structurally. Import `listSubmittedMatchDrafts` from `@/lib/klcsra/league-repository`, not from `repository`.
+
+**Season picker** (design §6.2: "a season pill that opens a season picker"). Add to `league-nav.tsx` and import it in the page. It uses native `<details>`, so it needs no client JS and works in a server component:
+
+```tsx
+import type { Season } from "@/lib/klcsra/types";
+
+export function SeasonPicker({
+  seasons, current, params,
+}: { seasons: Season[]; current: Season; params: LeagueParams }) {
+  const newestFirst = [...seasons].sort((a, b) => b.seasonNo - a.seasonNo);
+  return (
+    <details data-testid="league-season-picker" className="relative">
+      <summary
+        data-testid="league-season-pill"
+        className="cursor-pointer list-none rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-800 [&::-webkit-details-marker]:hidden"
+      >
+        S{current.seasonNo} · {current.name} ▾
+      </summary>
+      <ul className="absolute right-0 z-10 mt-1 w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
+        {newestFirst.map((s) => (
+          <li key={s.id}>
+            <Link
+              href={leagueHref(params, { seasonId: s.id })}
+              data-testid="season-option"
+              aria-current={s.id === current.id ? "true" : undefined}
+              className={`flex items-center justify-between px-3 py-2 text-[12px] ${
+                s.id === current.id ? "bg-gray-50 font-bold text-gray-900" : "text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <span>S{s.seasonNo} · {s.name}</span>
+              <span className="text-[10px] capitalize text-gray-500">{s.status}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+```
+
+The `Link` changes the URL, so the server re-renders with the new season and the `<details>` comes back closed.
 
 - [ ] **Step 9: Home block**
 
@@ -3319,7 +3459,32 @@ test("staff record + submit -> table, matches and leaders update", async ({ page
   await page.getByTestId("league-tab-leaders").click();
   const goals = page.locator('[data-testid="leader-board"][data-board="goals"]');
   await expect(goals.locator(`[data-player-id="${scorer.id}"] [data-testid="leader-value"]`)).toHaveText("2");
+
+  // The season picker lists seasons and switches the table.
+  await page.getByTestId("league-tab-table").click();
+  await page.getByTestId("league-season-pill").click();
+  await expect(page.getByTestId("season-option").first()).toBeVisible();
   expectNoErrors(errors);
+});
+
+test("a draft switches League -> Friendly and drops out of the table", async ({ page }) => {
+  await signInAs(page.context(), "admin");
+  const [a, b] = await db.listClubs(2);
+  const [p1, p2] = [await seedPlayer("user", "E2E F1"), await seedPlayer("user", "E2E F2")];
+  const id = await rec.createMatch(page, { date: MATCH_DATE, sport: "football" });
+  await rec.pickClub(page, 1, "home", a.id);
+  await rec.pickClub(page, 1, "away", b.id);
+  await rec.setScore(page, 1, "home", 1);
+  await rec.addPlayer(page, "home", p1.id);
+  await rec.addPlayer(page, "away", p2.id);
+  await page.getByTestId("type-friendly").click();
+  await rec.expectSaved(page);
+  expect((await db.getMatchRow(id))?.is_friendly).toBe(true);
+  await rec.submitMatch(page);
+  expect((await db.getMatchRow(id))?.season_id).toBeNull();
+
+  await page.goto("/klc/league");
+  expect(await pts(page, a.id)).toBeNull();
 });
 
 test("KFANDRA reopens, edits and resubmits -> table changes", async ({ page }) => {

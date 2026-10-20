@@ -166,20 +166,20 @@ Below 7 players every type uses the variation points (decided 2026-10-20, Q3), s
 
 ## 4. Open questions for KFANDRA (defaults used until answered)
 
-KFANDRA replied on 2026-10-16 to Q6, and confirmed full combined points on 2026-10-20. Jaidev decided Q3, Q4 and Q9 on 2026-10-20 during the brainstorm. Q2, Q5, Q7, Q8, Q10 keep their defaults; Q11 (the S1 sheet) is being asked again.
+KFANDRA replied on 2026-10-16 to Q6, and confirmed full combined points on 2026-10-20. Jaidev decided Q3, Q4 and Q9 on 2026-10-20 during the brainstorm. Jaidev also confirmed the defaults for Q2, Q5, Q7, Q8 and Q10. Only Q11 (the S1 sheet) is open.
 
 | # | Question | Default |
 |---|---|---|
 | Q1 | Do the new points **replace** the old winning-margin bonus/penalty and the combined-match half bonuses? Is a loss always 0? | **Decided (Jaidev, 2026-10-16): yes, replace both. Loss = 0.** |
-| Q2 | Multi-Game Variation earns points but has no table of its own. Should it be in the combined table only? | Combined only |
+| Q2 | Multi-Game Variation earns points but has no table of its own. Should it be in the combined table only? | **Decided (Jaidev, 2026-10-20): combined ("All") table only** |
 | Q3 | **Player count**: both teams together, or per team? Do Football/Fooba and Rugby Sox with fewer than 7 players earn anything? | **Decided: total players across both teams.** **Decided (Jaidev, 2026-10-20):** under 7, Football/Fooba/Rugby Sox earn the variation points (4–6: win 1, draw 0.2; 2–3: win 0.5, draw 0.1). A win always beats a draw |
 | Q4 | **Session cap**: what happens to matches beyond 3 (4–6 players) or 2 (2–3 players) in a session? | **Decided (Jaidev, 2026-10-20): not enforced at all.** No block, no warning, every match scores. The cap is a ground rule only |
-| Q5 | **Tie-breakers** when points are level | Difference, then scored, then name |
+| Q5 | **Tie-breakers** when points are level | **Decided (Jaidev, 2026-10-20):** table order only (draws stay as results): Pts, then Diff, then scored (GF + TF), then club name |
 | Q6 | **Combined matches** (clubs swap at half time): is each half a separate result, or one result? | **Answered (KFANDRA, 2026-10-16): one result.** AB vs CD is one match; each of A, B, C, D records one result against the other pair (home/away/neutral). **Confirmed (Jaidev, 2026-10-20): the aggregate score over both halves decides the winner.** **Confirmed (KFANDRA, 2026-10-20): full points to each club** (5 each for a win, 1 each for a draw) |
-| Q7 | **Goals vs tries**: Fooba main and rebound goals both count as goals? Combined-table difference = goals and tries together? | Yes and yes |
-| Q8 | Do **friendlies** appear in tables/leaderboards? | No (except the MMG board) |
+| Q7 | **Goals vs tries**: Fooba main and rebound goals both count as goals? Combined-table difference = goals and tries together? | **Decided (Jaidev, 2026-10-20): yes and yes** |
+| Q8 | Do **friendlies** appear in tables/leaderboards? | **Decided (Jaidev, 2026-10-20): no** (except the MMG board) |
 | Q9 | What does the **"common list"** mean? Read-only views for all players? | **Decided (Jaidev, 2026-10-20):** results read-only for all players; **club managers record and submit their own club's matches** (KFANDRA's 16 Oct reply: "Club A are supposed to fill in the data"). Only KFANDRA reopens |
-| Q10 | Is "Rugby Sox" today's `rugby`? How should any existing `variation` matches be re-labelled? | Yes. Re-label only if prod has any |
+| Q10 | Is "Rugby Sox" today's `rugby`? How should any existing `variation` matches be re-labelled? | **Decided (Jaidev, 2026-10-20): yes.** Re-label only if prod has any (check prod before the migration) |
 | Q11 | Please share the **KLCFERRSXVSG1 session sheet** (Drive), so the table layout and S1 results can be used as test fixtures | — |
 
 ---

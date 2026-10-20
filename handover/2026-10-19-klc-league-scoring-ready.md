@@ -30,7 +30,8 @@ KFANDRA's formula.
 | Decision | Who | Date | Recorded in |
 |---|---|---|---|
 | Combined match = one match between two club pairs (AB vs CD); each club gets one result vs the other pair, not one per half | KFANDRA | 2026-10-16 | Scoring spec Q6, §3.3 |
-| Default until confirmed: aggregate score decides; full points to each club in the pair; one match played per club | Jaidev (default) | 2026-10-19 | Scoring spec §3.3 |
+| Combined winner is decided by the aggregate score over both halves | Jaidev | 2026-10-20 | Scoring spec Q6, §3.3 |
+| Default until confirmed: full points to each club in the pair; one match played per club | Jaidev (default) | 2026-10-19 | Scoring spec §3.3 |
 | Each club sets its own ticket price; every club in a match sells, combined included | KFANDRA | 2026-10-16 | Finance spec Q1 |
 | Two ratings per match (one per club); random band draw replaced by a rating + price formula, still undecided; KFANDRA sets tickets for a club's first match | KFANDRA | 2026-10-16 | Finance spec F6, Q13–Q15 |
 | Bigger stadium sells more (bought seats add to capacity) | KFANDRA | 2026-10-16 | Finance spec Q2 |
@@ -39,7 +40,7 @@ KFANDRA's formula.
 
 ## Waiting on
 - **Jaidev → KFANDRA: send the follow-up email** (reply on the 16 Oct thread). It asks:
-  1. Combined: does the aggregate score decide the result, and do both clubs in the pair get full points? (Scoring Q6)
+  1. Combined: do both clubs in the winning pair get full points? (Scoring Q6; aggregate-score winner confirmed 2026-10-20)
   2. Ticket formula and what the "ticket price limit" is (Finance Q13). **Blocks ticket sales.**
   3. Who gives each club's rating (Finance Q14).
   4. "First match": ever, or per season (Finance Q15).

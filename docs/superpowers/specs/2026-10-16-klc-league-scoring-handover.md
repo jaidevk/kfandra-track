@@ -5,7 +5,7 @@
 **Priority:** 2nd, after Diet nutrition. The goal is to start the S2 (`KLCFERRSXVSG2`) league.
 **Codebase baseline:** `main` @ `ae0fba3` (KLCSRA Phases 1–3 shipped in PR #3, 2026-08-24)
 **Parent bead:** Helper-bsr (KLCSRA). This package replaces the old "Phase 4" in `2026-08-23-klcsra-release-roadmap.md`.
-**Estimate:** ~1.5 weeks.
+**Estimate:** ~1.5 weeks, plus ~2–3 days for manager recording (Q9).
 
 ---
 
@@ -13,10 +13,10 @@
 
 | ID | Requirement | Notes |
 |---|---|---|
-| R1 | Add **Match Recorder, Seasons and Scoring** to the "common" list | Today these are admin-only (`/admin/klc/matches`, `/admin/klc/seasons`). See Q9. |
+| R1 | Add **Match Recorder, Seasons and Scoring** to the "common" list | Today these are admin-only (`/admin/klc/matches`, `/admin/klc/seasons`). **Decided 2026-10-20 (Q9):** club managers record and submit their own club's matches; everyone sees results read-only. |
 | R2 | **Automatic points** for every match played, in every format | Computed on submit/read, never typed in by hand. |
 | R3 | New **points scale** by match type × players involved (table below) | Replaces the current `klcsra_standings_rules`. |
-| R4 | **Session caps**: matches with 4–6 players allow at most 3 per session; matches with 2–3 players allow at most 2 per session | See Q4. |
+| R4 | **Session caps**: matches with 4–6 players allow at most 3 per session; matches with 2–3 players allow at most 2 per session | **Decided 2026-10-20 (Q4): not enforced, no warning, every match scores.** A ground rule only. |
 | R5 | Table columns: **games played, W, D, L, goals for/against, tries for/against, goal/points difference, points** | Mirror the KFANDRA sheet "KLCFERRSXVSG1 session sheet". |
 | R6 | **One combined table + 4 separate tables**: Fooba/Football, Rugby Sox, Rugby Variations, Football Short Game Variations | Tables are visible **in the app**, not on the website. |
 | R7 | **Leaderboards**: highest scorers etc. | KFANDRA said "if not set up, please do". It isn't built yet. |
@@ -26,13 +26,15 @@
 
 | Match type | 7+ players | 4–6 players (≤3 matches/session) | 2–3 players (≤2 matches/session) |
 |---|---|---|---|
-| Football / Fooba | Win **5** | — (Q3) | — (Q3) |
-| Rugby Sox | Win **5** | — (Q3) | — (Q3) |
+| Football / Fooba | Win **5** | Win **1** (Q3) | Win **0.5** (Q3) |
+| Rugby Sox | Win **5** | Win **1** (Q3) | Win **0.5** (Q3) |
 | Rugby Variation | Win **3** | Win **1** | Win **0.5** |
 | Short Game Variation | Win **3** | Win **1** | Win **0.5** |
 | Multi-Game Variation | Win **3** | Win **1** | Win **0.5** |
 | Draw (all types) | **1** | **0.2** | **0.1** |
-| Loss | 0 (assumed, Q1) | 0 | 0 |
+| Loss | 0 (Q1) | 0 | 0 |
+
+Below 7 players every type uses the variation points (decided 2026-10-20, Q3), so a win always beats a draw. Only the 7+ win points depend on the type. The "≤ N matches/session" notes are not enforced (Q4).
 
 ---
 
@@ -69,32 +71,33 @@
   "version": 2,
   "playerCount": "total",
   "tiers": [
-    { "key": "7plus", "min": 7,  "max": null, "sessionCap": null },
-    { "key": "4to6",  "min": 4,  "max": 6,    "sessionCap": 3 },
-    { "key": "2to3",  "min": 2,  "max": 3,    "sessionCap": 2 }
+    { "key": "7plus", "min": 7,  "max": null },
+    { "key": "4to6",  "min": 4,  "max": 6 },
+    { "key": "2to3",  "min": 2,  "max": 3 }
   ],
   "win": {
-    "football":             { "7plus": 5 },
-    "fooba":                { "7plus": 5 },
-    "rugby":                { "7plus": 5 },
+    "football":             { "7plus": 5, "4to6": 1, "2to3": 0.5 },
+    "fooba":                { "7plus": 5, "4to6": 1, "2to3": 0.5 },
+    "rugby":                { "7plus": 5, "4to6": 1, "2to3": 0.5 },
     "rugby_variation":      { "7plus": 3, "4to6": 1, "2to3": 0.5 },
     "short_game_variation": { "7plus": 3, "4to6": 1, "2to3": 0.5 },
     "multi_game_variation": { "7plus": 3, "4to6": 1, "2to3": 0.5 }
   },
   "draw": { "7plus": 1, "4to6": 0.2, "2to3": 0.1 },
-  "loss": 0,
-  "overCap": "zero_points"
+  "loss": 0
 }
 ```
-- A type/tier pair with no `win` entry earns **0** but still counts as played (default for Q3).
+- Every type has a `win` entry for every tier (Q3). A match with fewer than 2 players in total is not expected; if it happens it falls in no tier, counts as played and earns 0.
+- No session cap in config (Q4).
 - Drop `margin` and `combined` bonuses (default for Q1). Keep the parser tolerant of v1 so old rows don't crash, but compute with v2 only.
 - All numbers stay in config, following the house rule that game rules are never hard-coded.
 
 ### 3.3 Points calculation (pure, TDD)
 - New `computeMatchPoints({ sport, totalPlayers, homeScore, awayScore }, rules)` returns `{ tier, home, away }`.
 - Result: higher score wins, equal scores draw.
-- Session cap (R4, Q4): the recorder never blocks a match. After computing points per club per session (= `entry_date`, Q4), order that club's league matches in the capped tier by `submitted_at`. Matches past the cap score **0** and get an `overCap: true` flag shown in the table detail and the recorder.
-- Combined matches (Q6, **answered by KFANDRA 2026-10-16**): a combined match is **one match between two club pairs** (AB vs CD), not two results. Each of the four clubs records **one** result against the other pair, with its home/away/neutral role (`klc_match_sides.role`). The result comes from the **aggregate score** (sum of both halves) — **confirmed (Jaidev, 2026-10-20)**. Defaults until confirmed: each club in the winning pair gets the full win points; GF/GA are the aggregate totals; it counts as one match played per club. H1/H2 recording and per-half player stats are unchanged.
+- Session cap (R4, Q4): **none.** No ordering, no flag, no zero-scoring; every match scores (decided 2026-10-20).
+- `totalPlayers` = the distinct players in the match, both sides together. In a combined match the same players play both halves (only the managing club changes), so 6 v 6 = 12 → 7+ tier.
+- Combined matches (Q6, **answered by KFANDRA 2026-10-16**): a combined match is **one match between two club pairs** (AB vs CD), not two results. Each of the four clubs records **one** result against the other pair, with its home/away/neutral role (`klc_match_sides.role`). The result comes from the **aggregate score** (sum of both halves) — **confirmed (Jaidev, 2026-10-20)**. **Each club gets the full points** (win 5 each at 7+ football, draw 1 each) — **confirmed by KFANDRA 2026-10-20**; a combined match is an "officially sanctioned joint manager match". GF/GA are the aggregate totals; it counts as one match played per club. H1/H2 recording and per-half player stats are unchanged.
 - `round4()` is kept for the fractional points.
 
 ### 3.4 League tables (R5/R6)
@@ -129,25 +132,24 @@
 - Top 10 each, with a filter by table group. Friendlies are excluded except on the MMG board (Q8).
 
 ### 3.6 Visibility and "common list" (R1, Helper-h9i)
-- Add **read-only** SELECT policies for `authenticated` on `klc_seasons` plus the five match tables, restricted to `status = 'submitted'`. Writes stay staff-only. Drafts stay hidden.
+- Add **read-only** SELECT policies for `authenticated` on `klc_seasons` plus the five match tables, restricted to `status = 'submitted'`. Drafts stay hidden from players.
+- **Club managers record matches (Q9, decided 2026-10-20).** A club's manager (`clubs.manager_player_id`) can create a draft, record it and submit it, for matches their club plays in. They can see and edit drafts involving their club. Only KFANDRA can **reopen** a submitted match (unchanged). Staff keep full access. The recorder gets a non-admin route (or the admin route admits managers); exact routing and RLS shape are for the design spec.
 - Fix **Helper-0gr** in the same migration: a trigger on the child tables rejects writes when the parent match is `submitted`. Reopen goes through a KFANDRA-only server action. Once tables are public, a locked match must really be locked.
 - Fix **Helper-r01** (touch-parent trigger), so cache revalidation and "recent" ordering are correct after edits.
 - New home block **"KLC League"** → `/klc/league`, with tabs **Table · Matches · Leaders · Seasons · Scoring**:
   - **Table**: the 5 tables via a group chip row, plus the season switcher.
-  - **Matches**: read-only list of submitted matches, grouped by date (reuses the recorder list look), opening a read-only match report.
+  - **Matches**: read-only list of submitted matches, grouped by date (reuses the recorder list look). **List only, no match report page** (decided 2026-10-20; a report page is a later bead).
   - **Leaders**: §3.5.
   - **Seasons**: read-only list of seasons with status and dates.
   - **Scoring**: the points scale rendered **from config** (so it never goes stale).
-- The Match Recorder (writing) stays at `/admin/klc/matches` for staff.
+- The Match Recorder (writing) is for staff **and club managers** (see above).
 
 ### 3.7 Recorder touches
 - Show the tier ("7+ / 4–6 / 2–3") and the computed points in the submit preview.
-- Show (do not block) an "over limit, 0 points" note when a match is over the session cap.
 
 ### 3.8 Tests
 - Unit tests:
   - every type × tier × win/draw/loss
-  - over-cap ordering
   - combined match: one aggregate result per club, all four clubs present
   - v2 parse and v1 tolerance
   - grouping
@@ -158,24 +160,25 @@
   - record and submit → the table updates
   - reopen, edit, resubmit → the table updates
   - a non-staff player sees the table but not drafts
+  - a club manager records and submits a match for their own club; cannot edit another club's draft; cannot reopen
 
 ---
 
 ## 4. Open questions for KFANDRA (defaults used until answered)
 
-KFANDRA replied on 2026-10-16 to Q6 only (the others were not asked in that email). The rest keep their defaults; Q11 (the S1 sheet) is being asked again.
+KFANDRA replied on 2026-10-16 to Q6, and confirmed full combined points on 2026-10-20. Jaidev decided Q3, Q4 and Q9 on 2026-10-20 during the brainstorm. Q2, Q5, Q7, Q8, Q10 keep their defaults; Q11 (the S1 sheet) is being asked again.
 
 | # | Question | Default |
 |---|---|---|
 | Q1 | Do the new points **replace** the old winning-margin bonus/penalty and the combined-match half bonuses? Is a loss always 0? | **Decided (Jaidev, 2026-10-16): yes, replace both. Loss = 0.** |
 | Q2 | Multi-Game Variation earns points but has no table of its own. Should it be in the combined table only? | Combined only |
-| Q3 | **Player count**: both teams together, or per team? Do Football/Fooba and Rugby Sox with fewer than 7 players earn anything? | **Decided: total players across both teams.** Under-7 Football/Fooba/Rugby Sox: played, 0 points (default) |
-| Q4 | **Session cap**: what happens to matches beyond 3 (4–6 players) or 2 (2–3 players) in a session? | **Decided: the app never blocks recording; what happened on the ground is the source.** Extra matches are recorded and flagged "over limit" with 0 points (default; ground time limits this in practice). Session = date, per club |
+| Q3 | **Player count**: both teams together, or per team? Do Football/Fooba and Rugby Sox with fewer than 7 players earn anything? | **Decided: total players across both teams.** **Decided (Jaidev, 2026-10-20):** under 7, Football/Fooba/Rugby Sox earn the variation points (4–6: win 1, draw 0.2; 2–3: win 0.5, draw 0.1). A win always beats a draw |
+| Q4 | **Session cap**: what happens to matches beyond 3 (4–6 players) or 2 (2–3 players) in a session? | **Decided (Jaidev, 2026-10-20): not enforced at all.** No block, no warning, every match scores. The cap is a ground rule only |
 | Q5 | **Tie-breakers** when points are level | Difference, then scored, then name |
-| Q6 | **Combined matches** (clubs swap at half time): is each half a separate result, or one result? | **Answered (KFANDRA, 2026-10-16): one result.** AB vs CD is one match; each of A, B, C, D records one result against the other pair (home/away/neutral). **Confirmed (Jaidev, 2026-10-20): the aggregate score over both halves decides the winner.** Still to confirm: full points to each club of the pair |
+| Q6 | **Combined matches** (clubs swap at half time): is each half a separate result, or one result? | **Answered (KFANDRA, 2026-10-16): one result.** AB vs CD is one match; each of A, B, C, D records one result against the other pair (home/away/neutral). **Confirmed (Jaidev, 2026-10-20): the aggregate score over both halves decides the winner.** **Confirmed (KFANDRA, 2026-10-20): full points to each club** (5 each for a win, 1 each for a draw) |
 | Q7 | **Goals vs tries**: Fooba main and rebound goals both count as goals? Combined-table difference = goals and tries together? | Yes and yes |
 | Q8 | Do **friendlies** appear in tables/leaderboards? | No (except the MMG board) |
-| Q9 | What does the **"common list"** mean? Read-only views for all players? | Read-only for all players. Recording stays staff-only |
+| Q9 | What does the **"common list"** mean? Read-only views for all players? | **Decided (Jaidev, 2026-10-20):** results read-only for all players; **club managers record and submit their own club's matches** (KFANDRA's 16 Oct reply: "Club A are supposed to fill in the data"). Only KFANDRA reopens |
 | Q10 | Is "Rugby Sox" today's `rugby`? How should any existing `variation` matches be re-labelled? | Yes. Re-label only if prod has any |
 | Q11 | Please share the **KLCFERRSXVSG1 session sheet** (Drive), so the table layout and S1 results can be used as test fixtures | — |
 
@@ -195,16 +198,18 @@ KFANDRA replied on 2026-10-16 to Q6 only (the others were not asked in that emai
 
 ## 7. KFANDRA checkpoint (acceptance)
 - Replay 3–4 S1 matches from the sheet: points, W/D/L and for/against match the sheet.
-- One 7+ football, one 4–6 rugby variation and one over-cap match produce the expected points.
+- One 7+ football, one 4–6 rugby variation and one 4–6 football match produce the expected points; a joint-manager match gives each club full points.
+- A club manager records and submits their own club's match.
 - A player (non-staff) can open KLC League and see tables, leaders, seasons and scoring, but no drafts.
 - Reopen and edit a match: the tables change accordingly.
 
 ## 8. Suggested beads (create under Helper-bsr)
 1. Match types v2 migration + sport stats + draft type edit
-2. Standings rules v2 config + `computeMatchPoints` + session cap (TDD)
+2. Standings rules v2 config + `computeMatchPoints` (TDD)
 3. League table aggregation + groups (TDD)
 4. Leaderboards aggregation
 5. RLS public read of submitted matches + submit-lock trigger + touch-parent trigger (closes h9i, 0gr, r01)
 6. `/klc/league` UI (Table · Matches · Leaders · Seasons · Scoring) + home block
-7. Recorder: tier and points preview + over-cap warning
+7. Recorder: tier and points preview
+9. Manager recording: route, RLS for own-club drafts, submit; KFANDRA-only reopen kept
 8. e2e + KFANDRA checkpoint doc

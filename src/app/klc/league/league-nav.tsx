@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { strings } from "@/content/strings";
 import {
-  LEAGUE_TABS, leagueHref, newestFirstSeasons, type LeagueParams,
+  LEAGUE_TABS, chipSpan, leagueHref, newestFirstSeasons, type LeagueParams,
 } from "@/lib/klcsra/league-params";
 import type { TableGroups } from "@/lib/klcsra/table-groups";
 import type { Season } from "@/lib/klcsra/types";
@@ -28,11 +28,17 @@ export function TabBar({ params }: { params: LeagueParams }) {
   );
 }
 
+/**
+ * The table-group picker: a grid rather than a sideways-scrolling row, so every
+ * table is visible at phone width without a hidden swipe.
+ */
 export function GroupChips({ params, groups }: { params: LeagueParams; groups: TableGroups }) {
+  const keys = Object.keys(groups);
   return (
-    <nav className="-mx-5 flex gap-1.5 overflow-x-auto px-5 pb-1" aria-label={strings.league.groupsLabel}>
-      {Object.keys(groups).map((g) => {
+    <nav className="grid grid-cols-6 gap-1.5" aria-label={strings.league.groupsLabel}>
+      {keys.map((g, i) => {
         const on = g === params.group;
+        const span = chipSpan(i, keys.length);
         return (
           <Link
             key={g}
@@ -40,7 +46,8 @@ export function GroupChips({ params, groups }: { params: LeagueParams; groups: T
             data-testid="group-chip"
             data-group={g}
             aria-current={on ? "true" : undefined}
-            className={`shrink-0 rounded-xl px-3 py-2 text-[11px] font-bold ${
+            style={{ gridColumn: `span ${span} / span ${span}` }}
+            className={`truncate rounded-xl px-2 py-2 text-center text-[11px] font-bold ${
               on ? "bg-gray-900 text-white" : "border border-gray-200 bg-white text-gray-700"
             }`}
           >

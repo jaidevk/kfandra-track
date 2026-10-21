@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { defaultSeasonId, leagueHref, newestFirstSeasons, parseLeagueParams } from "./league-params";
+import { chipSpan, defaultSeasonId, leagueHref, newestFirstSeasons, parseLeagueParams } from "./league-params";
 import { DEFAULT_TABLE_GROUPS as G } from "./table-groups";
 import type { Season } from "./types";
 
@@ -47,5 +47,19 @@ describe("newestFirstSeasons", () => {
   });
   it("defaultSeasonId takes the newest closed even when the list is unsorted", () => {
     expect(defaultSeasonId([s("2", 2, "closed"), s("1", 1, "closed"), s("3", 3, "closed")])).toBe("3");
+  });
+});
+
+describe("chipSpan", () => {
+  const spans = (n: number) => Array.from({ length: n }, (_, i) => chipSpan(i, n));
+  it("lays chips out in rows of 3 on a 6-column grid", () => {
+    expect(spans(3)).toEqual([2, 2, 2]);
+    expect(spans(6)).toEqual([2, 2, 2, 2, 2, 2]);
+  });
+  it("splits a short last row evenly", () => {
+    expect(spans(5)).toEqual([2, 2, 2, 3, 3]);
+    expect(spans(4)).toEqual([2, 2, 2, 6]);
+    expect(spans(2)).toEqual([3, 3]);
+    expect(spans(1)).toEqual([6]);
   });
 });

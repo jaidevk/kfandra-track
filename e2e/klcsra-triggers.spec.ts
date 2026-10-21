@@ -40,27 +40,66 @@ async function makeMatch(status: "draft" | "submitted") {
 test.beforeEach(async () => { await db.resetKlcsraData(); });
 test.afterEach(async () => { await db.resetKlcsraData(); });
 
+/**
+ * Read klc_matches.updated_at, pause, run `write`, and say whether updated_at
+ * moved. Compared as timestamptz in SQL so no precision is lost in JS.
+ *
+ * Note: backdating updated_at by hand does not work as a baseline —
+ * klc_matches_set_updated_at (BEFORE UPDATE) forces it to now().
+ */
+async function bumpsUpdatedAt(matchId: string, write: () => Promise<unknown>): Promise<boolean> {
+  const [before] = await db.sql<{ updated_at: string }>(
+    `select updated_at::text from klc_matches where id = $1`, [matchId],
+  );
+  await db.sql(`select pg_sleep(0.05)`);
+  await write();
+  const [row] = await db.sql<{ bumped: boolean }>(
+    `select $1::timestamptz < updated_at as bumped from klc_matches where id = $2`,
+    [before.updated_at, matchId],
+  );
+  return row.bumped;
+}
+
 test("child writes on a submitted match are rejected", async () => {
-  const { halfId, appearanceId } = await makeMatch("submitted");
+  const { matchId, halfId, appearanceId } = await makeMatch("submitted");
+  // UPDATE, one hop (sides -> halves) and two hops (stats -> appearances).
   await expect(
     db.sql(`update klc_match_sides set score = 9 where half_id = $1`, [halfId]),
   ).rejects.toThrow(/match is submitted/);
   await expect(
     db.sql(`update klc_player_stats set stat_count = 5 where appearance_id = $1`, [appearanceId]),
   ).rejects.toThrow(/match is submitted/);
+  // DELETE.
   await expect(
     db.sql(`delete from klc_match_appearances where id = $1`, [appearanceId]),
+  ).rejects.toThrow(/match is submitted/);
+  // INSERT, via the two-hop lookup.
+  await expect(
+    db.sql(
+      `insert into klc_player_stats (appearance_id, half_no, stat_key, stat_count) values ($1,1,'assist',1)`,
+      [appearanceId],
+    ),
+  ).rejects.toThrow(/match is submitted/);
+  // INSERT on klc_match_halves (direct match_id).
+  await expect(
+    db.sql(`insert into klc_match_halves (match_id, half_no) values ($1, 2)`, [matchId]),
   ).rejects.toThrow(/match is submitted/);
 });
 
 test("child writes on a draft are allowed and bump updated_at", async () => {
-  const { matchId, halfId } = await makeMatch("draft");
-  await db.sql(`update klc_matches set updated_at = '2000-01-01' where id = $1`, [matchId]);
-  await db.sql(`update klc_match_sides set score = 2 where half_id = $1 and side = 'home'`, [halfId]);
-  const [row] = await db.sql<{ updated_at: string }>(
-    `select updated_at::text from klc_matches where id = $1`, [matchId],
-  );
-  expect(row.updated_at.startsWith("2000")).toBe(false);
+  const { matchId, halfId, appearanceId } = await makeMatch("draft");
+  // One hop: sides -> halves -> match.
+  expect(
+    await bumpsUpdatedAt(matchId, () =>
+      db.sql(`update klc_match_sides set score = 2 where half_id = $1 and side = 'home'`, [halfId]),
+    ),
+  ).toBe(true);
+  // Two hops: stats -> appearances -> match.
+  expect(
+    await bumpsUpdatedAt(matchId, () =>
+      db.sql(`update klc_player_stats set stat_count = 3 where appearance_id = $1`, [appearanceId]),
+    ),
+  ).toBe(true);
 });
 
 test("deleting a submitted match still cascades", async () => {
@@ -76,4 +115,8 @@ test("reopen then edit works", async () => {
     `update klc_matches set status='draft', submitted_at=null, season_id=null where id=$1`, [matchId],
   );
   await db.sql(`update klc_match_sides set score = 4 where half_id = $1 and side='home'`, [halfId]);
+  const [row] = await db.sql<{ score: number }>(
+    `select score from klc_match_sides where half_id = $1 and side = 'home'`, [halfId],
+  );
+  expect(row.score).toBe(4);
 });

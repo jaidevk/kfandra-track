@@ -78,8 +78,11 @@ insert into public.app_config (key, value, description) values (
 -- is already gone (cascade delete of the match), which both triggers treat
 -- as "nothing to do".
 -- The row arrives as jsonb so one helper serves all four tables.
+-- All three functions are SECURITY DEFINER with a pinned search_path so the
+-- parent lookup can never be hidden by RLS, whichever client does the write.
 create or replace function app.klc_child_match_id(tbl text, r jsonb)
-returns uuid language plpgsql stable as $$
+returns uuid language plpgsql stable
+security definer set search_path = public, pg_temp as $$
 declare mid uuid;
 begin
   if tbl in ('klc_match_halves', 'klc_match_appearances') then
@@ -95,7 +98,8 @@ begin
 end $$;
 
 create or replace function app.klc_enforce_submit_lock()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql
+security definer set search_path = public, pg_temp as $$
 declare
   mid uuid;
   st  text;
@@ -115,7 +119,8 @@ begin
 end $$;
 
 create or replace function app.klc_touch_parent_match()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql
+security definer set search_path = public, pg_temp as $$
 declare mid uuid;
 begin
   if tg_op = 'DELETE' then

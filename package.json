@@ -15,7 +15,8 @@
     "docs:pdf": "node scripts/build-usage-pdf.mjs usage-guide",
     "docs:pdf:admin": "node scripts/build-usage-pdf.mjs admin-guide",
     "docs:pdf:dev": "node scripts/build-usage-pdf.mjs developer-guide",
-    "docs:pdf:klcsra": "node scripts/build-usage-pdf.mjs klcsra-first-run-checks"
+    "docs:pdf:klcsra": "node scripts/build-usage-pdf.mjs klcsra-first-run-checks",
+    "docs:pdf:league": "node scripts/build-usage-pdf.mjs klc-league-guide"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

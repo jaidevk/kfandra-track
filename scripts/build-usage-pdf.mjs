@@ -54,7 +54,16 @@ function findChrome() {
   );
 }
 
-const body = marked.parse(readFileSync(mdPath, "utf8"));
+// Local images (`src="images/..."`, relative to docs/) are inlined as data URIs
+// for the same reason as the logo: Chrome renders from a temp directory.
+const MIME = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", svg: "image/svg+xml" };
+const body = marked
+  .parse(readFileSync(mdPath, "utf8"))
+  .replace(/src="(images\/[^"]+)"/g, (_, rel) => {
+    const ext = rel.split(".").pop().toLowerCase();
+    const data = readFileSync(join(docs, rel)).toString("base64");
+    return `src="data:${MIME[ext] ?? "application/octet-stream"};base64,${data}"`;
+  });
 
 const html = `<!doctype html>
 <html lang="en">
@@ -91,7 +100,23 @@ const html = `<!doctype html>
   }
   blockquote p { margin: 2pt 0; }
   a { color: #1d4ed8; text-decoration: none; }
-  h2, h3, li { page-break-inside: avoid; }
+  h2, h3, li, blockquote { page-break-inside: avoid; }
+  /* Markdown tables and screenshots, scoped to .content so the letterhead
+     table that wraps the page is untouched. */
+  .content table {
+    width: 100%; border-collapse: collapse; margin: 6pt 0 10pt;
+    font-size: 10pt; page-break-inside: avoid;
+  }
+  .content th, .content td {
+    border-bottom: 1px solid #e5e7eb; padding: 4pt 6pt;
+    text-align: left; vertical-align: top;
+  }
+  .content th { background: #f3f4f6; font-size: 9pt; color: #374151; }
+  img.figure-right {
+    float: right; width: 58mm; margin: 2pt 0 8pt 12pt;
+    border: 1px solid #e5e7eb; border-radius: 8px;
+  }
+  .clear { clear: both; }
   /* Repeating letterhead. Wrapping the document in a table makes the THEAD
      reprint at the top of every printed page, with body content flowing below
      it -- so the club logo appears on each page and never overlaps text. */
@@ -103,9 +128,9 @@ const html = `<!doctype html>
   .sheet-header img {
     height: 11mm; width: auto; display: block; margin-left: auto;
   }
-  .sheet-body td { padding-top: 12pt; vertical-align: top; }
+  .sheet-body > tr > td { padding-top: 12pt; vertical-align: top; }
   /* The first heading sits right under the header rule -- trim its top gap. */
-  .sheet-body td > :first-child { margin-top: 0; }
+  .content > :first-child { margin-top: 0; }
 </style>
 </head>
 <body>
@@ -114,7 +139,7 @@ const html = `<!doctype html>
     <tr><th><img src="${logoUri}" alt="KFANDRA" /></th></tr>
   </thead>
   <tbody class="sheet-body">
-    <tr><td>${body}</td></tr>
+    <tr><td><div class="content">${body}</div></td></tr>
   </tbody>
 </table>
 </body>

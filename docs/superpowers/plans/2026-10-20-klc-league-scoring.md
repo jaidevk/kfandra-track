@@ -13,6 +13,26 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-20-klc-league-scoring-design.md`. Business rules live in `docs/superpowers/specs/2026-10-16-klc-league-scoring-handover.md` §1 and §4.
 
+### Deviations and decisions during the build
+
+Decisions (Jaidev, 2026-10-21):
+- **Pair rule:** in a combined match each club stays with its pair; a club may not lead home in one half and away in the other (`clubOnOtherSide` in `setSideClubAction`).
+- **Keep your own club:** a non-staff caller, creators included, must keep one of their clubs on the match (`keepsManagedClub`).
+- **Season attribution unchanged:** a league match counts for the season active at submit; reopen clears it and resubmit re-tags it. Reopening an old match after the next season starts moves it into the new season. Documented, not changed.
+- **S1 not imported:** S1 stays on the Google sheet. Its points used older rules, so only W/D/L and for/against are comparable.
+- **Club → manager links** were already set in prod; no linking step was needed.
+
+Review-driven changes:
+- The half-2 "Swap clubs" prompt was removed (it broke the pair rule); a swap hint replaces it, worded for staff vs managers.
+- Submit refuses a match where a club leads both slots, the pre-submit checks show it, and `buildLeagueTable` skips such a match from older data.
+- `repo.submitMatch` only flips a draft (`.eq("status","draft")`); a lost race returns "This match is locked. Reopen it first."
+- Every leaderboard (not just Kroopies/MMG) applies the per-sport allow-list; `buildLeaderboards` takes `sportStats`.
+- Leaderboard club comes from the latest row by (date, submittedAt, matchId, half), skipping club-less rows.
+- The submit lock checks OLD and NEW parents and takes `FOR NO KEY UPDATE`; trigger functions are security definer with PUBLIC execute revoked; the migration has a prod guard and overwrites `klcsra_sport_stats`.
+- The club picker greys out clubs the server would refuse.
+- `/klc/matches` stays open to a creator who still has their own draft, even with no club.
+- Dead code removed: `scoreMatch`, `countDraftMatchesInSeason`; the matches list uses the shared date formatter.
+
 ### Follows the design doc in full (Jaidev, 2026-10-21: "no shortcuts")
 
 - `src/lib/klcsra/league-repository.ts` is the league read model (Task 10, Step 2), with a mocked-client unit test proving every query filters `status = 'submitted'`.

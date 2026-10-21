@@ -32,10 +32,12 @@ The rules are settled in the handover spec. This document only decides **how** t
 | Match types | `klc_matches_sport_chk` → `football, fooba, rugby, rugby_variation, short_game_variation, multi_game_variation`. `variation` is dropped if prod has none; otherwise remap first (Q10). |
 | `klc_matches.created_by` | `uuid null references players(id) on delete set null`. Null on existing rows. |
 | `app_config.klcsra_standings_rules` | Replaced with the v2 JSON from handover §3.2, unchanged. |
-| `app_config.klcsra_table_groups` | New: an ordered array `[{ "key": "all", "sports": "*" }, { "key": "football_fooba", "sports": ["football","fooba"] }, { "key": "rugby_sox", "sports": ["rugby"] }, { "key": "rugby_variations", "sports": ["rugby_variation"] }, { "key": "short_game_variations", "sports": ["short_game_variation"] }]`. Array order is display order. An array, not an object, because jsonb re-sorts object keys (by length, then bytes). |
-| `app_config.klcsra_sport_stats` | Add the 3 new variation keys, each copying the current `variation` list. Remove `variation` if it was dropped. |
-| Submit-lock trigger (Helper-0gr) | `BEFORE INSERT OR UPDATE OR DELETE` on `klc_match_halves`, `klc_match_sides`, `klc_match_appearances` and `klc_player_stats`. It resolves the parent match (directly, or via `half_id` / `appearance_id`) and raises `match is submitted` when `status = 'submitted'`. A cascade delete of the match passes (the parent row is already gone when the child triggers fire), which the e2e reset relies on. |
-| Touch-parent trigger (Helper-r01) | `AFTER INSERT OR UPDATE OR DELETE` on the same four tables sets `klc_matches.updated_at = now()` on the parent. It skips the update if the parent row is gone (cascade). |
+| `app_config.klcsra_table_groups` | New: an **ordered array** of `{ key, sports }` `[{ "key": "all", "sports": "*" }, { "key": "football_fooba", "sports": ["football","fooba"] }, { "key": "rugby_sox", "sports": ["rugby"] }, { "key": "rugby_variations", "sports": ["rugby_variation"] }, { "key": "short_game_variations", "sports": ["short_game_variation"] }]`. Array order is display order. An array, not an object, because jsonb re-sorts object keys (by length, then bytes). |
+| `app_config.klcsra_sport_stats` | **Overwritten** (upsert), not merged: the value becomes the six new per-sport lists, and any prod edits to the key are replaced, because the old per-sport lists don't fit the new types. `variation` is gone. |
+| Submit-lock trigger (Helper-0gr) | `BEFORE INSERT OR UPDATE OR DELETE` on `klc_match_halves`, `klc_match_sides`, `klc_match_appearances` and `klc_player_stats`. It resolves the parent match (directly, or via `half_id` / `appearance_id`) and raises `match is submitted` when `status = 'submitted'`. On UPDATE it checks **both the OLD and the NEW parent**, so an FK-changing update can't move a row out of, or into, a submitted match. The status read takes `FOR NO KEY UPDATE` on the parent (the lock the touch trigger's UPDATE takes anyway), so overlapping autosaves queue instead of deadlocking, and a concurrent submit serialises with child writes. A cascade delete of the match passes (the parent row is already gone when the child triggers fire), which the e2e reset relies on. |
+| Touch-parent trigger (Helper-r01) | `AFTER INSERT OR UPDATE OR DELETE` on the same four tables sets `klc_matches.updated_at = now()` on the parent (both parents on an FK-changing UPDATE). It skips the update if the parent row is gone (cascade). |
+| Trigger functions | The parent-lookup helper and both trigger functions are `SECURITY DEFINER` with a pinned `search_path`, so the lookup sees the parent whatever RLS applies to the writer. `EXECUTE` is revoked from `PUBLIC` on all three. |
+| Prod guard | The migration starts by refusing to run (with a message pointing at Q10) if any `klc_matches.sport` is outside the new set, rather than failing on the check constraint. |
 
 No RLS policy changes. Public reads go through a server-only repository that hard-filters to submitted rows (§4).
 
@@ -82,9 +84,9 @@ How a match turns into rows:
 `home`/`away` here is the **aggregate-team slot** (`klc_match_sides.side`), not the venue (`role`).
 
 ### 3.5 `leaderboards.ts` (new)
-- **Input:** `StatRow { playerId, displayName, clubName, sport, isFriendly, statKey, count }[]`.
-- **Club label:** `clubName` is the club of the player's side in the half the stat was recorded in. When a player has rows under several clubs, the board shows the club from their most recent match.
-- `buildLeaderboards(rows, groupKey, groups, rates)` returns `Board[]`. A board is `{ key, label, entries: { rank, playerId, name, club, value }[] }`, with the top 10.
+- **Input:** `StatRow { matchId, entryDate, submittedAt, halfNo, playerId, displayName, clubName, sport, isFriendly, statKey, count }[]`.
+- **Club label:** `clubName` is the club of the player's side in the half the stat was recorded in (null if that side had no club). When a player has rows under several clubs, the board shows the club from their latest row, ordered by (`entryDate`, `submittedAt`, `matchId`, `halfNo`). Rows with no club are skipped for this, so a club-less latest row falls back to the earlier club.
+- `buildLeaderboards(rows, groupKey, groups, rates, sportStats)` returns `Board[]`. A board is `{ key, label, entries: { rank, playerId, name, club, value }[] }`, with the top 10.
 - **Ties:** a tied value shares a rank (1, 2, 2, 4). The list cuts off at 10 entries.
 
 | Board | Value | Friendlies |
@@ -96,9 +98,10 @@ How a match turns into rows:
 | Saves | `save` | excluded |
 | Tackles | `tackle` | excluded |
 | Discipline | `yellowCard + redCard + blueCard + lateChallenge` | excluded |
-| Kroopies | Σ count × `rates[stat].kr`, only for stats allowed for the sport (same rule as `computePlayerPayout`) | excluded |
-| MMG | Σ count × `rates[stat].mmg`, same allow-list rule | **included** (Q8) |
+| Kroopies | Σ count × `rates[stat].kr` | excluded |
+| MMG | Σ count × `rates[stat].mmg` | **included** (Q8) |
 
+- **Every board applies the sport allow-list** (`statsForSport(sport, sportStats)`, the same rule as `computePlayerPayout`): a row whose stat isn't allowed for its sport counts on no board, so a stat hidden by a sport-stats change can't count anywhere.
 - Boards whose entries are all 0 are omitted.
 - The group filter applies to every board.
 
@@ -132,6 +135,12 @@ One function feeds the whole page: `listSubmittedMatchDrafts(season)` returns `M
 - **Manager** = `clubs.manager_player_id = me`. A player may manage several clubs.
 - **Anyone involved can edit** (Jaidev, 2026-10-20). This includes the opposing club's manager.
 
+### 5.1a Club rules (enforced in `setSideClubAction`, and at submit)
+- **Pair rule** (Jaidev, 2026-10-21): in a combined match each club stays with its pair. A club may lead only one slot (`home` or `away`) across the whole match, never home in one half and away in the other (`clubOnOtherSide`). The DB only blocks a club on both sides of the same half; the action blocks it across halves. `submitMatchAction` also refuses a match that still breaks it (`clubOnBothSlots`, "A club can't be on both sides of one match. Fix the clubs before submitting."), which catches drafts made before the rule, and the pre-submit checks show it as failing.
+- **Keep your own club:** a non-staff caller must keep at least one club they manage on the match (`keepsManagedClub`, "Keep your own club on this match."). **Creators are bound too**: a creator who no longer manages any club can still edit the draft's score, squad, stats and header, but can't change its clubs. Staff are exempt.
+- The club picker greys out (disables and labels) any option the server would refuse: "(other side)" for the pair rule, "(keep your club)" for a non-staff caller's last own club.
+- The half-2 **"Swap clubs" prompt was removed**: under the pair rule a one-step swap is always refused. The hint under the team cards says, for staff, "To swap sides, pick a different club first." and, for managers, "To swap sides, ask KFANDRA or an admin."
+
 ### 5.2 `actions.ts`
 - `requireStaff()` is kept for the season actions.
 - New `requireMatchEditor(matchId)` returns `{ player, match }`. It requires the caller to be signed in and the match to exist, then requires staff, `match.createdBy === player.id`, or `match` clubs ∩ `managedClubIds(player.id)` ≠ ∅.
@@ -150,7 +159,7 @@ One function feeds the whole page: `listSubmittedMatchDrafts(season)` returns `M
 - **`/klc/matches`** (list):
   - Staff see everything.
   - A manager sees their drafts (created by them or involving their clubs) plus all submitted matches.
-  - A player is redirected to `/klc/league?tab=matches`.
+  - A player is redirected to `/klc/league?tab=matches`, unless they still have a draft they created (e.g. a former manager): they see the list without "＋ New match".
   - "＋ New match" is shown to staff and managers. For a manager, the form adds a required "Your club" select limited to the clubs they manage.
 - **`/klc/matches/[id]`:**
   - A draft the caller can't edit gives `notFound()`.
@@ -198,8 +207,10 @@ See the mockup.
   - Note: "Session limits (≤3 matches at 4–6 players, ≤2 at 2–3) are a ground rule; the app doesn't enforce them."
 
 ### 6.3 Recorder submit panel
-- Before submit it shows "Tier 7+ · Home 5 · Away 0" from `computeMatchPoints`.
-  - For a combined match, the sides are labelled by club pair and the points apply per club.
+- Before submit it shows the "League points" line from `leaguePointsLine` (`points-preview.ts`), using the same `matchResult` as the table:
+  - normal match: `Tier 7+ · 1 – 0 · Kraken 5 · Tigers 0`
+  - combined match: club pairs and per-club points, e.g. `Tier 7+ · Kraken + Ninja 3 – 2 Rhinos + Dodos · 5 each · 0 each`
+  - fewer than 2 players: `Under 2 players` in place of the tier.
 - For a friendly it shows "Friendly — no league points."
 
 ## 7. Errors and edge cases
@@ -210,8 +221,17 @@ See the mockup.
 - A child write on a submitted match:
   - The action returns `LOCKED` before reaching the DB.
   - If something bypasses the action, the trigger raises an error, and the repository surfaces it as a thrown error.
-- A manager who removes their own club from a draft they created keeps access through `created_by`. Someone who didn't create it loses access, which is acceptable.
+- A manager can't remove their own last club from a draft (keep-your-own-club, §5.1a), so they can't edit themselves off it. If a manager stops managing a club (the club → manager link changes), a draft they **created** stays editable through `created_by` (except its clubs) and stays on their `/klc/matches`; a draft they only had access to through the club is no longer theirs to edit.
 - A club manager with no linked account (`manager_player_id` null) simply can't record. Staff record for them.
+
+### 7.1 Season attribution
+- A league match counts for the season that is **active when it is submitted** (`season_id` is written at submit, not taken from the entry date). Reopen clears `season_id`; resubmit tags it with whichever season is active then. This is deliberate (Jaidev, 2026-10-21).
+- Known edge: reopening an old match after the next season has started, then resubmitting, moves it into the new season.
+- Friendlies carry no season; they join a season's MMG board by entry date (§4).
+
+### 7.2 Season 1
+- S1 stays on the Google sheet and is **not imported**.
+- S1 points used older rules (±1 margin bonus, hand-judged entries), so points under the new scale won't match S1's. Only W/D/L and for/against are comparable when replaying S1 matches.
 
 ## 8. Testing
 - **Unit (Vitest), written first:**

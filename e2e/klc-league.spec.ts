@@ -1,13 +1,15 @@
 import { test, expect, expectNoErrors, type Page } from "./fixtures";
-import { seedPlayer, signIn, signInAs } from "./helpers/auth";
+import { openAs, seedPlayer, signIn, signInAs } from "./helpers/auth";
 import * as db from "./helpers/db";
 import * as rec from "./helpers/recorder";
+import { DEFAULT_STANDINGS_RULES, TIER_LABELS } from "../src/lib/klcsra/standings-rules";
+import { strings } from "../src/content/strings";
 
 /**
  * KLC League end to end (design §8). Local Supabase only.
  *
- * Points expected here come from DEFAULT_STANDINGS_RULES: 2 players total is
- * tier 2–3, so a football win is 0.5 / 0 and a draw is 0.1 / 0.1.
+ * Every match here has 2 players in total, so it is tier 2–3. The expected
+ * points are read off DEFAULT_STANDINGS_RULES rather than hardcoded.
  *
  * The suite owns its data: it seeds its own players, deletes every match it
  * makes, and restores `klc_seasons` (local default: S1 closed, S2 upcoming).
@@ -16,8 +18,15 @@ import * as rec from "./helpers/recorder";
  */
 
 const SEASON = "KLCFERRSXVSG2";
+const OTHER_SEASON = "KLCFERRSXVSG1";
 /** Inside Season 2's window (it starts 2026-08-22). */
 const MATCH_DATE = "2026-08-23";
+
+const RULES = DEFAULT_STANDINGS_RULES;
+const TIER = `Tier ${TIER_LABELS["2to3"]}`;
+const WIN = String(RULES.win.football["2to3"]);
+const LOSS = String(RULES.loss);
+const DRAW = String(RULES.draw["2to3"]);
 
 const OTHER_SIDE = "That club is already on the other side of this match.";
 const KEEP_OWN_CLUB = "Keep your own club on this match.";
@@ -47,12 +56,30 @@ async function recordWin(page: Page, home: db.ClubRow, away: db.ClubRow) {
   await rec.addPlayer(page, "away", p2.id);
   await rec.recordStats(page, "home", p1.id, { goal: 2 });
   const line = page.getByTestId("league-points-line");
-  await expect(line).toContainText("Tier 2–3");
+  await expect(line).toContainText(TIER);
   await expect(line).toContainText("2 – 1");
-  await expect(line).toContainText(`${home.name} 0.5`);
-  await expect(line).toContainText(`${away.name} 0`);
+  await expect(line).toContainText(`${home.name} ${WIN}`);
+  await expect(line).toContainText(`${away.name} ${LOSS}`);
   await rec.submitMatch(page);
   return { id, scorer: p1 };
+}
+
+/** A draft created by a staff member in their own browser, optionally with clubs. */
+async function staffDraft(
+  browser: Parameters<typeof openAs>[0],
+  clubs?: [db.ClubRow, db.ClubRow],
+): Promise<string> {
+  const staff = await openAs(browser, "admin");
+  try {
+    const id = await rec.createMatch(staff.page, { date: MATCH_DATE, sport: "football" });
+    if (clubs) {
+      await rec.pickClub(staff.page, 1, "home", clubs[0].id);
+      await rec.pickClub(staff.page, 1, "away", clubs[1].id);
+    }
+    return id;
+  } finally {
+    await staff.context.close();
+  }
 }
 
 /** A club's Pts cell: the pinned Pts column shares row order with the Club column. */
@@ -72,6 +99,11 @@ async function gotoTable(page: Page): Promise<void> {
   ).toBeVisible();
 }
 
+/** Positive control before a 404: the match exists and is still a draft. */
+async function expectDraft(id: string): Promise<void> {
+  expect((await db.getMatchRow(id))?.status).toBe("draft");
+}
+
 test.describe("KLC League", () => {
   test("staff record + submit -> table, matches and leaders update", async ({ page, errors }) => {
     await signInAs(page.context(), "admin");
@@ -79,40 +111,50 @@ test.describe("KLC League", () => {
     const { scorer } = await recordWin(page, a, b);
 
     await gotoTable(page);
-    expect(await pts(page, a.id)).toBe("0.5");
-    expect(await pts(page, b.id)).toBe("0");
-
-    // Table groups keep their configured order.
-    await expect(page.getByTestId("group-chip")).toHaveText([
-      "All", /Football|Fooba/, "Rugby Sox", "Rugby Var.", "Short Game Var.",
-    ]);
+    expect(await pts(page, a.id)).toBe(WIN);
+    expect(await pts(page, b.id)).toBe(LOSS);
 
     await page.getByTestId("league-tab-matches").click();
-    await expect(page.getByTestId("league-match-points").first()).toHaveText("0.5 · 0 pts");
+    await expect(page.getByTestId("league-match-points").first()).toHaveText(
+      `${WIN} · ${LOSS} pts`,
+    );
 
     await page.getByTestId("league-tab-leaders").click();
     const goals = page.locator('[data-testid="leader-board"][data-board="goals"]');
     await expect(
       goals.locator(`[data-player-id="${scorer.id}"] [data-testid="leader-value"]`),
     ).toHaveText("2");
+    expectNoErrors(errors);
+  });
 
-    // The season picker lists seasons and switches the table.
-    await page.getByTestId("league-tab-table").click();
-    await expect(page).toHaveURL(/tab=table/);
+  test("the season picker switches seasons; table groups keep their order", async ({
+    page,
+    errors,
+  }) => {
+    await signInAs(page.context(), "admin");
+    const [a, b] = await db.listClubs(2);
+    await recordWin(page, a, b);
+
+    await gotoTable(page);
+    await expect(page.getByTestId("group-chip")).toHaveText(Object.values(strings.league.groups));
+
     await page.getByTestId("league-season-pill").click();
     const options = page.getByTestId("season-option");
     await expect(options.first()).toBeVisible();
     await expect(options).toHaveCount((await db.listSeasons()).length);
     // S1 has no matches here, so switching to it empties the table.
-    await options.filter({ hasText: "KLCFERRSXVSG1" }).click();
+    const s1 = await db.findSeason(OTHER_SEASON);
+    await options.filter({ hasText: OTHER_SEASON }).click();
     await expect(page.getByTestId("league-table-empty")).toBeVisible();
-    await expect(page.getByTestId("league-season-pill")).toContainText("S1");
+    await expect(page.getByTestId("league-season-pill")).toContainText(`S${s1.season_no}`);
+    expectNoErrors(errors);
+  });
 
-    // The old admin recorder path still lands staff on the new one.
+  test("the old admin recorder path redirects staff to /klc/matches", async ({ page }) => {
+    await signInAs(page.context(), "admin");
     await page.goto("/admin/klc/matches");
     await expect(page).toHaveURL(/\/klc\/matches$/);
     await expect(page.getByTestId("new-match-form")).toBeVisible();
-    expectNoErrors(errors);
   });
 
   test("a draft switches League -> Friendly and drops out of the table", async ({ page }) => {
@@ -146,19 +188,19 @@ test.describe("KLC League", () => {
     const { id } = await recordWin(page, a, b);
 
     await gotoTable(page);
-    expect(await pts(page, a.id)).toBe("0.5");
+    expect(await pts(page, a.id)).toBe(WIN);
 
     await rec.openMatch(page, id);
     const dialog = await rec.openReopenDialog(page);
     await dialog.getByTestId("reopen-confirm").click();
     await expect(page.getByTestId("submit-match")).toBeVisible();
     await rec.setScore(page, 1, "away", 2); // now 2–2
-    await expect(page.getByTestId("league-points-line")).toContainText(`${a.name} 0.1`);
+    await expect(page.getByTestId("league-points-line")).toContainText(`${a.name} ${DRAW}`);
     await rec.submitMatch(page);
 
     await gotoTable(page);
-    expect(await pts(page, a.id)).toBe("0.1");
-    expect(await pts(page, b.id)).toBe("0.1");
+    expect(await pts(page, a.id)).toBe(DRAW);
+    expect(await pts(page, b.id)).toBe(DRAW);
   });
 
   test("a club manager records their own club's match but not another club's draft", async ({
@@ -170,17 +212,7 @@ test.describe("KLC League", () => {
     await db.setClubManager(mine.id, manager.id);
 
     // Someone else's draft between two other clubs.
-    const staffCtx = await browser.newContext();
-    let foreign: string;
-    try {
-      const staffPage = await staffCtx.newPage();
-      await signInAs(staffCtx, "admin");
-      foreign = await rec.createMatch(staffPage, { date: MATCH_DATE, sport: "football" });
-      await rec.pickClub(staffPage, 1, "home", theirs.id);
-      await rec.pickClub(staffPage, 1, "away", other.id);
-    } finally {
-      await staffCtx.close();
-    }
+    const foreign = await staffDraft(browser, [theirs, other]);
 
     await signIn(page.context(), manager);
     await page.goto("/");
@@ -217,6 +249,7 @@ test.describe("KLC League", () => {
     expect((await db.getMatchRow(id))?.status).toBe("submitted");
     await expect(page.getByTestId("reopen-match")).toHaveCount(0);
 
+    await expectDraft(foreign);
     const res = await page.goto(`/klc/matches/${foreign}`);
     expect(res?.status()).toBe(404);
   });
@@ -226,16 +259,13 @@ test.describe("KLC League", () => {
     browser,
   }) => {
     const [a, b] = await db.listClubs(2);
-    const staffCtx = await browser.newContext();
-    let draft: string;
+    const draft = await staffDraft(browser);
+    const staff = await openAs(browser, "admin");
     let submitted: string;
     try {
-      const staffPage = await staffCtx.newPage();
-      await signInAs(staffCtx, "admin");
-      draft = await rec.createMatch(staffPage, { date: MATCH_DATE, sport: "football" });
-      ({ id: submitted } = await recordWin(staffPage, a, b));
+      ({ id: submitted } = await recordWin(staff.page, a, b));
     } finally {
-      await staffCtx.close();
+      await staff.context.close();
     }
 
     const player = await seedPlayer("user", "E2E Viewer");
@@ -243,11 +273,25 @@ test.describe("KLC League", () => {
     await page.goto("/");
     await expect(page.getByTestId("home-record-match")).toHaveCount(0);
     await page.getByTestId("home-league").click();
-    for (const t of ["table", "matches", "leaders", "seasons", "scoring"]) {
+
+    const content: Record<string, ReturnType<Page["getByTestId"]>> = {
+      table: page.getByTestId("league-table").or(page.getByTestId("league-table-empty")),
+      matches: page
+        .getByTestId("league-match")
+        .first()
+        .or(page.getByTestId("league-matches-empty")),
+      leaders: page
+        .getByTestId("leader-board")
+        .first()
+        .or(page.getByTestId("league-leaders-empty")),
+      seasons: page.getByTestId("season-row").first(),
+      scoring: page.getByTestId("scoring-table"),
+    };
+    for (const [t, locator] of Object.entries(content)) {
       await page.getByTestId(`league-tab-${t}`).click();
       await expect(page).toHaveURL(new RegExp(`tab=${t}`));
+      await expect(locator).toBeVisible();
     }
-    await expect(page.getByTestId("scoring-table")).toBeVisible();
 
     // A submitted match is a public record, but read-only.
     await rec.openMatch(page, submitted);
@@ -256,6 +300,7 @@ test.describe("KLC League", () => {
     await expect(page.getByTestId("reopen-match")).toHaveCount(0);
     await expect(page.getByText("Only KFANDRA can reopen a match.")).toHaveCount(0);
 
+    await expectDraft(draft);
     const res = await page.goto(`/klc/matches/${draft}`);
     expect(res?.status()).toBe(404);
     await page.goto("/klc/matches");

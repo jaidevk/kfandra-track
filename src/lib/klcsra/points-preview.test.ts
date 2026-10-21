@@ -30,6 +30,12 @@ function match(overrides: Partial<MatchDraft>): MatchDraft {
   };
 }
 
+const text = (m: MatchDraft) => {
+  const line = leaguePointsLine(m, rules);
+  if (line.kind !== "scored") throw new Error(`expected scored, got ${line.kind}`);
+  return line.text;
+};
+
 describe("leaguePointsLine", () => {
   it("a friendly scores no league points", () => {
     expect(leaguePointsLine(match({ isFriendly: true }), rules)).toEqual({ kind: "friendly" });
@@ -45,24 +51,39 @@ describe("leaguePointsLine", () => {
     }), rules)).toEqual({ kind: "incomplete" });
   });
 
-  it("shows the tier, the score and each side's points", () => {
-    expect(leaguePointsLine(match({}), rules))
-      .toEqual({ kind: "scored", text: "Tier 7+ · 1 – 0 · Home 5 · Away 0" });
-    expect(leaguePointsLine(match({ appearances: players(5) }), rules))
-      .toEqual({ kind: "scored", text: "Tier 4–6 · 1 – 0 · Home 1 · Away 0" });
+  it("shows the tier, the score and each club's points", () => {
+    expect(text(match({}))).toBe("Tier 7+ · 1 – 0 · A 5 · B 0");
+    expect(text(match({ appearances: players(5) }))).toBe("Tier 4–6 · 1 – 0 · A 1 · B 0");
   });
 
   it("under 2 players: the result stands but scores nothing", () => {
-    expect(leaguePointsLine(match({ appearances: players(1) }), rules))
-      .toEqual({ kind: "scored", text: "Under 2 players · 1 – 0 · Home 0 · Away 0" });
+    expect(text(match({ appearances: players(1) }))).toBe("Under 2 players · 1 – 0 · A 0 · B 0");
   });
 
-  it("a combined match aggregates both halves and credits each club", () => {
+  it("a draw in tier 4–6 gives 0.2 each", () => {
+    expect(text(match({ appearances: players(4), halves: [half(1, ["A", 2], ["B", 2])] })))
+      .toBe("Tier 4–6 · 2 – 2 · A 0.2 · B 0.2");
+  });
+
+  it("a variation sport wins 3 in tier 7+", () => {
+    expect(text(match({ sport: "rugby_variation" }))).toBe("Tier 7+ · 1 – 0 · A 3 · B 0");
+  });
+
+  it("a normal match with an empty stray half 2 still scores from half 1", () => {
+    expect(text(match({ halves: [half(1, ["A", 1], ["B", 0]), half(2, null, null)] })))
+      .toBe("Tier 7+ · 1 – 0 · A 5 · B 0");
+  });
+
+  it("a combined match aggregates both halves, labels club pairs and credits each club", () => {
     const m = match({
       isCombined: true,
       halves: [half(1, ["A", 1], ["B", 0]), half(2, ["C", 0], ["D", 2])],
     });
-    expect(leaguePointsLine(m, rules))
-      .toEqual({ kind: "scored", text: "Tier 7+ · 1 – 2 · Home 0 each · Away 5 each" });
+    expect(leaguePointsLine(m, rules)).toEqual({
+      kind: "scored",
+      homeLabel: "A + C",
+      awayLabel: "B + D",
+      text: "Tier 7+ · A + C 1 – 2 B + D · 0 each · 5 each",
+    });
   });
 });

@@ -47,7 +47,6 @@ export function TeamBoard({
   onAdd,
   onRemove,
   onOpenStats,
-  onSwapClubs,
 }: {
   match: MatchDraft;
   clubs: RecorderClub[];
@@ -63,25 +62,12 @@ export function TeamBoard({
   onAdd: (side: SideKey, playerId: string) => void;
   onRemove: (appearanceId: string) => void;
   onOpenStats: (appearanceId: string) => void;
-  onSwapClubs: () => void;
 }) {
   const half = match.halves.find((h) => h.halfNo === activeHalf) ?? match.halves[0];
-  const [swapDismissed, setSwapDismissed] = useState(false);
 
   const clubOf = (h: HalfDraft, side: SideKey) => h.sides.find((s) => s.side === side) ?? null;
   const aggregate = (side: SideKey) =>
     match.halves.reduce((n, h) => n + (clubOf(h, side)?.score ?? 0), 0);
-
-  const firstHalf = match.halves.find((h) => h.halfNo === 1);
-  // The one-time prompt: half 2 is open, half 1 has both clubs, half 2 has none.
-  const canSwap =
-    !locked &&
-    match.isCombined &&
-    half !== undefined &&
-    half.halfNo === 2 &&
-    half.sides.length === 0 &&
-    (firstHalf?.sides.length ?? 0) === 2 &&
-    !swapDismissed;
 
   if (!half) {
     return (
@@ -170,41 +156,6 @@ export function TeamBoard({
       </div>
       <ErrorNote message={errorFor(`half-${half.halfNo}`)} testId={`half-error-${half.halfNo}`} />
 
-      {canSwap && firstHalf && (
-        <div
-          data-testid="swap-prompt"
-          className="space-y-2 rounded-2xl border border-blue-200 bg-blue-50 p-3"
-        >
-          <p className="text-[12px] font-semibold text-blue-900">
-            Second half — swap the clubs over? Home would lead with{" "}
-            {clubOf(firstHalf, "away")?.clubName ?? "—"} and away with{" "}
-            {clubOf(firstHalf, "home")?.clubName ?? "—"}.
-          </p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              data-testid="swap-clubs"
-              disabled={busy}
-              onClick={() => {
-                setSwapDismissed(true);
-                onSwapClubs();
-              }}
-              className="rounded-lg bg-blue-700 px-3 py-1.5 text-[12px] font-bold text-white disabled:opacity-40"
-            >
-              Swap clubs
-            </button>
-            <button
-              type="button"
-              data-testid="swap-dismiss"
-              onClick={() => setSwapDismissed(true)}
-              className="rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-[12px] font-bold text-blue-800"
-            >
-              Keep as is
-            </button>
-          </div>
-        </div>
-      )}
-
       {match.isCombined && (
         <p className="text-[11px] text-gray-500">
           The squad is the same for both halves — only the clubs and the stats change at
@@ -232,6 +183,13 @@ export function TeamBoard({
           />
         ))}
       </div>
+      {/* A club may lead only one slot per match (clubOnOtherSide), so a
+          one-step swap is refused; say how to do it. */}
+      {!locked && (
+        <p data-testid="swap-hint" className="text-[11px] text-gray-500">
+          To swap sides, pick a different club first.
+        </p>
+      )}
     </section>
   );
 }

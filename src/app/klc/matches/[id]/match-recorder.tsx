@@ -18,6 +18,7 @@ import type { Sport } from "@/lib/klcsra/sport-stats";
 // Straight from the pure modules, never via config.ts — that would pull
 // `server-only` into the client bundle and fail the build.
 import type { StatKey, StatRates } from "@/lib/klcsra/stat-rates";
+import type { StandingsRules } from "@/lib/klcsra/standings-rules";
 import type {
   HalfDraft,
   MatchDraft,
@@ -56,6 +57,7 @@ export function MatchRecorder({
   canReopen,
   activeSeasonName,
   submittedBy,
+  rules,
 }: {
   match: MatchDraft;
   clubs: RecorderClub[];
@@ -66,6 +68,7 @@ export function MatchRecorder({
   /** The season a league match would be tagged with today, or null. */
   activeSeasonName: string | null;
   submittedBy: string | null;
+  rules: StandingsRules;
 }) {
   const router = useRouter();
   const [working, setWorking] = useState(false);
@@ -221,7 +224,7 @@ export function MatchRecorder({
   // ── handlers ──────────────────────────────────────────────────────────────
 
   const onMeta = (
-    patch: { entryDate?: string; sport?: Sport; durationMinutes?: number | null },
+    patch: { entryDate?: string; sport?: Sport; durationMinutes?: number | null; isFriendly?: boolean },
     immediate: boolean,
   ) => {
     autosave("header", "header", () => updateMatchMetaAction(match.id, patch), {
@@ -253,19 +256,6 @@ export function MatchRecorder({
       `half-${half.halfNo}`,
       () => setSideScoreAction(match.id, half.id, side, score),
     );
-  };
-
-  const onSwapClubs = async () => {
-    const h1 = match.halves.find((h) => h.halfNo === 1);
-    const h2 = match.halves.find((h) => h.halfNo === 2);
-    if (!h1 || !h2) return;
-    const homeClub = h1.sides.find((s) => s.side === "home")?.clubId;
-    const awayClub = h1.sides.find((s) => s.side === "away")?.clubId;
-    if (!homeClub || !awayClub) return;
-    // Half 2 has no sides yet, so home-then-away can never collide with the
-    // "already on the other side of this half" constraint.
-    const ok = await run("half-2", () => setSideClubAction(match.id, h2.id, "home", awayClub));
-    if (ok) await run("half-2", () => setSideClubAction(match.id, h2.id, "away", homeClub));
   };
 
   const onSetStat = (appearanceId: string, halfNo: number, statKey: StatKey, count: number) => {
@@ -351,7 +341,6 @@ export function MatchRecorder({
           )
         }
         onOpenStats={setOpenAppearanceId}
-        onSwapClubs={onSwapClubs}
       />
 
       <StatsDialog
@@ -386,6 +375,7 @@ export function MatchRecorder({
         hasActiveSeason={activeSeasonName !== null}
         seasonName={activeSeasonName}
         submittedBy={submittedBy}
+        rules={rules}
         submitError={err("submit")}
         reopenError={err("reopen")}
         deleteError={err("delete")}
@@ -394,7 +384,7 @@ export function MatchRecorder({
         onDelete={async () => {
           if (!confirm("Delete this draft match?")) return;
           const ok = await run("delete", () => deleteMatchAction(match.id));
-          if (ok) router.push("/admin/klc/matches");
+          if (ok) router.push("/klc/matches");
         }}
       />
     </div>

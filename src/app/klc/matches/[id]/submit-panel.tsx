@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import type { StandingsRules } from "@/lib/klcsra/standings-rules";
 import type { MatchDraft, PayoutLine } from "@/lib/klcsra/types";
 import { ErrorNote, fmtStamp, signed } from "./recorder-shared";
 
@@ -45,6 +46,8 @@ export function SubmitPanel({
   hasActiveSeason: boolean;
   seasonName: string | null;
   submittedBy: string | null;
+  /** League points rules; used by Task 15's points preview. */
+  rules: StandingsRules;
   submitError: string | null;
   reopenError: string | null;
   deleteError: string | null;

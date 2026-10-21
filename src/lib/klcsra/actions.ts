@@ -3,6 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentPlayer, type CurrentPlayer } from "@/lib/auth/current-user";
 import { isStaffRole } from "@/lib/auth/roles";
+import {
+  canEditMatch, canReopenMatch, clubOnOtherSide, keepsManagedClub, matchClubIds,
+} from "./access";
 import { loadSportStats, loadStatRates } from "./config";
 import { computePlayerPayout } from "./payouts";
 import * as repo from "./repository";
@@ -15,11 +18,14 @@ import type { MatchDraft, PayoutLine, Season, SideKey } from "./types";
  *
  * Three rules live here and nowhere else:
  *
- *  1. **Auth.** Every action re-resolves the caller with `getCurrentPlayer()`
- *     and requires staff. A client-supplied identity is never trusted.
+ *  1. **Auth.** Every action re-resolves the caller with `getCurrentPlayer()`.
+ *     Season actions require staff; match actions require a match editor
+ *     (`access.ts`: staff, the creator, or a manager of a club on the match).
+ *     A client-supplied identity is never trusted.
  *  2. **The submit lock.** Every mutating action refuses when the match is
  *     `submitted`. RLS deliberately does not enforce this (staff have blanket
- *     write access to the KLCSRA tables), so this file IS the lock.
+ *     write access to the KLCSRA tables), so this file is the first lock; the
+ *     `*_submit_lock` DB triggers are the backstop.
  *  3. **The payout compute.** Submit composes the pure domain
  *     (`computePlayerPayout` x `statsForSport`) over the stored draft and
  *     returns the lines. Nothing is written to a balance sheet in Phase 2.
@@ -40,10 +46,12 @@ const NOT_SIGNED_IN = "You must be signed in.";
 const NOT_STAFF = "You do not have permission to do that.";
 const NOT_KFANDRA = "Only KFANDRA can reopen a submitted match.";
 const NO_MATCH = "Match not found.";
+const KEEP_OWN_CLUB = "Keep your own club on this match.";
 const LOCKED = "This match is locked. Reopen it first.";
 const NO_ACTIVE_SEASON = "No active season. Start one in Seasons first.";
 
-const MATCHES_PATH = "/admin/klc/matches";
+const MATCHES_PATH = "/klc/matches";
+const LEAGUE_PATH = "/klc/league";
 const SEASONS_PATH = "/admin/klc/seasons";
 
 // ── plumbing ────────────────────────────────────────────────────────────────
@@ -56,6 +64,7 @@ function failed(e: unknown, fallback: string): ActionResult<never> {
 function revalidateMatch(matchId: string): void {
   revalidatePath(MATCHES_PATH);
   revalidatePath(`${MATCHES_PATH}/${matchId}`);
+  revalidatePath(LEAGUE_PATH);
 }
 
 /** Staff gate. Returns the freshly-resolved caller. */
@@ -67,19 +76,53 @@ async function requireStaff(): Promise<ActionResult<CurrentPlayer>> {
 }
 
 /**
- * Staff gate + the match exists + it is still a draft. Every mutating match
- * action starts here; it is the single place the submit lock is checked.
+ * The clubs this player manages. A DB error is surfaced as a failed result,
+ * never read as "manages nothing" (this feeds authorisation).
  */
-async function requireEditableMatch(
-  matchId: string,
-): Promise<ActionResult<{ player: CurrentPlayer; match: MatchDraft }>> {
-  const auth = await requireStaff();
-  if (!auth.ok) return auth;
+async function loadManaged(playerId: string): Promise<ActionResult<Set<string>>> {
+  try {
+    return { ok: true, data: await repo.listManagedClubIds(playerId) };
+  } catch (e) {
+    return failed(e, "Failed to load your clubs.");
+  }
+}
 
+interface EditorGate {
+  player: CurrentPlayer;
+  match: MatchDraft;
+  /** The caller's managed clubs when looked up; null for staff or the creator. */
+  managed: Set<string> | null;
+}
+
+/**
+ * Signed in + the match exists + the caller may edit it: staff, the draft's
+ * creator, or the manager of any club on it (design §5.1).
+ */
+async function requireMatchEditor(matchId: string): Promise<ActionResult<EditorGate>> {
+  const player = await getCurrentPlayer();
+  if (!player) return { ok: false, error: NOT_SIGNED_IN };
   const match = await repo.getMatch(matchId);
   if (!match) return { ok: false, error: NO_MATCH };
-  if (match.status === "submitted") return { ok: false, error: LOCKED };
-  return { ok: true, data: { player: auth.data, match } };
+  // Staff and the creator are decided without a lookup.
+  if (isStaffRole(player.role) || match.createdBy === player.id) {
+    return { ok: true, data: { player, match, managed: null } };
+  }
+  const loaded = await loadManaged(player.id);
+  if (!loaded.ok) return loaded;
+  const ownership = { createdBy: match.createdBy, clubIds: matchClubIds(match.halves) };
+  if (!canEditMatch(player, ownership, loaded.data)) return { ok: false, error: NOT_STAFF };
+  return { ok: true, data: { player, match, managed: loaded.data } };
+}
+
+/**
+ * Editor gate + still a draft. Every mutating match action starts here; it is
+ * the first place the submit lock is checked (the DB trigger is the second).
+ */
+async function requireEditableMatch(matchId: string): Promise<ActionResult<EditorGate>> {
+  const gate = await requireMatchEditor(matchId);
+  if (!gate.ok) return gate;
+  if (gate.data.match.status === "submitted") return { ok: false, error: LOCKED };
+  return gate;
 }
 
 // ── input coercion ──────────────────────────────────────────────────────────
@@ -106,19 +149,28 @@ export interface CreateMatchFields {
   sport: Sport;
   isCombined: boolean;
   isFriendly: boolean;
+  /** Required for a club manager (must be a club they manage); optional for staff. */
+  homeClubId?: string | null;
 }
 
 /** Create a draft match (with its half rows). Returns the new match id. */
 export async function createMatchAction(
   input: CreateMatchFields,
 ): Promise<ActionResult<string>> {
-  const auth = await requireStaff();
-  if (!auth.ok) return auth;
+  const player = await getCurrentPlayer();
+  if (!player) return { ok: false, error: NOT_SIGNED_IN };
 
   if (!DATE_RE.test(input?.entryDate ?? "")) {
     return { ok: false, error: "Pick a valid match date." };
   }
   if (!isSport(input.sport)) return { ok: false, error: "Pick a valid sport." };
+
+  const homeClubId = input.homeClubId || null;
+  if (!isStaffRole(player.role)) {
+    const managed = await loadManaged(player.id);
+    if (!managed.ok) return managed;
+    if (!homeClubId || !managed.data.has(homeClubId)) return { ok: false, error: NOT_STAFF };
+  }
 
   try {
     const id = await repo.createMatch({
@@ -126,6 +178,8 @@ export async function createMatchAction(
       sport: input.sport,
       isCombined: Boolean(input.isCombined),
       isFriendly: Boolean(input.isFriendly),
+      createdBy: player.id,
+      homeClubId,
     });
     revalidatePath(MATCHES_PATH);
     return { ok: true, data: id };
@@ -138,9 +192,10 @@ export interface MatchMetaFields {
   entryDate?: string;
   sport?: Sport;
   durationMinutes?: number | null;
+  isFriendly?: boolean;
 }
 
-/** Patch the match header. `is_combined` / `is_friendly` are fixed at creation. */
+/** Patch the match header. `is_combined` is fixed at creation; `is_friendly` may change on a draft. */
 export async function updateMatchMetaAction(
   matchId: string,
   patch: MatchMetaFields,
@@ -158,6 +213,10 @@ export async function updateMatchMetaAction(
   if (patch?.sport !== undefined) {
     if (!isSport(patch.sport)) return { ok: false, error: "Pick a valid sport." };
     fields.sport = patch.sport;
+  }
+  if (patch?.isFriendly !== undefined) {
+    if (typeof patch.isFriendly !== "boolean") return { ok: false, error: "Pick League or Friendly." };
+    fields.isFriendly = patch.isFriendly;
   }
   if (patch?.durationMinutes !== undefined) {
     if (patch.durationMinutes === null) {
@@ -215,6 +274,22 @@ export async function setSideClubAction(
   if (!clubId) return { ok: false, error: "Pick a club." };
   if (!gate.data.match.halves.some((h) => h.id === halfId)) {
     return { ok: false, error: "That half does not belong to this match." };
+  }
+  if (clubOnOtherSide(gate.data.match.halves, side, clubId)) {
+    return { ok: false, error: "That club is already on the other side of this match." };
+  }
+  // A manager may not edit their own club off the match. Staff are exempt.
+  const { player, match } = gate.data;
+  if (!isStaffRole(player.role)) {
+    let managed = gate.data.managed;
+    if (!managed) {
+      const loaded = await loadManaged(player.id);
+      if (!loaded.ok) return loaded;
+      managed = loaded.data;
+    }
+    if (!keepsManagedClub(match.halves, halfId, side, clubId, managed)) {
+      return { ok: false, error: KEEP_OWN_CLUB };
+    }
   }
 
   try {
@@ -395,12 +470,9 @@ function buildPayoutLines(
 export async function submitMatchAction(
   matchId: string,
 ): Promise<ActionResult<PayoutLine[]>> {
-  const auth = await requireStaff();
-  if (!auth.ok) return auth;
-
-  const match = await repo.getMatch(matchId);
-  if (!match) return { ok: false, error: NO_MATCH };
-  if (match.status === "submitted") return { ok: false, error: LOCKED };
+  const gate = await requireEditableMatch(matchId);
+  if (!gate.ok) return gate;
+  const { player, match } = gate.data;
 
   if (match.halves.length === 0) {
     return { ok: false, error: "This match has no halves." };
@@ -433,7 +505,7 @@ export async function submitMatchAction(
   const lines = buildPayoutLines(match, rates, allowed);
 
   try {
-    await repo.submitMatch(matchId, seasonId, auth.data.id);
+    await repo.submitMatch(matchId, seasonId, player.id);
   } catch (e) {
     return failed(e, "Failed to submit the match.");
   }
@@ -451,7 +523,7 @@ export async function submitMatchAction(
 export async function reopenMatchAction(matchId: string): Promise<ActionResult> {
   const player = await getCurrentPlayer();
   if (!player) return { ok: false, error: NOT_SIGNED_IN };
-  if (player.role !== "super_admin" && player.role !== "kfandra") {
+  if (!canReopenMatch(player)) {
     return { ok: false, error: NOT_KFANDRA };
   }
 

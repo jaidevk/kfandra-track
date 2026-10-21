@@ -25,7 +25,7 @@ At the top of the KLC League page:
 
 <img class="figure-right" src="images/klc-league/table.png" alt="Table tab (sample data)" />
 
-Pick a table with the chips under the tabs:
+Pick a table with the buttons under the tabs (all five are always visible):
 
 - **All**: every official match, combined (Multi-Game Variations count here only)
 - **Football / Fooba**

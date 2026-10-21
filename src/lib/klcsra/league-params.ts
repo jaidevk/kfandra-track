@@ -50,3 +50,13 @@ export function leagueHref(current: LeagueParams, patch: Partial<LeagueParams>):
   q.set("group", next.group);
   return `/klc/league?${q.toString()}`;
 }
+
+/**
+ * Columns a table-group chip spans in the picker's 6-column grid: rows of 3,
+ * with a short last row split evenly (5 groups → 3 + 2), so every chip is
+ * visible at phone width with no sideways scroll.
+ */
+export function chipSpan(index: number, count: number): number {
+  const lastRowStart = count - (count % 3 || 3);
+  return index >= lastRowStart ? 6 / (count - lastRowStart) : 2;
+}

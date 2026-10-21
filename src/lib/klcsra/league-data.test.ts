@@ -52,3 +52,30 @@ describe("sideClubLabel", () => {
     expect(sideClubLabel(draft(), "away")).toBe("Club C");
   });
 });
+
+describe("review follow-ups", () => {
+  it("toStatRows gives clubName null when the half's side has no club", () => {
+    const d = draft({
+      halves: [{ id: "h1", halfNo: 1, sides: [
+        { id: "s1", side: "home", clubId: null, clubName: null, score: 0 },
+      ] }],
+      appearances: [{ id: "a1", playerId: "p1", displayName: "Jake", side: "home", slot: 1,
+        stats: { 1: { mainGoal: 1 } } }],
+    });
+    expect(toStatRows(d)[0].clubName).toBeNull();
+  });
+
+  it("sideClubLabel keeps two different clubs that share a name", () => {
+    const d = draft({
+      halves: [
+        { id: "h1", halfNo: 1, sides: [{ id: "s1", side: "home", clubId: "X1", clubName: "Same", score: 0 }] },
+        { id: "h2", halfNo: 2, sides: [{ id: "s2", side: "home", clubId: "X2", clubName: "Same", score: 0 }] },
+      ],
+    });
+    expect(sideClubLabel(d, "home")).toBe("Same + Same");
+  });
+
+  it("sideClubLabel returns TBD with no clubs", () => {
+    expect(sideClubLabel(draft({ halves: [] }), "home")).toBe("TBD");
+  });
+});

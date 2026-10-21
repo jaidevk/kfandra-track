@@ -64,12 +64,15 @@ export function toStatRows(d: MatchDraft): StatRow[] {
   return rows;
 }
 
-/** "Club A + Club B": every distinct club that led a side, in half order. */
+/** "Club A + Club B": every distinct club (by id) that led a side, in half order. */
 export function sideClubLabel(d: MatchDraft, side: SideKey): string {
   const names: string[] = [];
+  const seen = new Set<string>();
   for (const h of d.halves) {
-    const name = h.sides.find((s) => s.side === side)?.clubName;
-    if (name && !names.includes(name)) names.push(name);
+    const s = h.sides.find((x) => x.side === side);
+    if (!s?.clubId || !s.clubName || seen.has(s.clubId)) continue;
+    seen.add(s.clubId);
+    names.push(s.clubName);
   }
   return names.length > 0 ? names.join(" + ") : "TBD";
 }

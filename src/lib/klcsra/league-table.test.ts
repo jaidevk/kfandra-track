@@ -115,6 +115,22 @@ describe("buildLeagueTable", () => {
   });
 });
 
+describe("normal vs combined halves and small matches", () => {
+  it("a non-combined match uses half 1 only and ignores a stray half 2", () => {
+    const m = single("football", "A", 1, "B", 0);
+    m.halves.push({ halfNo: 2, home: { clubId: "C", score: 9 }, away: { clubId: "D", score: 0 } });
+    const t = buildLeagueTable([m], "all", CLUBS, R, G);
+    expect(t.map((r) => r.clubId).sort()).toEqual(["A", "B"]);
+    expect(row(t, "A")).toMatchObject({ GF: 1, GA: 0, Pts: 5 });
+  });
+
+  it("fewer than 2 players still counts as played, with 0 points", () => {
+    const t = buildLeagueTable([single("football", "A", 2, "B", 0, 1)], "all", CLUBS, R, G);
+    expect(row(t, "A")).toMatchObject({ P: 1, W: 1, Pts: 0 });
+    expect(row(t, "B")).toMatchObject({ P: 1, L: 1, Pts: 0 });
+  });
+});
+
 describe("helpers", () => {
   it("aggregateScores sums each side over halves", () => {
     const m = single("football", "A", 2, "B", 1);

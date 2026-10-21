@@ -59,12 +59,29 @@ export function clubsOnSide(m: LeagueMatch, side: SideKey): string[] {
   return ids;
 }
 
-export function scoreMatch(m: LeagueMatch, rules: StandingsRules): MatchPoints {
-  const { home, away } = aggregateScores(m);
-  return computeMatchPoints(
-    { sport: m.sport, totalPlayers: m.totalPlayers, homeScore: home, awayScore: away },
+/**
+ * The halves that decide the result. A normal match is one result from
+ * half 1 (design §3.4); only a combined match aggregates over both halves.
+ */
+function resultHalves(m: LeagueMatch): LeagueHalf[] {
+  return m.isCombined ? m.halves : m.halves.filter((h) => h.halfNo === 1);
+}
+
+function resolveMatch(
+  m: LeagueMatch,
+  rules: StandingsRules,
+): { scored: LeagueMatch; agg: { home: number; away: number }; pts: MatchPoints } {
+  const scored: LeagueMatch = { ...m, halves: resultHalves(m) };
+  const agg = aggregateScores(scored);
+  const pts = computeMatchPoints(
+    { sport: m.sport, totalPlayers: m.totalPlayers, homeScore: agg.home, awayScore: agg.away },
     rules,
   );
+  return { scored, agg, pts };
+}
+
+export function scoreMatch(m: LeagueMatch, rules: StandingsRules): MatchPoints {
+  return resolveMatch(m, rules).pts;
 }
 
 function compareRows(a: TableRow, b: TableRow): number {
@@ -72,7 +89,7 @@ function compareRows(a: TableRow, b: TableRow): number {
     b.Pts - a.Pts ||
     b.Diff - a.Diff ||
     b.GF + b.TF - (a.GF + a.TF) ||
-    a.clubName.localeCompare(b.clubName)
+    a.clubName.localeCompare(b.clubName, "en")
   );
 }
 
@@ -98,18 +115,18 @@ export function buildLeagueTable(
   };
 
   for (const m of matches) {
-    if (m.isFriendly || m.halves.length === 0) continue;
+    if (m.isFriendly) continue;
     if (!sportInGroup(m.sport, groupKey, groups)) continue;
 
-    const pts = scoreMatch(m, rules);
-    const agg = aggregateScores(m);
+    const { scored: sm, agg, pts } = resolveMatch(m, rules);
+    if (sm.halves.length === 0) continue;
     const tries = TRY_SPORTS.has(m.sport);
 
     for (const side of ["home", "away"] as const) {
       const scored = side === "home" ? agg.home : agg.away;
       const conceded = side === "home" ? agg.away : agg.home;
       const result = pts.outcome === "draw" ? "D" : pts.outcome === side ? "W" : "L";
-      for (const clubId of clubsOnSide(m, side)) {
+      for (const clubId of clubsOnSide(sm, side)) {
         const r = rowFor(clubId);
         r.P += 1;
         r[result] += 1;

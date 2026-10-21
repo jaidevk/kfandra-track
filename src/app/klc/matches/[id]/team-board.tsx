@@ -47,6 +47,7 @@ export function TeamBoard({
   onAdd,
   onRemove,
   onOpenStats,
+  isStaff,
 }: {
   match: MatchDraft;
   clubs: RecorderClub[];
@@ -62,6 +63,8 @@ export function TeamBoard({
   onAdd: (side: SideKey, playerId: string) => void;
   onRemove: (appearanceId: string) => void;
   onOpenStats: (appearanceId: string) => void;
+  /** Staff can move a club across; a manager cannot move their own club off its slot. */
+  isStaff: boolean;
 }) {
   const half = match.halves.find((h) => h.halfNo === activeHalf) ?? match.halves[0];
 
@@ -184,10 +187,13 @@ export function TeamBoard({
         ))}
       </div>
       {/* A club may lead only one slot per match (clubOnOtherSide), so a
-          one-step swap is refused; say how to do it. */}
+          one-step swap is refused. Staff can do it in two picks; a manager
+          must keep their own club on the match, so they cannot do it at all. */}
       {!locked && (
         <p data-testid="swap-hint" className="text-[11px] text-gray-500">
-          To swap sides, pick a different club first.
+          {isStaff
+            ? "To swap sides, pick a different club first."
+            : "To swap sides, ask KFANDRA or an admin."}
         </p>
       )}
     </section>

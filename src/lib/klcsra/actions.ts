@@ -260,6 +260,13 @@ export async function deleteMatchAction(matchId: string): Promise<ActionResult> 
  * Set the club leading one side of one half. `matchId` is carried alongside
  * `halfId` so the submit lock can be checked — a half id alone does not say
  * which match it belongs to.
+ *
+ * Two match-integrity rules sit on top of the editor gate: a club may lead
+ * only one slot per match (`clubOnOtherSide`), and a non-staff caller must
+ * keep one of their own clubs on it (`keepsManagedClub`). The second applies
+ * to the creator too, so a creator who no longer manages any club can still
+ * edit the draft's other fields (score, squad, stats, header) but cannot
+ * change its clubs.
  */
 export async function setSideClubAction(
   matchId: string,

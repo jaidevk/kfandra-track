@@ -32,6 +32,13 @@ import { StatsDialog } from "./stats-dialog";
 import { SubmitPanel } from "./submit-panel";
 import { TeamBoard, type SlotSummary } from "./team-board";
 
+type MetaPatch = {
+  entryDate?: string;
+  sport?: Sport;
+  durationMinutes?: number | null;
+  isFriendly?: boolean;
+};
+
 /**
  * The KLCSRA match recorder — Phase 3 (Screens 2 to 6).
  *
@@ -55,6 +62,8 @@ export function MatchRecorder({
   allowedStats,
   rates,
   canReopen,
+  canEdit,
+  isStaff,
   activeSeasonName,
   submittedBy,
   rules,
@@ -65,6 +74,9 @@ export function MatchRecorder({
   allowedStats: StatKey[];
   rates: StatRates;
   canReopen: boolean;
+  /** False for a read-only viewer (only ever a submitted match). */
+  canEdit: boolean;
+  isStaff: boolean;
   /** The season a league match would be tagged with today, or null. */
   activeSeasonName: string | null;
   submittedBy: string | null;
@@ -223,13 +235,35 @@ export function MatchRecorder({
 
   // ── handlers ──────────────────────────────────────────────────────────────
 
-  const onMeta = (
-    patch: { entryDate?: string; sport?: Sport; durationMinutes?: number | null; isFriendly?: boolean },
-    immediate: boolean,
-  ) => {
-    autosave("header", "header", () => updateMatchMetaAction(match.id, patch), {
-      delay: immediate ? 0 : 700,
-    });
+  // Every header field shares the one "header" autosave key, so a later call
+  // replaces an earlier one still waiting on its debounce. Without merging, a
+  // Friendly/sport tap (immediate) would drop a date or duration typed just
+  // before it. So pending fields accumulate here, the save that finally fires
+  // sends their union (read at send time), and on failure every contributing
+  // field's rollback runs.
+  const pendingMeta = useRef<MetaPatch>({});
+  const pendingMetaFails = useRef<(() => void)[]>([]);
+  const onMeta = (patch: MetaPatch, immediate: boolean, onFail?: () => void) => {
+    pendingMeta.current = { ...pendingMeta.current, ...patch };
+    if (onFail) pendingMetaFails.current.push(onFail);
+    let sentFails: (() => void)[] = [];
+    autosave(
+      "header",
+      "header",
+      () => {
+        const union = pendingMeta.current;
+        sentFails = pendingMetaFails.current;
+        pendingMeta.current = {};
+        pendingMetaFails.current = [];
+        return updateMatchMetaAction(match.id, union);
+      },
+      {
+        delay: immediate ? 0 : 700,
+        onFail: () => {
+          for (const f of sentFails) f();
+        },
+      },
+    );
   };
 
   /**
@@ -341,6 +375,7 @@ export function MatchRecorder({
           )
         }
         onOpenStats={setOpenAppearanceId}
+        isStaff={isStaff}
       />
 
       <StatsDialog
@@ -372,6 +407,7 @@ export function MatchRecorder({
         locked={locked}
         busy={busy}
         canReopen={canReopen}
+        canEdit={canEdit}
         hasActiveSeason={activeSeasonName !== null}
         seasonName={activeSeasonName}
         submittedBy={submittedBy}

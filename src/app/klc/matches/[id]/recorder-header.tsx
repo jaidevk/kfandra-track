@@ -34,6 +34,8 @@ export function RecorderHeader({
   onMeta: (
     patch: { entryDate?: string; sport?: Sport; durationMinutes?: number | null; isFriendly?: boolean },
     immediate: boolean,
+    /** Called if the save fails, to roll optimistic local state back. */
+    onFail?: () => void,
   ) => void;
 }) {
   // Local state, never re-keyed off the server: this component is the only
@@ -94,8 +96,9 @@ export function RecorderHeader({
                 disabled={locked}
                 onClick={() => {
                   if (s === sport) return;
+                  const prev = sport;
                   setSport(s);
-                  onMeta({ sport: s }, true);
+                  onMeta({ sport: s }, true, () => setSport(prev));
                 }}
                 className={`rounded-xl px-1 py-2 text-[11px] font-bold transition-colors disabled:opacity-50 ${
                   on
@@ -167,7 +170,7 @@ export function RecorderHeader({
             const f = i === 1;
             if (f === friendly) return;
             setFriendly(f);
-            onMeta({ isFriendly: f }, true);
+            onMeta({ isFriendly: f }, true, () => setFriendly(!f));
           }}
         />
         <Segmented

@@ -9,6 +9,7 @@ vi.mock("./repository", () => ({
   createMatch: vi.fn(),
   setSideClub: vi.fn(),
   updateMatchMeta: vi.fn(),
+  deleteMatch: vi.fn(),
   submitMatch: vi.fn(),
   reopenMatch: vi.fn(),
   getActiveSeason: vi.fn(),
@@ -22,6 +23,7 @@ import { getCurrentPlayer, type CurrentPlayer } from "@/lib/auth/current-user";
 import * as repo from "./repository";
 import {
   createMatchAction,
+  deleteMatchAction,
   reopenMatchAction,
   setSideClubAction,
   submitMatchAction,
@@ -137,6 +139,22 @@ describe("setSideClubAction", () => {
     vi.mocked(repo.getMatch).mockResolvedValue(draft({ createdBy: "mgr" }));
     expect(await setSideClubAction("m1", "h1", "home", "C"))
       .toEqual({ ok: false, error: "Keep your own club on this match." });
+    expect(repo.setSideClub).not.toHaveBeenCalled();
+  });
+
+  it("staff replacing a club are exempt from the keep-your-club rule", async () => {
+    signIn(as("admin"));
+    expect(await setSideClubAction("m1", "h1", "home", "C")).toEqual({ ok: true, data: undefined });
+    expect(repo.setSideClub).toHaveBeenCalledWith("h1", "home", "C");
+    expect(repo.listManagedClubIds).not.toHaveBeenCalled();
+  });
+
+  it("a failed managed-clubs lookup is an error, not a refusal or a pass", async () => {
+    signIn(as("user"));
+    vi.mocked(repo.listManagedClubIds).mockRejectedValue(new Error("Failed to load your clubs: db down"));
+    expect(await setSideClubAction("m1", "h1", "away", "C"))
+      .toEqual({ ok: false, error: "Failed to load your clubs: db down" });
+    expect(repo.setSideClub).not.toHaveBeenCalled();
   });
 
   it("a valid change writes the side", async () => {
@@ -172,7 +190,34 @@ describe("reopenMatchAction", () => {
   });
 });
 
+describe("createMatchAction lookup failure", () => {
+  it("a failed managed-clubs lookup is an error, not a refusal or a pass", async () => {
+    signIn(as("user"));
+    vi.mocked(repo.listManagedClubIds).mockRejectedValue(new Error("Failed to load your clubs: db down"));
+    const res = await createMatchAction({ ...newMatch, homeClubId: "A" });
+    expect(res).toEqual({ ok: false, error: "Failed to load your clubs: db down" });
+    expect(repo.createMatch).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteMatchAction", () => {
+  it("an unrelated manager is refused", async () => {
+    signIn(as("user"));
+    manages("Z");
+    expect(await deleteMatchAction("m1")).toEqual({ ok: false, error: NOT_STAFF });
+    expect(repo.deleteMatch).not.toHaveBeenCalled();
+  });
+});
+
 describe("updateMatchMetaAction", () => {
+  it("an unrelated manager is refused", async () => {
+    signIn(as("user"));
+    manages("Z");
+    expect(await updateMatchMetaAction("m1", { isFriendly: true }))
+      .toEqual({ ok: false, error: NOT_STAFF });
+    expect(repo.updateMatchMeta).not.toHaveBeenCalled();
+  });
+
   it("rejects a non-boolean isFriendly", async () => {
     signIn(as("admin"));
     expect(await updateMatchMetaAction("m1", { isFriendly: "yes" as unknown as boolean }))

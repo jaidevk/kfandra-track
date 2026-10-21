@@ -28,6 +28,7 @@ export function SubmitPanel({
   locked,
   busy,
   canReopen,
+  canEdit,
   hasActiveSeason,
   seasonName,
   submittedBy,
@@ -43,6 +44,8 @@ export function SubmitPanel({
   locked: boolean;
   busy: boolean;
   canReopen: boolean;
+  /** False for a read-only viewer of a submitted match: editor-only hints are hidden. */
+  canEdit: boolean;
   hasActiveSeason: boolean;
   seasonName: string | null;
   submittedBy: string | null;
@@ -87,7 +90,8 @@ export function SubmitPanel({
         >
           <p className="text-[12px] font-bold text-green-900">
             Locked — submitted{match.submittedAt ? ` ${fmtStamp(match.submittedAt)}` : ""}.
-            {match.seasonName ? ` Season: ${match.seasonName}.` : ""} Reopen it to make changes.
+            {match.seasonName ? ` Season: ${match.seasonName}.` : ""}
+            {canEdit ? " Reopen it to make changes." : ""}
           </p>
           <p data-testid="audit-line" className="text-[11px] text-green-800">
             Submitted by {submittedBy ?? "—"}
@@ -252,7 +256,7 @@ export function SubmitPanel({
           </Dialog>
         </>
       )}
-      {locked && !canReopen && (
+      {locked && canEdit && !canReopen && (
         <p className="text-[11px] text-gray-600">Only KFANDRA can reopen a match.</p>
       )}
 

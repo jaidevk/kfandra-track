@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { Client } from "pg";
 import * as db from "./helpers/db";
 import { seedPlayer } from "./helpers/auth";
 
@@ -121,6 +122,51 @@ test("child writes on a draft are allowed and bump updated_at", async () => {
       db.sql(`update klc_player_stats set stat_count = 3 where appearance_id = $1`, [appearanceId]),
     ),
   ).toBe(true);
+});
+
+test("concurrent child writes on one draft queue instead of deadlocking", async () => {
+  const { halfId, appearanceId } = await makeMatch("draft");
+  const t1 = new Client({ connectionString: db.DATABASE_URL });
+  const t2 = new Client({ connectionString: db.DATABASE_URL });
+  await t1.connect();
+  await t2.connect();
+  try {
+    // T1: a score autosave, held open.
+    await t1.query("begin");
+    await t1.query(`update klc_match_sides set score = 3 where half_id = $1 and side = 'home'`, [halfId]);
+
+    // T2: a stat autosave on the same match. It must WAIT on T1's parent lock…
+    let t2Done = false;
+    const t2Write = t2
+      .query(`update klc_player_stats set stat_count = 2 where appearance_id = $1`, [appearanceId])
+      .then((r) => { t2Done = true; return r; });
+    await expect
+      .poll(async () => {
+        const rows = await db.sql<{ n: string }>(
+          `select count(*)::text as n from pg_stat_activity
+            where wait_event_type = 'Lock' and query like 'update klc_player_stats%'`,
+        );
+        return rows[0].n;
+      })
+      .toBe("1");
+    expect(t2Done).toBe(false);
+
+    // …and complete, not error, once T1 commits.
+    await t1.query("commit");
+    await expect(t2Write).resolves.toBeTruthy();
+
+    const [row] = await db.sql<{ score: number; stat_count: number }>(
+      `select s.score, p.stat_count
+         from klc_match_sides s, klc_player_stats p
+        where s.half_id = $1 and s.side = 'home' and p.appearance_id = $2`,
+      [halfId, appearanceId],
+    );
+    expect(row).toEqual({ score: 3, stat_count: 2 });
+  } finally {
+    await t1.query("rollback").catch(() => {});
+    await t1.end();
+    await t2.end();
+  }
 });
 
 test("deleting a submitted match still cascades", async () => {

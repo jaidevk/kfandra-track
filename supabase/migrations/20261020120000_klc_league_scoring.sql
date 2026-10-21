@@ -120,9 +120,13 @@ end $$;
 -- On UPDATE both the OLD and the NEW parent are checked: an UPDATE that
 -- changes the FK (e.g. moving a stat row to another match's appearance)
 -- must not slip a row out of, or into, a submitted match.
--- `for share` makes a concurrent submit of the same match wait for this
--- write's transaction (and vice versa), so a child write cannot race a
--- submit past the check.
+-- The status read takes `for no key update` on the parent — the same lock
+-- the AFTER touch trigger's UPDATE takes anyway, just earlier. Overlapping
+-- autosaves on one match (a stat tap and a score change) therefore queue
+-- briefly instead of deadlocking (two FOR SHARE holders each then trying to
+-- UPDATE the parent would abort one with 40P01). A concurrent submit (an
+-- UPDATE of status, a non-key column) still conflicts, so it serialises with
+-- child writes and cannot race past the check.
 create or replace function app.klc_enforce_submit_lock()
 returns trigger language plpgsql
 security definer set search_path = public, pg_temp as $$
@@ -139,7 +143,7 @@ begin
   end if;
   foreach mid in array mids loop
     continue when mid is null;
-    select status into st from public.klc_matches where id = mid for share;
+    select status into st from public.klc_matches where id = mid for no key update;
     if st = 'submitted' then
       raise exception 'match is submitted' using errcode = 'P0001';
     end if;

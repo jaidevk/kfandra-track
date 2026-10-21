@@ -623,7 +623,7 @@ export async function submitMatch(
   submittedBy: string | null,
 ): Promise<void> {
   const admin = createAdminClient();
-  const { error } = await admin
+  const { data, error } = await admin
     .from("klc_matches")
     .update({
       status: "submitted",
@@ -631,8 +631,13 @@ export async function submitMatch(
       submitted_by: submittedBy,
       season_id: seasonId,
     })
-    .eq("id", id);
+    .eq("id", id)
+    // Only a draft flips. Two concurrent submits both pass the action's
+    // status check; this makes the second one update 0 rows.
+    .eq("status", "draft")
+    .select("id");
   if (error) throw new Error(`Failed to submit the match: ${error.message}`);
+  if (!data || data.length === 0) throw new Error("This match is locked. Reopen it first.");
 }
 
 /**

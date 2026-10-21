@@ -21,6 +21,9 @@ vi.mock("./config", () => ({
 
 import { getCurrentPlayer, type CurrentPlayer } from "@/lib/auth/current-user";
 import * as repo from "./repository";
+import { loadSportStats, loadStatRates } from "./config";
+import { DEFAULT_SPORT_STATS } from "./sport-stats";
+import { DEFAULT_STAT_RATES } from "./stat-rates";
 import {
   createMatchAction,
   deleteMatchAction,
@@ -187,6 +190,19 @@ describe("submitMatchAction", () => {
       error: "A club can't be on both sides of one match. Fix the clubs before submitting.",
     });
     expect(repo.submitMatch).not.toHaveBeenCalled();
+  });
+
+  it("a lost submit race surfaces the repository's locked message", async () => {
+    signIn(as("admin"));
+    vi.mocked(repo.getMatch).mockResolvedValue(draft({
+      appearances: [{ id: "ap1", side: "home", slot: 1, playerId: "p1", displayName: "P1", stats: {} }],
+    }));
+    vi.mocked(repo.getActiveSeason).mockResolvedValue({ id: "s2" } as never);
+    vi.mocked(loadStatRates).mockResolvedValue(DEFAULT_STAT_RATES);
+    vi.mocked(loadSportStats).mockResolvedValue(DEFAULT_SPORT_STATS);
+    vi.mocked(repo.submitMatch).mockRejectedValue(new Error(LOCKED));
+    expect(await submitMatchAction("m1")).toEqual({ ok: false, error: LOCKED });
+    expect(repo.submitMatch).toHaveBeenCalledWith("m1", "s2", "admin-id");
   });
 });
 

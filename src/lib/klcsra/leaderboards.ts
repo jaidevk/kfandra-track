@@ -2,8 +2,9 @@
  * Pure. Season leaderboards from per-half stat rows.
  *
  * Only positive totals are listed: these are leader boards. Friendlies are
- * excluded everywhere except MMG (Q8). Kroopies/MMG apply the same per-sport
- * allow-list as the payout compute, so a board never disagrees with a payout.
+ * excluded everywhere except MMG (Q8). Every board applies the same per-sport
+ * allow-list as the payout compute, so a stat hidden by a sport-stats change
+ * counts nowhere and a board never disagrees with a payout.
  */
 import type { StatRow } from "./league-data";
 import { round4 } from "./round";
@@ -23,7 +24,8 @@ interface BoardDef {
   key: BoardKey;
   label: string;
   includeFriendlies: boolean;
-  value: (row: StatRow, rates: StatRates, allowed: Allowed) => number;
+  /** Raw contribution of one row; the allow-list is applied by the caller. */
+  value: (row: StatRow, rates: StatRates) => number;
 }
 
 const tally = (keys: StatKey[]) => (row: StatRow) => (keys.includes(row.statKey) ? row.count : 0);
@@ -41,13 +43,11 @@ export const BOARDS: readonly BoardDef[] = [
   },
   {
     key: "kroopies", label: "Kroopies", includeFriendlies: false,
-    value: (row, rates, allowed) =>
-      allowed(row.sport).has(row.statKey) ? row.count * rates[row.statKey].kr : 0,
+    value: (row, rates) => row.count * rates[row.statKey].kr,
   },
   {
     key: "mmg", label: "MMG", includeFriendlies: true,
-    value: (row, rates, allowed) =>
-      allowed(row.sport).has(row.statKey) ? row.count * rates[row.statKey].mmg : 0,
+    value: (row, rates) => row.count * rates[row.statKey].mmg,
   },
 ];
 
@@ -103,7 +103,8 @@ export function buildLeaderboards(
     const totals = new Map<string, number>();
     for (const r of inGroup) {
       if (r.isFriendly && !def.includeFriendlies) continue;
-      const v = def.value(r, rates, allowed);
+      if (!allowed(r.sport).has(r.statKey)) continue;
+      const v = def.value(r, rates);
       if (v !== 0) totals.set(r.playerId, (totals.get(r.playerId) ?? 0) + v);
     }
 

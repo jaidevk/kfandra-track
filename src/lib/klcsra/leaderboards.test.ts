@@ -110,6 +110,14 @@ describe("buildLeaderboards", () => {
     expect(board([r("a", "try", 1)], "mmg")).toBeUndefined();
   });
 
+  it("count boards apply the sport allow-list too", () => {
+    // football does not allow `try`; a sport-stats change can hide `goal`
+    expect(board([r("a", "try", 1)], "tries")).toBeUndefined();
+    const noGoals = { ...SS, football: SS.football.filter((k) => k !== "goal") };
+    const boards = buildLeaderboards([r("a", "goal", 3)], "all", G, RATES, noGoals);
+    expect(boards.find((b) => b.key === "goals")).toBeUndefined();
+  });
+
   it("leaves off non-positive totals", () => {
     const rows = [r("a", "redCard", 1)];
     expect(board(rows, "kroopies")).toBeUndefined();

@@ -4,8 +4,8 @@ import { getCurrentPlayer } from "@/lib/auth/current-user";
 import { isStaffRole } from "@/lib/auth/roles";
 // The KLCSRA club option carries only the manager's NAME (free text). The KLC
 // club repository already selects `manager_player_id`, so the recorder's
-// "auto-place the manager in slot 1" is joined on from there rather than by
-// adding anything to the (frozen) Phase 2 repository.
+// "auto-place the manager in slot 1" is joined on from there rather than
+// widening the KLCSRA `listClubs` shape for this one consumer.
 import { listClubs as listClubProfiles } from "@/lib/klc/repository";
 import {
   canEditMatch,
@@ -31,8 +31,9 @@ export const dynamic = "force-dynamic";
 
 /**
  * Who locked the match, for the audit line. `getMatch` does not return
- * `submitted_by` and Phase 2's repository is frozen, so it is read here — the
- * only consumer — and only for a match that is actually submitted.
+ * `submitted_by`, so it is read here (the only consumer) and only for a match
+ * that is actually submitted, rather than widening `MatchDraft` for every
+ * caller.
  */
 async function submitterName(matchId: string): Promise<string | null> {
   const admin = createAdminClient();

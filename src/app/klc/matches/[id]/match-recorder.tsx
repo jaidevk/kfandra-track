@@ -42,8 +42,9 @@ type MetaPatch = {
 /**
  * The KLCSRA match recorder — Phase 3 (Screens 2 to 6).
  *
- * Phase 2's server actions are untouched underneath; this is the presentation.
- * Two things shape the whole file:
+ * This is the presentation only: every write goes through the server actions
+ * in `@/lib/klcsra/actions`, which own auth, the submit lock and the club rules
+ * (pair rule, keep-your-own-club). Two things shape the whole file:
  *
  *  1. **Autosave, not Save buttons.** Header fields, scores and stat taps write
  *     on a debounce and report through one `SyncBadge` in the header. Every

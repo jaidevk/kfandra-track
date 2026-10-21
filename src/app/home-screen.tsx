@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { strings } from "@/content/strings";
 import { AnalyticsEvent, capture } from "@/lib/observability/analytics";
 
-export default function HomeScreen({ isStaff }: { isStaff: boolean }) {
+export default function HomeScreen({ isStaff, canRecord }: { isStaff: boolean; canRecord: boolean }) {
   const { brand, home, admin } = strings;
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-blue-600 via-blue-700 to-indigo-900 px-6 py-16">
@@ -228,12 +228,46 @@ export default function HomeScreen({ isStaff }: { isStaff: boolean }) {
           </Link>
         </motion.div>
 
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8, duration: 0.5 }}
+          className="w-full"
+          whileHover={{ y: -3, scale: 1.01 }}
+        >
+          <Link
+            href="/klc/league"
+            data-testid="home-league"
+            onClick={() => capture(AnalyticsEvent.ModeOpened, { mode: "klc_league" })}
+            className="flex items-center gap-3 rounded-2xl border border-white/30 bg-white/20 p-4 text-left backdrop-blur"
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-400/30 border border-amber-300/40">
+              <svg className="h-4 w-4 text-amber-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0" />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-sm font-bold text-white">{home.league.title}</h2>
+              <p className="text-[10.5px] text-blue-100/70 leading-snug">{home.league.subtitle}</p>
+            </div>
+          </Link>
+          {canRecord && (
+            <Link
+              href="/klc/matches"
+              data-testid="home-record-match"
+              className="mt-1.5 block text-right text-[11px] font-semibold text-white/90 hover:underline"
+            >
+              {home.league.record}
+            </Link>
+          )}
+        </motion.div>
+
         {/* Staff-only admin entry */}
         {isStaff && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.9, duration: 0.5 }}
+            transition={{ delay: 1.0, duration: 0.5 }}
           >
             <Link
               href="/admin"

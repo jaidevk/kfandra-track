@@ -67,7 +67,11 @@ function resultHalves(m: LeagueMatch): LeagueHalf[] {
   return m.isCombined ? m.halves : m.halves.filter((h) => h.halfNo === 1);
 }
 
-function resolveMatch(
+/**
+ * The halves that decide the result, their aggregate and the points, from one
+ * place, so a displayed score and its points always agree.
+ */
+export function matchResult(
   m: LeagueMatch,
   rules: StandingsRules,
 ): { scored: LeagueMatch; agg: { home: number; away: number }; pts: MatchPoints } {
@@ -81,7 +85,7 @@ function resolveMatch(
 }
 
 export function scoreMatch(m: LeagueMatch, rules: StandingsRules): MatchPoints {
-  return resolveMatch(m, rules).pts;
+  return matchResult(m, rules).pts;
 }
 
 function compareRows(a: TableRow, b: TableRow): number {
@@ -118,7 +122,7 @@ export function buildLeagueTable(
     if (m.isFriendly) continue;
     if (!sportInGroup(m.sport, groupKey, groups)) continue;
 
-    const { scored: sm, agg, pts } = resolveMatch(m, rules);
+    const { scored: sm, agg, pts } = matchResult(m, rules);
     if (sm.halves.length === 0) continue;
     const tries = TRY_SPORTS.has(m.sport);
 

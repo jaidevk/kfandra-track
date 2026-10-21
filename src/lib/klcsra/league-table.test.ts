@@ -3,6 +3,7 @@ import {
   aggregateScores,
   buildLeagueTable,
   clubsOnSide,
+  matchResult,
   type LeagueMatch,
 } from "./league-table";
 import { DEFAULT_STANDINGS_RULES as R } from "./standings-rules";
@@ -135,6 +136,14 @@ describe("helpers", () => {
   it("aggregateScores sums each side over halves", () => {
     const m = single("football", "A", 2, "B", 1);
     expect(aggregateScores(m)).toEqual({ home: 2, away: 1 });
+  });
+  it("matchResult takes a non-combined match's agg from half 1 only", () => {
+    const m = single("football", "A", 2, "B", 1);
+    m.halves.push({ halfNo: 2, home: { clubId: "A", score: 7 }, away: { clubId: "B", score: 0 } });
+    const r = matchResult(m, R);
+    expect(r.agg).toEqual({ home: 2, away: 1 });
+    expect(r.scored.halves.map((h) => h.halfNo)).toEqual([1]);
+    expect(r.pts.outcome).toBe("home");
   });
   it("clubsOnSide is distinct, in half order", () => {
     const m: LeagueMatch = {

@@ -34,7 +34,7 @@ The rules are settled in the handover spec. This document only decides **how** t
 | `app_config.klcsra_standings_rules` | Replaced with the v2 JSON from handover §3.2, unchanged. |
 | `app_config.klcsra_table_groups` | New: `{ "all": "*", "football_fooba": ["football","fooba"], "rugby_sox": ["rugby"], "rugby_variations": ["rugby_variation"], "short_game_variations": ["short_game_variation"] }`. Key order is display order. |
 | `app_config.klcsra_sport_stats` | Add the 3 new variation keys, each copying the current `variation` list. Remove `variation` if it was dropped. |
-| Submit-lock trigger (Helper-0gr) | `BEFORE INSERT OR UPDATE OR DELETE` on `klc_match_halves`, `klc_match_sides`, `klc_match_appearances` and `klc_player_stats`. It resolves the parent match (directly, or via `half_id` / `appearance_id`) and raises `match is submitted` when `status = 'submitted'`. A cascade from deleting a **draft** match passes, because only drafts can be deleted. |
+| Submit-lock trigger (Helper-0gr) | `BEFORE INSERT OR UPDATE OR DELETE` on `klc_match_halves`, `klc_match_sides`, `klc_match_appearances` and `klc_player_stats`. It resolves the parent match (directly, or via `half_id` / `appearance_id`) and raises `match is submitted` when `status = 'submitted'`. A cascade delete of the match passes (the parent row is already gone when the child triggers fire), which the e2e reset relies on. |
 | Touch-parent trigger (Helper-r01) | `AFTER INSERT OR UPDATE OR DELETE` on the same four tables sets `klc_matches.updated_at = now()` on the parent. It skips the update if the parent row is gone (cascade). |
 
 No RLS policy changes. Public reads go through a server-only repository that hard-filters to submitted rows (§4).

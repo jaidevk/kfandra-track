@@ -51,6 +51,7 @@ async function bumpsUpdatedAt(matchId: string, write: () => Promise<unknown>): P
   const [before] = await db.sql<{ updated_at: string }>(
     `select updated_at::text from klc_matches where id = $1`, [matchId],
   );
+  // Margin only: separate transactions are what guarantee now() advances.
   await db.sql(`select pg_sleep(0.05)`);
   await write();
   const [row] = await db.sql<{ bumped: boolean }>(
@@ -83,6 +84,26 @@ test("child writes on a submitted match are rejected", async () => {
   // INSERT on klc_match_halves (direct match_id).
   await expect(
     db.sql(`insert into klc_match_halves (match_id, half_no) values ($1, 2)`, [matchId]),
+  ).rejects.toThrow(/match is submitted/);
+});
+
+test("an UPDATE that moves a child row across matches checks both parents", async () => {
+  const submitted = await makeMatch("submitted");
+  const draft = await makeMatch("draft");
+  // OLD parent submitted: moving a stat row OUT of a submitted match.
+  // (stat_key changes too, so the move cannot hit the unique key instead.)
+  await expect(
+    db.sql(
+      `update klc_player_stats set appearance_id = $1, stat_key = 'assist' where appearance_id = $2`,
+      [draft.appearanceId, submitted.appearanceId],
+    ),
+  ).rejects.toThrow(/match is submitted/);
+  // NEW parent submitted: moving a stat row INTO a submitted match.
+  await expect(
+    db.sql(
+      `update klc_player_stats set appearance_id = $1, stat_key = 'assist' where appearance_id = $2`,
+      [submitted.appearanceId, draft.appearanceId],
+    ),
   ).rejects.toThrow(/match is submitted/);
 });
 

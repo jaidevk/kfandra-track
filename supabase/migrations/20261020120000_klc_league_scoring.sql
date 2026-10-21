@@ -9,6 +9,22 @@
 --     cannot be written. The server actions check first; this is the backstop
 --     now that non-staff managers can record.
 --  5. Touch parent (Helper-r01): any child write bumps klc_matches.updated_at.
+--
+-- Note: the klcsra_sport_stats upsert below intentionally OVERWRITES any prod
+-- edits to that key (the old per-sport lists do not fit the new six types).
+
+-- ─── 0. prod safety guard ───────────────────────────────────────────────────
+-- Refuse to run if any match still carries a sport outside the new set: the
+-- check constraint below would fail anyway, but this says why.
+do $$
+begin
+  if exists (
+    select 1 from public.klc_matches
+     where sport not in ('football','fooba','rugby','rugby_variation','short_game_variation','multi_game_variation')
+  ) then
+    raise exception 'klc_matches has sport values outside the new set; remap them first (see design Q10)';
+  end if;
+end $$;
 
 -- ─── 1. match types ─────────────────────────────────────────────────────────
 alter table public.klc_matches drop constraint klc_matches_sport_chk;
@@ -78,8 +94,12 @@ insert into public.app_config (key, value, description) values (
 -- is already gone (cascade delete of the match), which both triggers treat
 -- as "nothing to do".
 -- The row arrives as jsonb so one helper serves all four tables.
--- All three functions are SECURITY DEFINER with a pinned search_path so the
--- parent lookup can never be hidden by RLS, whichever client does the write.
+--
+-- The two trigger functions are SECURITY DEFINER with a pinned search_path,
+-- so the parent lookup sees the parent row whatever RLS applies to the role
+-- doing the write. The helper only runs inside them (where the definer's
+-- rights already apply); it is definer too so that stays true if it is ever
+-- called on its own. PUBLIC execute is revoked from all three below.
 create or replace function app.klc_child_match_id(tbl text, r jsonb)
 returns uuid language plpgsql stable
 security definer set search_path = public, pg_temp as $$
@@ -97,42 +117,58 @@ begin
   return null;
 end $$;
 
+-- On UPDATE both the OLD and the NEW parent are checked: an UPDATE that
+-- changes the FK (e.g. moving a stat row to another match's appearance)
+-- must not slip a row out of, or into, a submitted match.
+-- `for share` makes a concurrent submit of the same match wait for this
+-- write's transaction (and vice versa), so a child write cannot race a
+-- submit past the check.
 create or replace function app.klc_enforce_submit_lock()
 returns trigger language plpgsql
 security definer set search_path = public, pg_temp as $$
 declare
-  mid uuid;
-  st  text;
+  mids uuid[] := array[]::uuid[];
+  mid  uuid;
+  st   text;
 begin
-  if tg_op = 'DELETE' then
-    mid := app.klc_child_match_id(tg_table_name, to_jsonb(old));
-  else
-    mid := app.klc_child_match_id(tg_table_name, to_jsonb(new));
+  if tg_op in ('UPDATE', 'DELETE') then
+    mids := mids || app.klc_child_match_id(tg_table_name, to_jsonb(old));
   end if;
-  if mid is not null then
-    select status into st from public.klc_matches where id = mid;
+  if tg_op in ('INSERT', 'UPDATE') then
+    mids := mids || app.klc_child_match_id(tg_table_name, to_jsonb(new));
+  end if;
+  foreach mid in array mids loop
+    continue when mid is null;
+    select status into st from public.klc_matches where id = mid for share;
     if st = 'submitted' then
       raise exception 'match is submitted' using errcode = 'P0001';
     end if;
-  end if;
+  end loop;
   return case when tg_op = 'DELETE' then old else new end;
 end $$;
 
+-- Touches the parent match; on an FK-changing UPDATE, touches both parents.
 create or replace function app.klc_touch_parent_match()
 returns trigger language plpgsql
 security definer set search_path = public, pg_temp as $$
-declare mid uuid;
+declare
+  old_mid uuid;
+  new_mid uuid;
 begin
-  if tg_op = 'DELETE' then
-    mid := app.klc_child_match_id(tg_table_name, to_jsonb(old));
-  else
-    mid := app.klc_child_match_id(tg_table_name, to_jsonb(new));
+  if tg_op in ('UPDATE', 'DELETE') then
+    old_mid := app.klc_child_match_id(tg_table_name, to_jsonb(old));
   end if;
-  if mid is not null then
-    update public.klc_matches set updated_at = now() where id = mid;
+  if tg_op in ('INSERT', 'UPDATE') then
+    new_mid := app.klc_child_match_id(tg_table_name, to_jsonb(new));
   end if;
+  update public.klc_matches set updated_at = now()
+   where id in (old_mid, new_mid);
   return null;
 end $$;
+
+revoke execute on function app.klc_child_match_id(text, jsonb) from public;
+revoke execute on function app.klc_enforce_submit_lock() from public;
+revoke execute on function app.klc_touch_parent_match() from public;
 
 do $$
 declare t text;

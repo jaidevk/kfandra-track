@@ -40,12 +40,19 @@ const LEAGUE_SQL = readFileSync(
   "utf8",
 );
 /** The migration that owns each key's CURRENT value. */
-const SQL_FOR: Record<string, string> = {
+const KEYS = [
+  "klcsra_stat_rates",
+  "klcsra_sport_stats",
+  "klcsra_standings_rules",
+  "klcsra_table_groups",
+] as const;
+type SeededKey = (typeof KEYS)[number];
+const SQL_FOR = {
   klcsra_stat_rates: CORE_SQL,
   klcsra_sport_stats: LEAGUE_SQL,
   klcsra_standings_rules: LEAGUE_SQL,
   klcsra_table_groups: LEAGUE_SQL,
-};
+} satisfies Record<SeededKey, string>;
 
 const INSERT = "insert into public.app_config";
 
@@ -54,7 +61,7 @@ const INSERT = "insert into public.app_config";
  * `insert into public.app_config` statement that mentions the key, then take
  * the text between the first `'{` and the matching `}'` before `::jsonb`.
  */
-function extractSeededJsonLiteral(key: string): string {
+function extractSeededJsonLiteral(key: SeededKey): string {
   const statements = SQL_FOR[key].split(INSERT).slice(1);
   const statement = statements.find((s) => s.includes(`'${key}'`));
   if (statement === undefined) {
@@ -72,7 +79,7 @@ function extractSeededJsonLiteral(key: string): string {
   return statement.slice(start + 1, end + 1);
 }
 
-function seededValue(key: string): unknown {
+function seededValue(key: SeededKey): unknown {
   const literal = extractSeededJsonLiteral(key);
   expect(literal.startsWith("{"), `seed for '${key}' should start with {`).toBe(true);
   expect(literal.endsWith("}"), `seed for '${key}' should end with }`).toBe(true);
@@ -83,12 +90,7 @@ describe("migration seeds match TypeScript defaults", () => {
   it("finds all four seeded rule sets in the migrations", () => {
     // Guards against the extraction silently yielding nothing, which would
     // make every assertion below vacuous.
-    for (const key of [
-      "klcsra_stat_rates",
-      "klcsra_sport_stats",
-      "klcsra_standings_rules",
-      "klcsra_table_groups",
-    ]) {
+    for (const key of KEYS) {
       const value = seededValue(key);
       expect(typeof value, `${key} should parse to an object`).toBe("object");
       expect(value).not.toBeNull();

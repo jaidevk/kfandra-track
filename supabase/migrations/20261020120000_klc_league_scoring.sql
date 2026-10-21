@@ -5,6 +5,8 @@
 --  2. klc_matches.created_by: who started the draft (club managers may edit
 --     drafts they created).
 --  3. app_config: standings rules v2, table groups, sport stats for new types.
+--     Table groups are an ordered ARRAY of {key, sports}: jsonb re-sorts
+--     object keys (length, then bytes), so object key order cannot be display order.
 --  4. Submit lock in the DB (Helper-0gr): child rows of a submitted match
 --     cannot be written. The server actions check first; this is the backstop
 --     now that non-staff managers can record.
@@ -66,14 +68,14 @@ insert into public.app_config (key, value, description) values (
 
 insert into public.app_config (key, value, description) values (
   'klcsra_table_groups',
-  '{
-    "all": "*",
-    "football_fooba": ["football","fooba"],
-    "rugby_sox": ["rugby"],
-    "rugby_variations": ["rugby_variation"],
-    "short_game_variations": ["short_game_variation"]
-  }'::jsonb,
-  'KLC league tables: group key -> match types ("*" = all). Key order is display order. multi_game_variation is in All only.'
+  '[
+    {"key": "all",                   "sports": "*"},
+    {"key": "football_fooba",        "sports": ["football","fooba"]},
+    {"key": "rugby_sox",             "sports": ["rugby"]},
+    {"key": "rugby_variations",      "sports": ["rugby_variation"]},
+    {"key": "short_game_variations", "sports": ["short_game_variation"]}
+  ]'::jsonb,
+  'KLC league tables: ordered array of {key, sports} ("*" = all match types). Array order is display order (an array because jsonb does not keep object key order). multi_game_variation is in All only.'
 ) on conflict (key) do update set value = excluded.value, description = excluded.description;
 
 insert into public.app_config (key, value, description) values (

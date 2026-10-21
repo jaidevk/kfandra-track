@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 import { DEFAULT_STAT_RATES, STAT_KEYS } from "./stat-rates";
 import { DEFAULT_SPORT_STATS, SPORTS } from "./sport-stats";
 import { DEFAULT_STANDINGS_RULES } from "./standings-rules";
-import { DEFAULT_TABLE_GROUPS } from "./table-groups";
+import { DEFAULT_TABLE_GROUPS, parseTableGroups } from "./table-groups";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // src/lib/klcsra -> repo root
@@ -54,12 +54,24 @@ const SQL_FOR = {
   klcsra_table_groups: LEAGUE_SQL,
 } satisfies Record<SeededKey, string>;
 
+/**
+ * The JSON shape each key is seeded as. Table groups are an ordered ARRAY,
+ * because jsonb does not keep object key order.
+ */
+const SHAPE = {
+  klcsra_stat_rates: "object",
+  klcsra_sport_stats: "object",
+  klcsra_standings_rules: "object",
+  klcsra_table_groups: "array",
+} satisfies Record<SeededKey, "object" | "array">;
+
 const INSERT = "insert into public.app_config";
 
 /**
  * Pull the seeded JSON literal for `key` out of the migration: find the
  * `insert into public.app_config` statement that mentions the key, then take
- * the text between the first `'{` and the matching `}'` before `::jsonb`.
+ * the text between the first `'{` (or `'[` for an array seed) and the
+ * matching `}'` (or `]'`) before `::jsonb`.
  */
 function extractSeededJsonLiteral(key: SeededKey): string {
   const statements = SQL_FOR[key].split(INSERT).slice(1);
@@ -67,22 +79,24 @@ function extractSeededJsonLiteral(key: SeededKey): string {
   if (statement === undefined) {
     throw new Error(`no "${INSERT}" statement seeds key '${key}'`);
   }
-  const start = statement.indexOf("'{");
+  const [open, close] = SHAPE[key] === "array" ? ["[", "]"] : ["{", "}"];
+  const start = statement.indexOf(`'${open}`);
   if (start === -1) {
-    throw new Error(`seed for '${key}' has no opening '{`);
+    throw new Error(`seed for '${key}' has no opening '${open}`);
   }
-  const end = statement.indexOf("}'::jsonb", start);
+  const end = statement.indexOf(`${close}'::jsonb`, start);
   if (end === -1) {
-    throw new Error(`seed for '${key}' has no closing }'::jsonb`);
+    throw new Error(`seed for '${key}' has no closing ${close}'::jsonb`);
   }
-  // start + 1 skips the opening quote; end + 1 keeps the closing brace.
+  // start + 1 skips the opening quote; end + 1 keeps the closing bracket.
   return statement.slice(start + 1, end + 1);
 }
 
 function seededValue(key: SeededKey): unknown {
   const literal = extractSeededJsonLiteral(key);
-  expect(literal.startsWith("{"), `seed for '${key}' should start with {`).toBe(true);
-  expect(literal.endsWith("}"), `seed for '${key}' should end with }`).toBe(true);
+  const [open, close] = SHAPE[key] === "array" ? ["[", "]"] : ["{", "}"];
+  expect(literal.startsWith(open), `seed for '${key}' should start with ${open}`).toBe(true);
+  expect(literal.endsWith(close), `seed for '${key}' should end with ${close}`).toBe(true);
   return JSON.parse(literal);
 }
 
@@ -132,9 +146,13 @@ describe("migration seeds match TypeScript defaults", () => {
     expect(seededValue("klcsra_standings_rules")).toEqual(DEFAULT_STANDINGS_RULES);
   });
 
-  it("klcsra_table_groups deep-equals DEFAULT_TABLE_GROUPS, in order", () => {
-    const seeded = seededValue("klcsra_table_groups") as Record<string, unknown>;
-    expect(seeded).toEqual(DEFAULT_TABLE_GROUPS);
-    expect(Object.keys(seeded)).toEqual(Object.keys(DEFAULT_TABLE_GROUPS));
+  it("klcsra_table_groups is seeded as an array that parses to DEFAULT_TABLE_GROUPS, in order", () => {
+    const raw = seededValue("klcsra_table_groups");
+    expect(Array.isArray(raw)).toBe(true);
+    // Every entry must survive parsing; a dropped one would fall back silently.
+    expect((raw as unknown[]).length).toBe(Object.keys(DEFAULT_TABLE_GROUPS).length);
+    const parsed = parseTableGroups(raw);
+    expect(parsed).toEqual(DEFAULT_TABLE_GROUPS);
+    expect(Object.keys(parsed)).toEqual(Object.keys(DEFAULT_TABLE_GROUPS));
   });
 });

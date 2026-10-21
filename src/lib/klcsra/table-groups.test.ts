@@ -39,32 +39,61 @@ describe("groupScoreKinds", () => {
   });
 });
 
+/** The stored (array) form of a record. */
+const toStored = (g: Record<string, unknown>) =>
+  Object.entries(g).map(([key, sports]) => ({ key, sports }));
+
 describe("parseTableGroups", () => {
-  it("round-trips the defaults", () => {
-    expect(parseTableGroups(JSON.parse(JSON.stringify(G)))).toEqual(G);
+  it("round-trips the defaults from the stored array form, in order", () => {
+    const r = parseTableGroups(JSON.parse(JSON.stringify(toStored(G))));
+    expect(r).toEqual(G);
+    expect(Object.keys(r)).toEqual(Object.keys(G));
   });
 
-  it("falls back for garbage and for an object with no usable groups", () => {
+  it("preserves array order even when it is not the default order", () => {
+    const r = parseTableGroups([
+      { key: "short_game_variations", sports: ["short_game_variation"] },
+      { key: "all", sports: "*" },
+      { key: "rugby_sox", sports: ["rugby"] },
+    ]);
+    expect(Object.keys(r)).toEqual(["short_game_variations", "all", "rugby_sox"]);
+  });
+
+  it("falls back for garbage, for the old object form, and for no usable groups", () => {
     expect(parseTableGroups(null)).toEqual(G);
-    expect(parseTableGroups({ x: ["hockey"] })).toEqual(G);
+    expect(parseTableGroups("all")).toEqual(G);
+    expect(parseTableGroups({ all: "*", rugby_sox: ["rugby"] })).toEqual(G);
+    expect(parseTableGroups([])).toEqual(G);
+    expect(parseTableGroups([{ key: "x", sports: ["hockey"] }])).toEqual(G);
   });
 
-  it("drops unknown sports and keeps order", () => {
-    expect(parseTableGroups({ all: "*", mixed: ["fooba", "hockey"] })).toEqual({
-      all: "*",
-      mixed: ["fooba"],
-    });
+  it("drops invalid entries", () => {
+    expect(parseTableGroups([
+      null, "all", ["all", "*"], { sports: "*" }, { key: "", sports: "*" },
+      { key: 7, sports: "*" }, { key: "nosports" }, { key: "bad", sports: "rugby" },
+      { key: "all", sports: "*" },
+    ])).toEqual({ all: "*" });
   });
 
-  it("drops an empty group and de-duplicates sports", () => {
-    expect(parseTableGroups({ all: "*", empty: [], dup: ["fooba", "fooba"] })).toEqual({
-      all: "*",
-      dup: ["fooba"],
-    });
+  it("keeps the first of duplicate keys", () => {
+    expect(parseTableGroups([
+      { key: "all", sports: "*" },
+      { key: "g", sports: ["fooba"] },
+      { key: "g", sports: ["rugby"] },
+    ])).toEqual({ all: "*", g: ["fooba"] });
+  });
+
+  it("drops unknown sports, empty groups and duplicate sports", () => {
+    expect(parseTableGroups([
+      { key: "all", sports: "*" },
+      { key: "mixed", sports: ["fooba", "hockey"] },
+      { key: "empty", sports: [] },
+      { key: "dup", sports: ["rugby", "rugby"] },
+    ])).toEqual({ all: "*", mixed: ["fooba"], dup: ["rugby"] });
   });
 
   it("ignores a __proto__ key", () => {
-    const r = parseTableGroups(JSON.parse('{"__proto__": ["fooba"], "all": "*"}'));
+    const r = parseTableGroups(JSON.parse('[{"key":"__proto__","sports":["fooba"]},{"key":"all","sports":"*"}]'));
     expect(r).toEqual({ all: "*" });
     expect(Object.getPrototypeOf(r)).toBe(Object.prototype);
   });

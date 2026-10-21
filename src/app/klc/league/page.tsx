@@ -64,7 +64,9 @@ export default async function LeaguePage({
   }
 
   return (
-    <div className="mx-auto flex max-w-md flex-col gap-4 p-5 pb-24">
+    // w-full: body is a flex column and mx-auto disables stretch, so without it
+    // this column shrink-wraps to the table's min-content and overflows 375px.
+    <div className="mx-auto flex w-full max-w-md flex-col gap-4 p-5 pb-24">
       <Breadcrumb label={league.breadcrumb} />
       <div className="flex items-end justify-between gap-2">
         <h1 className="font-[family-name:var(--font-display)] text-2xl font-black tracking-tight text-gray-900">

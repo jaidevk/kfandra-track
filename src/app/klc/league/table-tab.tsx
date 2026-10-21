@@ -26,7 +26,10 @@ export function TableTab({ rows, kinds }: { rows: TableRow[]; kinds: { goals: bo
             {rows.map((r, i) => (
               <tr key={r.clubId} data-testid="table-row" data-club-id={r.clubId}>
                 <td className="py-2 pl-3 pr-1 text-gray-500">{i + 1}</td>
-                <td className="max-w-[110px] truncate py-2 pr-2 font-semibold text-gray-900">{r.clubName}</td>
+                <td className="py-2 pr-2 font-semibold text-gray-900">
+                  {/* max-width is ignored on a <td>; a block inside truncates. */}
+                  <div className="max-w-[110px] truncate" title={r.clubName}>{r.clubName}</div>
+                </td>
               </tr>
             ))}
           </tbody>

@@ -8,11 +8,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { clubOnBothSlots } from "@/lib/klcsra/access";
+import { leaguePointsLine } from "@/lib/klcsra/points-preview";
+import type { StandingsRules } from "@/lib/klcsra/standings-rules";
 import type { MatchDraft, PayoutLine } from "@/lib/klcsra/types";
 import { ErrorNote, fmtStamp, signed } from "./recorder-shared";
 
 /**
- * Screen 6 — pre-submit checks, the totals preview, and the lock.
+ * Screen 6 — pre-submit checks, the league points and totals previews, and the lock.
  *
  * The checks are ADVISORY: `submit-match` stays enabled whatever they say, so
  * the refusal KFANDRA reads is always the action's own wording ("No active
@@ -27,9 +30,11 @@ export function SubmitPanel({
   locked,
   busy,
   canReopen,
+  canEdit,
   hasActiveSeason,
   seasonName,
   submittedBy,
+  rules,
   submitError,
   reopenError,
   deleteError,
@@ -42,9 +47,13 @@ export function SubmitPanel({
   locked: boolean;
   busy: boolean;
   canReopen: boolean;
+  /** False for a read-only viewer of a submitted match: editor-only hints are hidden. */
+  canEdit: boolean;
   hasActiveSeason: boolean;
   seasonName: string | null;
   submittedBy: string | null;
+  /** League points rules, for the points preview. */
+  rules: StandingsRules;
   submitError: string | null;
   reopenError: string | null;
   deleteError: string | null;
@@ -66,6 +75,14 @@ export function SubmitPanel({
     },
     { ok: match.appearances.length > 0, label: "At least one player added" },
   ];
+  // The pair rule (submit refuses it too): only shown when it fails, since a
+  // single-half match can't break it.
+  const twoSided = clubOnBothSlots(match.halves);
+  if (twoSided !== null) {
+    const name =
+      match.halves.flatMap((h) => h.sides).find((s) => s.clubId === twoSided)?.clubName ?? "A club";
+    checks.push({ ok: false, label: `${name} is on both sides of this match` });
+  }
   if (!match.isFriendly) {
     checks.push({
       ok: hasActiveSeason,
@@ -74,6 +91,7 @@ export function SubmitPanel({
         : "No active season. Start one in Seasons first.",
     });
   }
+  const points = leaguePointsLine(match, rules);
 
   return (
     <section className="space-y-3">
@@ -84,7 +102,8 @@ export function SubmitPanel({
         >
           <p className="text-[12px] font-bold text-green-900">
             Locked — submitted{match.submittedAt ? ` ${fmtStamp(match.submittedAt)}` : ""}.
-            {match.seasonName ? ` Season: ${match.seasonName}.` : ""} Reopen it to make changes.
+            {match.seasonName ? ` Season: ${match.seasonName}.` : ""}
+            {canEdit ? " Reopen it to make changes." : ""}
           </p>
           <p data-testid="audit-line" className="text-[11px] text-green-800">
             Submitted by {submittedBy ?? "—"}
@@ -116,6 +135,19 @@ export function SubmitPanel({
           ))}
         </div>
       )}
+
+      <div data-testid="league-points" className="space-y-1 rounded-2xl border border-gray-200 bg-white p-4">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-gray-600">League points</p>
+        {points.kind === "friendly" ? (
+          <p className="text-[12px] text-gray-600">Friendly — no league points.</p>
+        ) : points.kind === "incomplete" ? (
+          <p className="text-[12px] text-gray-500">Pick both clubs to see the points.</p>
+        ) : (
+          <p data-testid="league-points-line" className="text-[12px] font-semibold tabular-nums text-gray-900">
+            {points.text}
+          </p>
+        )}
+      </div>
 
       <div className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4">
         <p className="text-[10px] font-bold uppercase tracking-wide text-gray-600">
@@ -249,7 +281,7 @@ export function SubmitPanel({
           </Dialog>
         </>
       )}
-      {locked && !canReopen && (
+      {locked && canEdit && !canReopen && (
         <p className="text-[11px] text-gray-600">Only KFANDRA can reopen a match.</p>
       )}
 

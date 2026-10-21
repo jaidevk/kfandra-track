@@ -18,6 +18,7 @@ import type { Sport } from "@/lib/klcsra/sport-stats";
 // Straight from the pure modules, never via config.ts — that would pull
 // `server-only` into the client bundle and fail the build.
 import type { StatKey, StatRates } from "@/lib/klcsra/stat-rates";
+import type { StandingsRules } from "@/lib/klcsra/standings-rules";
 import type {
   HalfDraft,
   MatchDraft,
@@ -31,11 +32,19 @@ import { StatsDialog } from "./stats-dialog";
 import { SubmitPanel } from "./submit-panel";
 import { TeamBoard, type SlotSummary } from "./team-board";
 
+type MetaPatch = {
+  entryDate?: string;
+  sport?: Sport;
+  durationMinutes?: number | null;
+  isFriendly?: boolean;
+};
+
 /**
  * The KLCSRA match recorder — Phase 3 (Screens 2 to 6).
  *
- * Phase 2's server actions are untouched underneath; this is the presentation.
- * Two things shape the whole file:
+ * This is the presentation only: every write goes through the server actions
+ * in `@/lib/klcsra/actions`, which own auth, the submit lock and the club rules
+ * (pair rule, keep-your-own-club). Two things shape the whole file:
  *
  *  1. **Autosave, not Save buttons.** Header fields, scores and stat taps write
  *     on a debounce and report through one `SyncBadge` in the header. Every
@@ -54,8 +63,12 @@ export function MatchRecorder({
   allowedStats,
   rates,
   canReopen,
+  canEdit,
+  isStaff,
+  managedClubIds,
   activeSeasonName,
   submittedBy,
+  rules,
 }: {
   match: MatchDraft;
   clubs: RecorderClub[];
@@ -63,9 +76,15 @@ export function MatchRecorder({
   allowedStats: StatKey[];
   rates: StatRates;
   canReopen: boolean;
+  /** False for a read-only viewer (only ever a submitted match). */
+  canEdit: boolean;
+  isStaff: boolean;
+  /** Clubs the viewer manages; the club picker greys out what the server would refuse. */
+  managedClubIds: string[];
   /** The season a league match would be tagged with today, or null. */
   activeSeasonName: string | null;
   submittedBy: string | null;
+  rules: StandingsRules;
 }) {
   const router = useRouter();
   const [working, setWorking] = useState(false);
@@ -220,13 +239,35 @@ export function MatchRecorder({
 
   // ── handlers ──────────────────────────────────────────────────────────────
 
-  const onMeta = (
-    patch: { entryDate?: string; sport?: Sport; durationMinutes?: number | null },
-    immediate: boolean,
-  ) => {
-    autosave("header", "header", () => updateMatchMetaAction(match.id, patch), {
-      delay: immediate ? 0 : 700,
-    });
+  // Every header field shares the one "header" autosave key, so a later call
+  // replaces an earlier one still waiting on its debounce. Without merging, a
+  // Friendly/sport tap (immediate) would drop a date or duration typed just
+  // before it. So pending fields accumulate here, the save that finally fires
+  // sends their union (read at send time), and on failure every contributing
+  // field's rollback runs.
+  const pendingMeta = useRef<MetaPatch>({});
+  const pendingMetaFails = useRef<(() => void)[]>([]);
+  const onMeta = (patch: MetaPatch, immediate: boolean, onFail?: () => void) => {
+    pendingMeta.current = { ...pendingMeta.current, ...patch };
+    if (onFail) pendingMetaFails.current.push(onFail);
+    let sentFails: (() => void)[] = [];
+    autosave(
+      "header",
+      "header",
+      () => {
+        const union = pendingMeta.current;
+        sentFails = pendingMetaFails.current;
+        pendingMeta.current = {};
+        pendingMetaFails.current = [];
+        return updateMatchMetaAction(match.id, union);
+      },
+      {
+        delay: immediate ? 0 : 700,
+        onFail: () => {
+          for (const f of sentFails) f();
+        },
+      },
+    );
   };
 
   /**
@@ -253,19 +294,6 @@ export function MatchRecorder({
       `half-${half.halfNo}`,
       () => setSideScoreAction(match.id, half.id, side, score),
     );
-  };
-
-  const onSwapClubs = async () => {
-    const h1 = match.halves.find((h) => h.halfNo === 1);
-    const h2 = match.halves.find((h) => h.halfNo === 2);
-    if (!h1 || !h2) return;
-    const homeClub = h1.sides.find((s) => s.side === "home")?.clubId;
-    const awayClub = h1.sides.find((s) => s.side === "away")?.clubId;
-    if (!homeClub || !awayClub) return;
-    // Half 2 has no sides yet, so home-then-away can never collide with the
-    // "already on the other side of this half" constraint.
-    const ok = await run("half-2", () => setSideClubAction(match.id, h2.id, "home", awayClub));
-    if (ok) await run("half-2", () => setSideClubAction(match.id, h2.id, "away", homeClub));
   };
 
   const onSetStat = (appearanceId: string, halfNo: number, statKey: StatKey, count: number) => {
@@ -351,7 +379,8 @@ export function MatchRecorder({
           )
         }
         onOpenStats={setOpenAppearanceId}
-        onSwapClubs={onSwapClubs}
+        isStaff={isStaff}
+        managedClubIds={managedClubIds}
       />
 
       <StatsDialog
@@ -383,9 +412,11 @@ export function MatchRecorder({
         locked={locked}
         busy={busy}
         canReopen={canReopen}
+        canEdit={canEdit}
         hasActiveSeason={activeSeasonName !== null}
         seasonName={activeSeasonName}
         submittedBy={submittedBy}
+        rules={rules}
         submitError={err("submit")}
         reopenError={err("reopen")}
         deleteError={err("delete")}
@@ -394,7 +425,7 @@ export function MatchRecorder({
         onDelete={async () => {
           if (!confirm("Delete this draft match?")) return;
           const ok = await run("delete", () => deleteMatchAction(match.id));
-          if (ok) router.push("/admin/klc/matches");
+          if (ok) router.push("/klc/matches");
         }}
       />
     </div>

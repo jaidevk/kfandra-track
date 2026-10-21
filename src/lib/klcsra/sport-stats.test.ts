@@ -3,6 +3,7 @@ import {
   DEFAULT_SPORT_STATS,
   SPORTS,
   SPORT_LABELS,
+  TRY_SPORTS,
   parseSportStats,
   statsForSport,
   type Sport,
@@ -10,15 +11,20 @@ import {
 import { STAT_KEYS } from "./stat-rates";
 
 describe("DEFAULT_SPORT_STATS", () => {
-  it("covers all four sports", () => {
-    expect(SPORTS).toEqual(["football", "rugby", "fooba", "variation"]);
+  it("covers the six match types", () => {
+    expect(SPORTS).toEqual([
+      "football", "fooba", "rugby",
+      "rugby_variation", "short_game_variation", "multi_game_variation",
+    ]);
   });
 
   it("matches the spec allow-lists", () => {
     expect(DEFAULT_SPORT_STATS.football).toHaveLength(11);
     expect(DEFAULT_SPORT_STATS.rugby).toHaveLength(8);
     expect(DEFAULT_SPORT_STATS.fooba).toHaveLength(13);
-    expect(DEFAULT_SPORT_STATS.variation).toHaveLength(16);
+    expect(DEFAULT_SPORT_STATS.rugby_variation).toHaveLength(16);
+    expect(DEFAULT_SPORT_STATS.short_game_variation).toHaveLength(16);
+    expect(DEFAULT_SPORT_STATS.multi_game_variation).toHaveLength(16);
   });
 
   it("football has goal+save but no try/tackle/fooba stats", () => {
@@ -43,8 +49,10 @@ describe("DEFAULT_SPORT_STATS", () => {
     expect(DEFAULT_SPORT_STATS.fooba).not.toContain("goal");
   });
 
-  it("variation allows every known stat", () => {
-    expect([...DEFAULT_SPORT_STATS.variation].sort()).toEqual([...STAT_KEYS].sort());
+  it("every variation type allows every known stat", () => {
+    for (const s of ["rugby_variation", "short_game_variation", "multi_game_variation"] as const) {
+      expect([...DEFAULT_SPORT_STATS[s]].sort()).toEqual([...STAT_KEYS].sort());
+    }
   });
 });
 
@@ -94,6 +102,8 @@ describe("SPORT_LABELS", () => {
       expect(SPORT_LABELS[sport]).toBeTruthy();
     }
     expect(SPORT_LABELS.fooba).toBe("Fooba");
+    expect(SPORT_LABELS.rugby).toBe("Rugby Sox");
+    expect(SPORT_LABELS.short_game_variation).toBe("Short Game Variation");
   });
 });
 
@@ -126,6 +136,12 @@ describe("statsForSport", () => {
     // CHECK before the union catches up must not throw, and must not silently
     // exclude stats (which would zero a payout).
     expect(() => statsForSport("hockey" as Sport)).not.toThrow();
-    expect(statsForSport("hockey" as Sport)).toEqual(statsForSport("variation"));
+    expect(statsForSport("hockey" as Sport)).toEqual([...STAT_KEYS]);
+  });
+});
+
+describe("TRY_SPORTS", () => {
+  it("is exactly the two rugby types", () => {
+    expect([...TRY_SPORTS].sort()).toEqual(["rugby", "rugby_variation"]);
   });
 });

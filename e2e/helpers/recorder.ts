@@ -83,7 +83,7 @@ export interface NewMatch {
   friendly?: boolean;
 }
 
-const MATCH_URL = /\/admin\/klc\/matches\/[0-9a-f-]{36}$/;
+const MATCH_URL = /\/klc\/matches\/[0-9a-f-]{36}$/;
 
 /**
  * Create a match from the list page and land on its detail page.
@@ -96,7 +96,7 @@ const MATCH_URL = /\/admin\/klc\/matches\/[0-9a-f-]{36}$/;
  * @returns the new match id (taken from the URL it navigated to).
  */
 export async function createMatch(page: Page, match: NewMatch): Promise<string> {
-  await page.goto("/admin/klc/matches");
+  await page.goto("/klc/matches");
   await expect(page.getByTestId("new-match-form")).toHaveAttribute("data-hydrated", "true");
   const date = page.getByTestId("new-match-date");
   const sport = page.getByTestId("new-match-sport");
@@ -120,7 +120,7 @@ export function matchRow(page: Page, matchId: string): Locator {
 }
 
 export async function openMatch(page: Page, matchId: string): Promise<void> {
-  await page.goto(`/admin/klc/matches/${matchId}`);
+  await page.goto(`/klc/matches/${matchId}`);
   await expect(page.getByTestId("match-header")).toBeVisible();
 }
 

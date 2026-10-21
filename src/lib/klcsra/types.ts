@@ -49,6 +49,8 @@ export interface MatchDraft {
   durationMinutes: number | null;
   status: MatchStatus; submittedAt: string | null;
   seasonId: string | null; seasonName: string | null;
+  /** Who created the draft; null for matches created before 2026-10-20. */
+  createdBy: string | null;
   halves: HalfDraft[];
   appearances: AppearanceDraft[];
 }
@@ -57,6 +59,9 @@ export interface MatchSummary {
   id: string; entryDate: string; sport: Sport;
   isFriendly: boolean; isCombined: boolean;
   status: MatchStatus; seasonName: string | null;
+  createdBy: string | null;
+  /** Every club on any side of any half. */
+  clubIds: string[];
   homeLabel: string; awayLabel: string; scoreLine: string;
 }
 

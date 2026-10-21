@@ -1,0 +1,192 @@
+-- KLC League Scoring (design: docs/superpowers/specs/2026-10-20-klc-league-scoring-design.md)
+--
+--  1. Six match types replace football|rugby|fooba|variation. Prod had no
+--     `variation` rows when this was written (checked 2026-10-20).
+--  2. klc_matches.created_by: who started the draft (club managers may edit
+--     drafts they created).
+--  3. app_config: standings rules v2, table groups, sport stats for new types.
+--     Table groups are an ordered ARRAY of {key, sports}: jsonb re-sorts
+--     object keys (length, then bytes), so object key order cannot be display order.
+--  4. Submit lock in the DB (Helper-0gr): child rows of a submitted match
+--     cannot be written. The server actions check first; this is the backstop
+--     now that non-staff managers can record.
+--  5. Touch parent (Helper-r01): any child write bumps klc_matches.updated_at.
+--
+-- Note: the klcsra_sport_stats upsert below intentionally OVERWRITES any prod
+-- edits to that key (the old per-sport lists do not fit the new six types).
+
+-- ─── 0. prod safety guard ───────────────────────────────────────────────────
+-- Refuse to run if any match still carries a sport outside the new set: the
+-- check constraint below would fail anyway, but this says why.
+do $$
+begin
+  if exists (
+    select 1 from public.klc_matches
+     where sport not in ('football','fooba','rugby','rugby_variation','short_game_variation','multi_game_variation')
+  ) then
+    raise exception 'klc_matches has sport values outside the new set; remap them first (see design Q10)';
+  end if;
+end $$;
+
+-- ─── 1. match types ─────────────────────────────────────────────────────────
+alter table public.klc_matches drop constraint klc_matches_sport_chk;
+alter table public.klc_matches add constraint klc_matches_sport_chk check (sport in (
+  'football','fooba','rugby','rugby_variation','short_game_variation','multi_game_variation'
+));
+
+-- ─── 2. created_by ──────────────────────────────────────────────────────────
+alter table public.klc_matches
+  add column created_by uuid references public.players(id) on delete set null;
+create index klc_matches_created_by_idx on public.klc_matches (created_by);
+comment on column public.klc_matches.created_by is
+  'Player who created the draft. Null for matches created before 2026-10-20.';
+
+-- ─── 3. app_config ──────────────────────────────────────────────────────────
+insert into public.app_config (key, value, description) values (
+  'klcsra_standings_rules',
+  '{
+    "version": 2,
+    "playerCount": "total",
+    "tiers": [
+      {"key": "7plus", "min": 7, "max": null},
+      {"key": "4to6",  "min": 4, "max": 6},
+      {"key": "2to3",  "min": 2, "max": 3}
+    ],
+    "win": {
+      "football":             {"7plus": 5, "4to6": 1, "2to3": 0.5},
+      "fooba":                {"7plus": 5, "4to6": 1, "2to3": 0.5},
+      "rugby":                {"7plus": 5, "4to6": 1, "2to3": 0.5},
+      "rugby_variation":      {"7plus": 3, "4to6": 1, "2to3": 0.5},
+      "short_game_variation": {"7plus": 3, "4to6": 1, "2to3": 0.5},
+      "multi_game_variation": {"7plus": 3, "4to6": 1, "2to3": 0.5}
+    },
+    "draw": {"7plus": 1, "4to6": 0.2, "2to3": 0.1},
+    "loss": 0
+  }'::jsonb,
+  'KLC league points v2: win points by match type x tier (total players across both sides), draw points by tier, loss. No session caps (ground rule only).'
+) on conflict (key) do update set value = excluded.value, description = excluded.description;
+
+insert into public.app_config (key, value, description) values (
+  'klcsra_table_groups',
+  '[
+    {"key": "all",                   "sports": "*"},
+    {"key": "football_fooba",        "sports": ["football","fooba"]},
+    {"key": "rugby_sox",             "sports": ["rugby"]},
+    {"key": "rugby_variations",      "sports": ["rugby_variation"]},
+    {"key": "short_game_variations", "sports": ["short_game_variation"]}
+  ]'::jsonb,
+  'KLC league tables: ordered array of {key, sports} ("*" = all match types). Array order is display order (an array because jsonb does not keep object key order). multi_game_variation is in All only.'
+) on conflict (key) do update set value = excluded.value, description = excluded.description;
+
+insert into public.app_config (key, value, description) values (
+  'klcsra_sport_stats',
+  '{
+    "football":  ["goal","assist","preAssist","save","yellowCard","redCard","blueCard","lateChallenge","ownGoal","ownAssist","ownPreAssist"],
+    "fooba":     ["mainGoal","reboundGoal","switchover","assist","preAssist","save","yellowCard","redCard","blueCard","lateChallenge","ownGoal","ownAssist","ownPreAssist"],
+    "rugby":     ["try","tackle","assist","preAssist","yellowCard","redCard","blueCard","lateChallenge"],
+    "rugby_variation":      ["goal","try","mainGoal","reboundGoal","assist","preAssist","switchover","tackle","save","yellowCard","redCard","blueCard","lateChallenge","ownGoal","ownAssist","ownPreAssist"],
+    "short_game_variation": ["goal","try","mainGoal","reboundGoal","assist","preAssist","switchover","tackle","save","yellowCard","redCard","blueCard","lateChallenge","ownGoal","ownAssist","ownPreAssist"],
+    "multi_game_variation": ["goal","try","mainGoal","reboundGoal","assist","preAssist","switchover","tackle","save","yellowCard","redCard","blueCard","lateChallenge","ownGoal","ownAssist","ownPreAssist"]
+  }'::jsonb,
+  'KLCSRA per-sport stat allow-list. The recorder filters the stats popup by sport; disallowed keys are ignored by the payout compute.'
+) on conflict (key) do update set value = excluded.value, description = excluded.description;
+
+-- ─── 4 + 5. lock + touch triggers ───────────────────────────────────────────
+-- Resolve the parent match id of a child row. Returns null when the parent
+-- is already gone (cascade delete of the match), which both triggers treat
+-- as "nothing to do".
+-- The row arrives as jsonb so one helper serves all four tables.
+--
+-- The two trigger functions are SECURITY DEFINER with a pinned search_path,
+-- so the parent lookup sees the parent row whatever RLS applies to the role
+-- doing the write. The helper only runs inside them (where the definer's
+-- rights already apply); it is definer too so that stays true if it is ever
+-- called on its own. PUBLIC execute is revoked from all three below.
+create or replace function app.klc_child_match_id(tbl text, r jsonb)
+returns uuid language plpgsql stable
+security definer set search_path = public, pg_temp as $$
+declare mid uuid;
+begin
+  if tbl in ('klc_match_halves', 'klc_match_appearances') then
+    return (r->>'match_id')::uuid;
+  elsif tbl = 'klc_match_sides' then
+    select h.match_id into mid from public.klc_match_halves h where h.id = (r->>'half_id')::uuid;
+    return mid;
+  elsif tbl = 'klc_player_stats' then
+    select a.match_id into mid from public.klc_match_appearances a where a.id = (r->>'appearance_id')::uuid;
+    return mid;
+  end if;
+  return null;
+end $$;
+
+-- On UPDATE both the OLD and the NEW parent are checked: an UPDATE that
+-- changes the FK (e.g. moving a stat row to another match's appearance)
+-- must not slip a row out of, or into, a submitted match.
+-- The status read takes `for no key update` on the parent — the same lock
+-- the AFTER touch trigger's UPDATE takes anyway, just earlier. Overlapping
+-- autosaves on one match (a stat tap and a score change) therefore queue
+-- briefly instead of deadlocking (two FOR SHARE holders each then trying to
+-- UPDATE the parent would abort one with 40P01). A concurrent submit (an
+-- UPDATE of status, a non-key column) still conflicts, so it serialises with
+-- child writes and cannot race past the check.
+create or replace function app.klc_enforce_submit_lock()
+returns trigger language plpgsql
+security definer set search_path = public, pg_temp as $$
+declare
+  mids uuid[] := array[]::uuid[];
+  mid  uuid;
+  st   text;
+begin
+  if tg_op in ('UPDATE', 'DELETE') then
+    mids := mids || app.klc_child_match_id(tg_table_name, to_jsonb(old));
+  end if;
+  if tg_op in ('INSERT', 'UPDATE') then
+    mids := mids || app.klc_child_match_id(tg_table_name, to_jsonb(new));
+  end if;
+  foreach mid in array mids loop
+    continue when mid is null;
+    select status into st from public.klc_matches where id = mid for no key update;
+    if st = 'submitted' then
+      raise exception 'match is submitted' using errcode = 'P0001';
+    end if;
+  end loop;
+  return case when tg_op = 'DELETE' then old else new end;
+end $$;
+
+-- Touches the parent match; on an FK-changing UPDATE, touches both parents.
+create or replace function app.klc_touch_parent_match()
+returns trigger language plpgsql
+security definer set search_path = public, pg_temp as $$
+declare
+  old_mid uuid;
+  new_mid uuid;
+begin
+  if tg_op in ('UPDATE', 'DELETE') then
+    old_mid := app.klc_child_match_id(tg_table_name, to_jsonb(old));
+  end if;
+  if tg_op in ('INSERT', 'UPDATE') then
+    new_mid := app.klc_child_match_id(tg_table_name, to_jsonb(new));
+  end if;
+  update public.klc_matches set updated_at = now()
+   where id in (old_mid, new_mid);
+  return null;
+end $$;
+
+revoke execute on function app.klc_child_match_id(text, jsonb) from public;
+revoke execute on function app.klc_enforce_submit_lock() from public;
+revoke execute on function app.klc_touch_parent_match() from public;
+
+do $$
+declare t text;
+begin
+  foreach t in array array['klc_match_halves','klc_match_sides','klc_match_appearances','klc_player_stats'] loop
+    execute format(
+      'create trigger %I before insert or update or delete on public.%I
+         for each row execute function app.klc_enforce_submit_lock()',
+      t || '_submit_lock', t);
+    execute format(
+      'create trigger %I after insert or update or delete on public.%I
+         for each row execute function app.klc_touch_parent_match()',
+      t || '_touch_parent', t);
+  end loop;
+end $$;

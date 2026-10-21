@@ -11,6 +11,7 @@ import {
   startSeasonAction,
   type ActionResult,
 } from "@/lib/klcsra/actions";
+import { SEASON_STATUS_TONE } from "@/lib/klcsra/season-status";
 import type { Season } from "@/lib/klcsra/types";
 
 /**
@@ -314,14 +315,9 @@ function SeasonRow({ season, active }: { season: Season; active: Season | null }
 }
 
 function StatusBadge({ status }: { status: Season["status"] }) {
-  const styles: Record<Season["status"], string> = {
-    active: "bg-green-600 text-white",
-    upcoming: "bg-amber-100 text-amber-900 border border-amber-300",
-    closed: "bg-gray-100 text-gray-700 border border-gray-300",
-  };
   return (
     <span
-      className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${styles[status]}`}
+      className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${SEASON_STATUS_TONE[status]}`}
     >
       {status}
     </span>

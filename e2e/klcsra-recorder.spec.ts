@@ -174,7 +174,7 @@ test.describe("KLCSRA recorder", () => {
     expect(stored?.season_id).toBe(season.id);
     expect(stored?.entry_date).toBe(MATCH_DATE);
 
-    await page.goto("/admin/klc/matches");
+    await page.goto("/klc/matches");
     const row = rec.matchRow(page, matchId);
     await expect(row.getByTestId("tag-season")).toHaveText(SEASON);
     await expect(row.getByTestId("match-status")).toHaveText("submitted");
@@ -228,7 +228,7 @@ test.describe("KLCSRA recorder", () => {
     expect(stored?.is_friendly).toBe(true);
     expect(stored?.season_id).toBeNull();
 
-    await page.goto("/admin/klc/matches");
+    await page.goto("/klc/matches");
     const row = rec.matchRow(page, matchId);
     await expect(row.getByTestId("tag-friendly")).toBeVisible();
     await expect(row.getByTestId("tag-season")).toHaveCount(0);
@@ -394,12 +394,10 @@ test.describe("KLCSRA recorder", () => {
     await rec.setScore(page, 1, "away", 1);
 
     await rec.selectHalf(page, 2);
-    // Half 2 opens with no clubs, so the recorder offers to swap them over.
-    // Picking half 2's clubs by hand answers the prompt and dismisses it.
-    await expect(page.getByTestId("swap-prompt")).toBeVisible();
+    // Half 2 opens with no clubs; each club keeps its slot (a club may lead
+    // only one side per match, so there is no swap prompt any more).
     await rec.pickClub(page, 2, "home", clubs[0].id);
     await rec.pickClub(page, 2, "away", clubs[1].id);
-    await expect(page.getByTestId("swap-prompt")).toHaveCount(0);
     await rec.setScore(page, 2, "home", 1);
     await rec.setScore(page, 2, "away", 1);
 
@@ -442,7 +440,7 @@ test.describe("KLCSRA recorder", () => {
       { player_id: members[0].id, half_no: 2, stat_key: "assist", stat_count: 2 },
     ]);
 
-    await page.goto("/admin/klc/matches");
+    await page.goto("/klc/matches");
     const row = rec.matchRow(page, matchId);
     await expect(row.getByTestId("tag-combined")).toBeVisible();
     await expect(row.getByTestId("match-score")).toContainText("3 - 2");

@@ -57,6 +57,62 @@ export const strings = {
       title: "Club Balance Sheet",
       subtitle: "Bal. Sheet · Managers",
     },
+    league: {
+      title: "KLC League",
+      subtitle: "Tables · results · leaders",
+      record: "Record a match →",
+    },
+  },
+
+  /** Match type labels (KLC league + recorder). */
+  sports: {
+    football: "Football",
+    fooba: "Fooba",
+    rugby: "Rugby Sox",
+    rugby_variation: "Rugby Variation",
+    short_game_variation: "Short Game Variation",
+    multi_game_variation: "Multi-Game Variation",
+  },
+
+  /** The public KLC League page (/klc/league). */
+  league: {
+    title: "KLC League",
+    breadcrumb: "KLC League",
+    tabs: { table: "Table", matches: "Matches", leaders: "Leaders", seasons: "Seasons", scoring: "Scoring" },
+    groups: {
+      all: "All",
+      football_fooba: "Football / Fooba",
+      rugby_sox: "Rugby Sox",
+      rugby_variations: "Rugby Var.",
+      short_game_variations: "Short Game Var.",
+    } as Record<string, string>,
+    noSeason: "No season has started yet.",
+    emptyTable: "No league matches submitted yet this season.",
+    emptyMatches: "No league matches submitted yet this season.",
+    emptyLeaders: "No stats recorded yet this season.",
+    tableNote: "Sorted by Pts, Diff, scored (GF+TF), name. Swipe the middle columns ⇄",
+    capNote: "Session limits (≤3 matches at 4–6 players, ≤2 at 2–3) are a ground rule; the app doesn't enforce them.",
+    friendliesNote: "Friendlies earn no league points. MMG leaders include friendlies.",
+    sectionsLabel: "League sections",
+    groupsLabel: "Match type",
+    seasonLabel: "Season",
+    table: {
+      caption: "League table",
+      rank: "#", club: "Club",
+      P: "P", W: "W", D: "D", L: "L", GF: "GF", GA: "GA", TF: "TF", TA: "TA",
+      Diff: "Diff", Pts: "Pts",
+    },
+    combined: "Combined",
+    each: "each",
+    pts: "pts",
+    scoring: {
+      win: "Win",
+      players: "players",
+      draw: "Draw (all types)",
+      loss: "Loss",
+      combinedNote:
+        "Players are counted across both teams. A combined (joint-manager) match is one result on the aggregate score, with full points to each club.",
+    },
   },
 
   /** Club Balance Sheet (KLCFERRSXVSG1) screens. */

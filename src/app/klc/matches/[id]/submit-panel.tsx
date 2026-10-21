@@ -8,12 +8,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { leaguePointsLine } from "@/lib/klcsra/points-preview";
 import type { StandingsRules } from "@/lib/klcsra/standings-rules";
 import type { MatchDraft, PayoutLine } from "@/lib/klcsra/types";
 import { ErrorNote, fmtStamp, signed } from "./recorder-shared";
 
 /**
- * Screen 6 — pre-submit checks, the totals preview, and the lock.
+ * Screen 6 — pre-submit checks, the league points and totals previews, and the lock.
  *
  * The checks are ADVISORY: `submit-match` stays enabled whatever they say, so
  * the refusal KFANDRA reads is always the action's own wording ("No active
@@ -32,6 +33,7 @@ export function SubmitPanel({
   hasActiveSeason,
   seasonName,
   submittedBy,
+  rules,
   submitError,
   reopenError,
   deleteError,
@@ -49,7 +51,7 @@ export function SubmitPanel({
   hasActiveSeason: boolean;
   seasonName: string | null;
   submittedBy: string | null;
-  /** League points rules; used by Task 15's points preview. */
+  /** League points rules, for the points preview. */
   rules: StandingsRules;
   submitError: string | null;
   reopenError: string | null;
@@ -80,6 +82,7 @@ export function SubmitPanel({
         : "No active season. Start one in Seasons first.",
     });
   }
+  const points = leaguePointsLine(match, rules);
 
   return (
     <section className="space-y-3">
@@ -123,6 +126,19 @@ export function SubmitPanel({
           ))}
         </div>
       )}
+
+      <div data-testid="league-points" className="space-y-1 rounded-2xl border border-gray-200 bg-white p-4">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-gray-600">League points</p>
+        {points.kind === "friendly" ? (
+          <p className="text-[12px] text-gray-600">Friendly — no league points.</p>
+        ) : points.kind === "incomplete" ? (
+          <p className="text-[12px] text-gray-500">Pick both clubs to see the points.</p>
+        ) : (
+          <p data-testid="league-points-line" className="text-[12px] font-semibold tabular-nums text-gray-900">
+            {points.text}
+          </p>
+        )}
+      </div>
 
       <div className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4">
         <p className="text-[10px] font-bold uppercase tracking-wide text-gray-600">

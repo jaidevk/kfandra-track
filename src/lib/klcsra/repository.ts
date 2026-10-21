@@ -265,6 +265,7 @@ export async function listMatches(): Promise<MatchSummary[]> {
     .from("klc_matches")
     .select(
       `id, entry_date, sport, is_friendly, is_combined, status,
+       created_by,
        klc_seasons(name),
        klc_match_halves(id, half_no,
          klc_match_sides(id, side, score, club_id, clubs(name)))`,
@@ -282,6 +283,9 @@ export async function listMatches(): Promise<MatchSummary[]> {
       isCombined: m.is_combined,
       status: m.status as MatchStatus,
       seasonName: one(m.klc_seasons as ToOne<{ name: string }>)?.name ?? null,
+      createdBy: m.created_by,
+      clubIds: [...new Set(halves.flatMap((h) => h.sides.map((s) => s.clubId)))]
+        .filter((id): id is string => id !== null),
       homeLabel: sideLabel(halves, "home"),
       awayLabel: sideLabel(halves, "away"),
       scoreLine: scoreLine(halves),
@@ -320,6 +324,7 @@ export async function getMatch(matchId: string): Promise<MatchDraft | null> {
     .select(
       `id, entry_date, sport, is_friendly, is_combined, duration_minutes,
        status, submitted_at, season_id,
+       created_by,
        klc_seasons(name),
        klc_match_halves(id, half_no,
          klc_match_sides(id, side, score, club_id, clubs(name))),
@@ -348,6 +353,7 @@ export async function getMatch(matchId: string): Promise<MatchDraft | null> {
     submittedAt: data.submitted_at,
     seasonId: data.season_id,
     seasonName: one(data.klc_seasons as ToOne<{ name: string }>)?.name ?? null,
+    createdBy: data.created_by,
     halves: toHalfDrafts(data.klc_match_halves as HalfRow[] | null),
     appearances,
   };

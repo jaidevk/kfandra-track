@@ -134,8 +134,8 @@ export async function renameSeason(id: string, name: string): Promise<void> {
  *
  * Deliberately DATE-based rather than `season_id`-based. `klc_matches.season_id`
  * is only written at Submit and is cleared again by Reopen, so a draft match
- * never carries a season and `countDraftMatchesInSeason` below can only ever
- * return 0. "Is there unfinished work in this season?" is therefore asked of
+ * never carries a season and a `season_id` count of drafts would always be 0.
+ * "Is there unfinished work in this season?" is therefore asked of
  * the calendar, which is the only thing a draft actually commits to.
  *
  * Returns 0 for an unknown season id — nothing to block on.
@@ -156,23 +156,6 @@ export async function countDraftMatchesDatedInSeason(id: string): Promise<number
     .eq("status", "draft")
     .gte("entry_date", season.start_date)
     .lte("entry_date", end);
-  return count ?? 0;
-}
-
-/**
- * How many matches still sit in `draft` under this season, by `season_id`.
- *
- * Kept for completeness of the season API, but note the caveat above: a draft
- * never carries a season_id, so this is 0 by construction. `closeSeasonAction`
- * uses `countDraftMatchesDatedInSeason` instead.
- */
-export async function countDraftMatchesInSeason(id: string): Promise<number> {
-  const admin = createAdminClient();
-  const { count } = await admin
-    .from("klc_matches")
-    .select("id", { count: "exact", head: true })
-    .eq("season_id", id)
-    .eq("status", "draft");
   return count ?? 0;
 }
 

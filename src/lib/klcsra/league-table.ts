@@ -87,10 +87,6 @@ export function matchResult(
   return { scored, agg, pts };
 }
 
-export function scoreMatch(m: LeagueMatch, rules: StandingsRules): MatchPoints {
-  return matchResult(m, rules).pts;
-}
-
 function compareRows(a: TableRow, b: TableRow): number {
   return (
     b.Pts - a.Pts ||

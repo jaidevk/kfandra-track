@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fmtDate, fmtDay } from "./format-date";
+import { fmtDate, fmtDay, fmtDayDate } from "./format-date";
 
 describe("fmtDay", () => {
   it("formats weekday, day and short month", () => {
@@ -15,5 +15,11 @@ describe("fmtDate", () => {
   });
   it("ignores a time part and never shifts the day", () => {
     expect(fmtDate("2026-08-01T23:30:00+05:30")).toBe("1 Aug 2026");
+  });
+});
+
+describe("fmtDayDate", () => {
+  it("formats weekday, day, short month and year", () => {
+    expect(fmtDayDate("2026-10-01")).toBe("Thu, 1 Oct 2026");
   });
 });

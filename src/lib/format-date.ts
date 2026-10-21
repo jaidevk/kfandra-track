@@ -24,3 +24,10 @@ export function fmtDate(iso: string): string {
     timeZone: "UTC", day: "numeric", month: "short", year: "numeric",
   });
 }
+
+/** "Thu, 1 Oct 2026" — a day heading in a list that spans seasons. */
+export function fmtDayDate(iso: string): string {
+  return utcDay(iso).toLocaleDateString("en-GB", {
+    timeZone: "UTC", weekday: "short", day: "numeric", month: "short", year: "numeric",
+  });
+}

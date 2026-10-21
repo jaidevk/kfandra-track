@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentPlayer } from "@/lib/auth/current-user";
 import { isStaffRole } from "@/lib/auth/roles";
+import { fmtDayDate } from "@/lib/format-date";
 import { canEditMatch, canRecordMatches } from "@/lib/klcsra/access";
 import {
   getActiveSeason,
@@ -26,16 +27,6 @@ export const dynamic = "force-dynamic";
  * (The red "cannot be submitted" framing belongs on the Seasons screen, which
  * is where you go to fix it.)
  */
-
-function fmtDate(iso: string): string {
-  const d = new Date(`${iso}T12:00:00`);
-  return d.toLocaleDateString("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 /** Today in the local timezone, as `YYYY-MM-DD` (never UTC — the club plays in IST). */
 function todayIso(): string {
@@ -114,7 +105,7 @@ export default async function MatchesPage() {
           {groups.map((g) => (
             <section key={g.date} data-testid="match-date-group" data-date={g.date}>
               <p className="mb-1.5 flex items-baseline gap-2 text-[11px] font-bold uppercase tracking-wide text-gray-600">
-                <span>{fmtDate(g.date)}</span>
+                <span>{fmtDayDate(g.date)}</span>
                 {g.date === today && (
                   <span className="rounded-full bg-gray-900 px-1.5 py-0.5 text-[9px] tracking-widest text-white">
                     Today

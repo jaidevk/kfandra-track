@@ -84,13 +84,18 @@ export function buildLeaderboards(
 
   const inGroup = rows.filter((r) => sportInGroup(r.sport, groupKey, groups));
 
-  // Name + the club from each player's most recent match.
-  const who = new Map<string, { name: string; club: string | null; date: string }>();
+  // Name from any row; club from the player's latest match that has one,
+  // ordered by (entryDate, submittedAt, matchId, halfNo).
+  const key = (r: StatRow) => [r.entryDate, r.submittedAt ?? "", r.matchId, String(r.halfNo).padStart(4, "0")].join("\u0000");
+  const who = new Map<string, { name: string; club: string | null; k: string }>();
   for (const r of inGroup) {
-    const cur = who.get(r.playerId);
-    if (!cur || r.entryDate >= cur.date) {
-      who.set(r.playerId, { name: r.displayName, club: r.clubName, date: r.entryDate });
+    const cur = who.get(r.playerId) ?? { name: r.displayName, club: null, k: "" };
+    cur.name = r.displayName;
+    if (r.clubName !== null && key(r) >= cur.k) {
+      cur.club = r.clubName;
+      cur.k = key(r);
     }
+    who.set(r.playerId, cur);
   }
 
   const boards: Board[] = [];
@@ -105,7 +110,8 @@ export function buildLeaderboards(
     const sorted = [...totals]
       .map(([playerId, v]) => ({ playerId, value: round4(v), name: who.get(playerId)?.name ?? "" }))
       .filter((e) => e.value > 0)
-      .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name))
+      .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name, "en"))
+      // A tie across 10th/11th place is cut alphabetically, by spec ("cuts off at 10").
       .slice(0, LEADERBOARD_SIZE);
     if (sorted.length === 0) continue;
 

@@ -7,7 +7,7 @@ import { DEFAULT_TABLE_GROUPS as G } from "./table-groups";
 
 function r(playerId: string, statKey: StatKey, count: number, over: Partial<StatRow> = {}): StatRow {
   return {
-    matchId: "m", entryDate: "2026-10-18", playerId, displayName: playerId.toUpperCase(),
+    matchId: "m", entryDate: "2026-10-18", submittedAt: null, halfNo: 1, playerId, displayName: playerId.toUpperCase(),
     clubName: "Club", sport: "football" as Sport, isFriendly: false, statKey, count, ...over,
   };
 }
@@ -67,6 +67,7 @@ describe("buildLeaderboards", () => {
     const e = board(rows, "goals")!.entries;
     expect(e.slice(0, 4).map((x) => x.rank)).toEqual([1, 2, 2, 4]);
     expect(e).toHaveLength(LEADERBOARD_SIZE);
+    expect(e.slice(3).map((x) => x.rank)).toEqual(Array(7).fill(4));
   });
 
   it("shows the club from the player's most recent match", () => {
@@ -79,5 +80,44 @@ describe("buildLeaderboards", () => {
 
   it("omits empty boards", () => {
     expect(buildLeaderboards([], "all", G, RATES, SS)).toEqual([]);
+  });
+
+  it("same-day matches: the later submittedAt decides the club", () => {
+    const rows = [
+      r("a", "goal", 1, { matchId: "m1", submittedAt: "2026-10-18T09:00:00Z", clubName: "Early" }),
+      r("a", "goal", 1, { matchId: "m0", submittedAt: "2026-10-18T11:00:00Z", clubName: "Late" }),
+    ];
+    expect(board(rows, "goals")!.entries[0].club).toBe("Late");
+  });
+
+  it("within one match the higher half wins", () => {
+    const rows = [
+      r("a", "goal", 1, { halfNo: 2, clubName: "H2" }),
+      r("a", "goal", 1, { halfNo: 1, clubName: "H1" }),
+    ];
+    expect(board(rows, "goals")!.entries[0].club).toBe("H2");
+  });
+
+  it("skips a null-club latest row and shows the earlier club", () => {
+    const rows = [
+      r("a", "goal", 1, { entryDate: "2026-10-01", clubName: "Old" }),
+      r("a", "goal", 1, { entryDate: "2026-10-18", clubName: null }),
+    ];
+    expect(board(rows, "goals")!.entries[0].club).toBe("Old");
+  });
+
+  it("MMG applies the sport allow-list", () => {
+    expect(board([r("a", "try", 1)], "mmg")).toBeUndefined();
+  });
+
+  it("leaves off non-positive totals", () => {
+    const rows = [r("a", "redCard", 1)];
+    expect(board(rows, "kroopies")).toBeUndefined();
+    expect(board(rows, "mmg")).toBeUndefined();
+  });
+
+  it("orders equal values by name", () => {
+    const rows = [r("b", "goal", 2), r("a", "goal", 2)];
+    expect(board(rows, "goals")!.entries.map((x) => x.name)).toEqual(["A", "B"]);
   });
 });

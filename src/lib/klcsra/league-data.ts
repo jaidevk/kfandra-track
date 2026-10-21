@@ -11,6 +11,8 @@ import type { MatchDraft, SideKey } from "./types";
 export interface StatRow {
   matchId: string;
   entryDate: string;
+  submittedAt: string | null;
+  halfNo: number;
   playerId: string;
   displayName: string;
   /** Club that led the player's side in the half the stat was recorded in. */
@@ -54,6 +56,7 @@ export function toStatRows(d: MatchDraft): StatRow[] {
         if (!count) continue;
         rows.push({
           matchId: d.id, entryDate: d.entryDate,
+          submittedAt: d.submittedAt, halfNo: Number(halfNo),
           playerId: a.playerId, displayName: a.displayName, clubName,
           sport: d.sport, isFriendly: d.isFriendly,
           statKey: statKey as StatKey, count,

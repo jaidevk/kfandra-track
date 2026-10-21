@@ -38,9 +38,11 @@ describe("toLeagueMatch", () => {
 describe("toStatRows", () => {
   it("emits one row per non-zero stat, with the club of that half's side", () => {
     expect(toStatRows(draft())).toEqual([
-      { matchId: "m1", entryDate: "2026-10-18", playerId: "p1", displayName: "Jake",
+      { matchId: "m1", entryDate: "2026-10-18", submittedAt: "2026-10-18T10:00:00Z", halfNo: 1,
+        playerId: "p1", displayName: "Jake",
         clubName: "Club A", sport: "fooba", isFriendly: false, statKey: "mainGoal", count: 2 },
-      { matchId: "m1", entryDate: "2026-10-18", playerId: "p1", displayName: "Jake",
+      { matchId: "m1", entryDate: "2026-10-18", submittedAt: "2026-10-18T10:00:00Z", halfNo: 2,
+        playerId: "p1", displayName: "Jake",
         clubName: "Club B", sport: "fooba", isFriendly: false, statKey: "assist", count: 1 },
     ]);
   });

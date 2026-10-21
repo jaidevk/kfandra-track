@@ -3,7 +3,7 @@
  * No DB/server imports, so the recorder (a Client Component) can use them
  * for the submit-panel points preview.
  */
-import type { LeagueHalf, LeagueMatch } from "./league-table";
+import { countedHalves, type ClubRef, type LeagueHalf, type LeagueMatch } from "./league-table";
 import type { Sport } from "./sport-stats";
 import type { StatKey } from "./stat-rates";
 import type { MatchDraft, SideKey } from "./types";
@@ -67,15 +67,41 @@ export function toStatRows(d: MatchDraft): StatRow[] {
   return rows;
 }
 
-/** "Club A + Club B": every distinct club (by id) that led a side, in half order. */
-export function sideClubLabel(d: MatchDraft, side: SideKey): string {
+/**
+ * "Club A + Club B": every distinct club (by id) that led a side, in half order.
+ * With `{ counted: true }` only the halves that count are read (a normal
+ * match uses half 1; see `countedHalves`), so a stray half 2 never relabels it.
+ */
+export function sideClubLabel(
+  d: MatchDraft,
+  side: SideKey,
+  opts: { counted?: boolean } = {},
+): string {
+  const halves = opts.counted ? countedHalves(d) : d.halves;
   const names: string[] = [];
   const seen = new Set<string>();
-  for (const h of d.halves) {
+  for (const h of halves) {
     const s = h.sides.find((x) => x.side === side);
     if (!s?.clubId || !s.clubName || seen.has(s.clubId)) continue;
     seen.add(s.clubId);
     names.push(s.clubName);
   }
   return names.length > 0 ? names.join(" + ") : "TBD";
+}
+
+/**
+ * Club id → name, taken from the drafts' own sides, so a club that has since
+ * been deactivated still shows its name in a past season's table. Drafts are
+ * newest first, so the newest name wins.
+ */
+export function clubNamesFromDrafts(drafts: MatchDraft[]): ClubRef[] {
+  const names = new Map<string, string>();
+  for (const d of drafts) {
+    for (const h of d.halves) {
+      for (const s of h.sides) {
+        if (s.clubId && s.clubName && !names.has(s.clubId)) names.set(s.clubId, s.clubName);
+      }
+    }
+  }
+  return [...names].map(([id, name]) => ({ id, name }));
 }

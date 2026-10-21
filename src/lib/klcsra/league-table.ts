@@ -62,8 +62,11 @@ export function clubsOnSide(m: LeagueMatch, side: SideKey): string[] {
 /**
  * The halves that decide the result. A normal match is one result from
  * half 1 (design §3.4); only a combined match aggregates over both halves.
+ * Generic so the recorder's MatchDraft halves use the same rule.
  */
-function resultHalves(m: LeagueMatch): LeagueHalf[] {
+export function countedHalves<H extends { halfNo: number }>(
+  m: { isCombined: boolean; halves: H[] },
+): H[] {
   return m.isCombined ? m.halves : m.halves.filter((h) => h.halfNo === 1);
 }
 
@@ -75,7 +78,7 @@ export function matchResult(
   m: LeagueMatch,
   rules: StandingsRules,
 ): { scored: LeagueMatch; agg: { home: number; away: number }; pts: MatchPoints } {
-  const scored: LeagueMatch = { ...m, halves: resultHalves(m) };
+  const scored: LeagueMatch = { ...m, halves: countedHalves(m) };
   const agg = aggregateScores(scored);
   const pts = computeMatchPoints(
     { sport: m.sport, totalPlayers: m.totalPlayers, homeScore: agg.home, awayScore: agg.away },

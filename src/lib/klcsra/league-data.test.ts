@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sideClubLabel, toLeagueMatch, toStatRows } from "./league-data";
+import { clubNamesFromDrafts, sideClubLabel, toLeagueMatch, toStatRows } from "./league-data";
 import type { MatchDraft } from "./types";
 
 const draft = (over: Partial<MatchDraft> = {}): MatchDraft => ({
@@ -79,5 +79,33 @@ describe("review follow-ups", () => {
 
   it("sideClubLabel returns TBD with no clubs", () => {
     expect(sideClubLabel(draft({ halves: [] }), "home")).toBe("TBD");
+  });
+});
+
+describe("sideClubLabel { counted: true }", () => {
+  it("ignores a stray half 2 on a normal match", () => {
+    const d = draft({ isCombined: false });
+    expect(sideClubLabel(d, "home")).toBe("Club A + Club B");
+    expect(sideClubLabel(d, "home", { counted: true })).toBe("Club A");
+  });
+  it("reads both halves of a combined match", () => {
+    expect(sideClubLabel(draft(), "home", { counted: true })).toBe("Club A + Club B");
+  });
+});
+
+describe("clubNamesFromDrafts", () => {
+  it("collects every club on any side, newest name first, de-duplicated by id", () => {
+    const newer = draft({ id: "m2", halves: [{ id: "h9", halfNo: 1, sides: [
+      { id: "s9", side: "home", clubId: "A", clubName: "Club A (renamed)", score: 0 },
+      { id: "s10", side: "away", clubId: "D", clubName: null, score: 0 },
+    ] }] });
+    expect(clubNamesFromDrafts([newer, draft()])).toEqual([
+      { id: "A", name: "Club A (renamed)" },
+      { id: "C", name: "Club C" },
+      { id: "B", name: "Club B" },
+    ]);
+  });
+  it("is empty for no drafts", () => {
+    expect(clubNamesFromDrafts([])).toEqual([]);
   });
 });

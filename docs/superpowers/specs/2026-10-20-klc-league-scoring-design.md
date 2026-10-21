@@ -107,14 +107,14 @@ How a match turns into rows:
 
 ## 4. Read model: `src/lib/klcsra/league-repository.ts` (server-only, service role)
 
-- `listLeagueSeasons()` returns the seasons, newest first.
-- `defaultSeasonId(seasons)` picks the active season, otherwise the newest closed one, otherwise null.
-- `listSubmittedMatches(seasonId)` returns `LeagueMatch[]` plus display data (date, club names, scores) for the Matches tab. `totalPlayers` is the count of distinct `player_id` in appearances.
-- `listSeasonStatRows(seasonId)` returns `StatRow[]` (friendlies included; the builder filters).
-  - Friendlies have `season_id = null`, so friendly rows are taken from submitted friendlies whose `entry_date` falls inside the season's date range.
-  - For the active season, the range is open-ended.
+One function feeds the whole page: `listSubmittedMatchDrafts(season)` returns `MatchDraft[]` (the recorder's own shape, via `toMatchDraft`), newest first (entry date, then `submitted_at`, then id).
 
-**Every query includes `.eq("status", "submitted")`.** A unit test with a mocked client asserts the filter on each function. This is the public-read guarantee, and it closes Helper-h9i.
+- League matches: `status = 'submitted'` and `season_id = season.id`.
+- Friendlies: `status = 'submitted'`, `is_friendly`, and `entry_date` inside the season's window (open-ended while `end_date` is null). They carry no season and only feed the MMG board.
+- Pure adapters in `league-data.ts` derive everything else on read: `toLeagueMatch` (`totalPlayers` = distinct `player_id` in appearances), `toStatRows`, `sideClubLabel` (with `{ counted: true }` for the halves that count), and `clubNamesFromDrafts` (club names for the table come from the matches, so a club deactivated since still shows by name).
+- Seasons come from `repository.listSeasons()`. `league-params.ts` holds `newestFirstSeasons`, `defaultSeasonId` (active, else newest closed, else null) and the URL state.
+
+**Every query includes `.eq("status", "submitted")`.** A unit test with a mocked client asserts the filter on each query. This is the public-read guarantee, and it closes Helper-h9i.
 
 ## 5. Access and manager recording
 

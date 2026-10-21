@@ -3,6 +3,7 @@ import {
   aggregateScores,
   buildLeagueTable,
   clubsOnSide,
+  countedHalves,
   matchResult,
   type LeagueMatch,
 } from "./league-table";
@@ -133,6 +134,11 @@ describe("normal vs combined halves and small matches", () => {
 });
 
 describe("helpers", () => {
+  it("countedHalves: half 1 only for a normal match, both for a combined one", () => {
+    const halves = [{ halfNo: 1 }, { halfNo: 2 }];
+    expect(countedHalves({ isCombined: false, halves })).toEqual([{ halfNo: 1 }]);
+    expect(countedHalves({ isCombined: true, halves })).toEqual(halves);
+  });
   it("aggregateScores sums each side over halves", () => {
     const m = single("football", "A", 2, "B", 1);
     expect(aggregateScores(m)).toEqual({ home: 2, away: 1 });

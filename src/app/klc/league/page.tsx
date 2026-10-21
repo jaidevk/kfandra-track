@@ -6,13 +6,13 @@ import {
   loadSportStats, loadStandingsRules, loadStatRates, loadTableGroups,
 } from "@/lib/klcsra/config";
 import { buildLeaderboards } from "@/lib/klcsra/leaderboards";
-import { toLeagueMatch, toStatRows } from "@/lib/klcsra/league-data";
+import { clubNamesFromDrafts, toLeagueMatch, toStatRows } from "@/lib/klcsra/league-data";
 import { parseLeagueParams } from "@/lib/klcsra/league-params";
 import { listSubmittedMatchDrafts } from "@/lib/klcsra/league-repository";
 import { buildLeagueTable } from "@/lib/klcsra/league-table";
-import { listClubs, listSeasons } from "@/lib/klcsra/repository";
+import { listSeasons } from "@/lib/klcsra/repository";
 import { groupScoreKinds } from "@/lib/klcsra/table-groups";
-import { Empty, GroupChips, SeasonPicker, TabBar } from "./league-nav";
+import { Empty, GroupChips, SeasonPicker, TabBar, seasonLabel } from "./league-nav";
 import { LeadersTab } from "./leaders-tab";
 import { MatchesTab } from "./matches-tab";
 import { ScoringTab } from "./scoring-tab";
@@ -57,9 +57,17 @@ export default async function LeaguePage({
       const boards = buildLeaderboards(drafts.flatMap(toStatRows), params.group, groups, rates, sportStats);
       body = (<><GroupChips params={params} groups={groups} /><LeadersTab boards={boards} /></>);
     } else {
-      const clubs = await listClubs();
+      // Names come from the matches themselves, so a club deactivated since
+      // still shows by name in a past season (listClubs is active-only).
+      const clubs = clubNamesFromDrafts(drafts);
       const rows = buildLeagueTable(drafts.map(toLeagueMatch), params.group, clubs, rules, groups);
-      body = (<><GroupChips params={params} groups={groups} /><TableTab rows={rows} kinds={groupScoreKinds(params.group, groups)} /></>);
+      const caption = `${league.table.caption}: ${league.groups[params.group] ?? params.group}, ${seasonLabel(season)}`;
+      body = (
+        <>
+          <GroupChips params={params} groups={groups} />
+          <TableTab rows={rows} kinds={groupScoreKinds(params.group, groups)} caption={caption} />
+        </>
+      );
     }
   }
 

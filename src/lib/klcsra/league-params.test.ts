@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { defaultSeasonId, leagueHref, parseLeagueParams } from "./league-params";
+import { defaultSeasonId, leagueHref, newestFirstSeasons, parseLeagueParams } from "./league-params";
 import { DEFAULT_TABLE_GROUPS as G } from "./table-groups";
 import type { Season } from "./types";
 
@@ -36,5 +36,16 @@ describe("leagueHref", () => {
       .toBe("/klc/league?tab=table&season=2&group=rugby_sox");
     expect(leagueHref({ tab: "table", seasonId: null, group: "all" }, { tab: "scoring" }))
       .toBe("/klc/league?tab=scoring&group=all");
+  });
+});
+
+describe("newestFirstSeasons", () => {
+  it("sorts by season number, highest first, without mutating the input", () => {
+    const input = [s("1", 1, "closed"), s("3", 3, "upcoming"), s("2", 2, "active")];
+    expect(newestFirstSeasons(input).map((x) => x.id)).toEqual(["3", "2", "1"]);
+    expect(input.map((x) => x.id)).toEqual(["1", "3", "2"]);
+  });
+  it("defaultSeasonId takes the newest closed even when the list is unsorted", () => {
+    expect(defaultSeasonId([s("2", 2, "closed"), s("1", 1, "closed"), s("3", 3, "closed")])).toBe("3");
   });
 });

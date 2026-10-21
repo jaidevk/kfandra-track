@@ -93,6 +93,26 @@ export const strings = {
     tableNote: "Sorted by Pts, Diff, scored (GF+TF), name. Swipe the middle columns ⇄",
     capNote: "Session limits (≤3 matches at 4–6 players, ≤2 at 2–3) are a ground rule; the app doesn't enforce them.",
     friendliesNote: "Friendlies earn no league points. MMG leaders include friendlies.",
+    sectionsLabel: "League sections",
+    groupsLabel: "Match type",
+    seasonLabel: "Season",
+    table: {
+      caption: "League table",
+      rank: "#", club: "Club",
+      P: "P", W: "W", D: "D", L: "L", GF: "GF", GA: "GA", TF: "TF", TA: "TA",
+      Diff: "Diff", Pts: "Pts",
+    },
+    combined: "Combined",
+    each: "each",
+    pts: "pts",
+    scoring: {
+      win: "Win",
+      players: "players",
+      draw: "Draw (all types)",
+      loss: "Loss",
+      combinedNote:
+        "Players are counted across both teams. A combined (joint-manager) match is one result on the aggregate score, with full points to each club.",
+    },
   },
 
   /** Club Balance Sheet (KLCFERRSXVSG1) screens. */

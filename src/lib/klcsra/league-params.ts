@@ -14,14 +14,16 @@ export interface LeagueParams {
 type RawParams = Record<string, string | string[] | undefined>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
+/** A sorted copy, highest season number first. Never mutates the input. */
+export function newestFirstSeasons(seasons: readonly Season[]): Season[] {
+  return [...seasons].sort((a, b) => b.seasonNo - a.seasonNo);
+}
+
 /** The active season, else the newest closed one, else null. */
 export function defaultSeasonId(seasons: Season[]): string | null {
   const active = seasons.find((s) => s.status === "active");
   if (active) return active.id;
-  const closed = seasons
-    .filter((s) => s.status === "closed")
-    .sort((a, b) => b.seasonNo - a.seasonNo)[0];
-  return closed?.id ?? null;
+  return newestFirstSeasons(seasons).find((s) => s.status === "closed")?.id ?? null;
 }
 
 export function parseLeagueParams(

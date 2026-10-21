@@ -9,7 +9,7 @@
  * No DB/server imports: the recorder is a Client Component.
  */
 import { sideClubLabel, toLeagueMatch } from "./league-data";
-import { matchResult } from "./league-table";
+import { countedHalves, matchResult } from "./league-table";
 import { TIER_LABELS, type StandingsRules } from "./standings-rules";
 import type { MatchDraft } from "./types";
 
@@ -26,8 +26,8 @@ export type LeaguePointsLine =
 
 export function leaguePointsLine(match: MatchDraft, rules: StandingsRules): LeaguePointsLine {
   if (match.isFriendly) return { kind: "friendly" };
-  // The halves that count, as in league-table's resultHalves.
-  const counted = match.isCombined ? match.halves : match.halves.filter((h) => h.halfNo === 1);
+  // The halves that count, by the same rule as the league table.
+  const counted = countedHalves(match);
   const draft: MatchDraft = { ...match, halves: counted };
   const lm = toLeagueMatch(draft);
   // toLeagueMatch keeps only halves with a club on both sides.
@@ -35,8 +35,8 @@ export function leaguePointsLine(match: MatchDraft, rules: StandingsRules): Leag
     return { kind: "incomplete" };
   }
   const { agg, pts } = matchResult(lm, rules);
-  const homeLabel = sideClubLabel(draft, "home");
-  const awayLabel = sideClubLabel(draft, "away");
+  const homeLabel = sideClubLabel(draft, "home", { counted: true });
+  const awayLabel = sideClubLabel(draft, "away", { counted: true });
   const tier = pts.tier ? `Tier ${TIER_LABELS[pts.tier]}` : "Under 2 players";
   // Combined: sides are labelled by club pair, and every club that led a slot
   // gets that slot's full points ("each"). Normal: one club per side.

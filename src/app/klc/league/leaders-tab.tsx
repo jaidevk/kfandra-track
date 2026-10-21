@@ -12,10 +12,10 @@ export function LeadersTab({ boards }: { boards: Board[] }) {
           <ol className="mt-1.5 space-y-1 text-[13px]">
             {b.entries.map((e) => (
               <li key={e.playerId} data-testid="leader-entry" data-player-id={e.playerId} className="flex items-center gap-2">
-                <span className="w-4 text-right text-[11px] font-bold text-gray-400">{e.rank}</span>
-                <span className="font-semibold text-gray-900">{e.name}</span>
-                {e.club && <span className="truncate text-[11px] text-gray-500">{e.club}</span>}
-                <span data-testid="leader-value" className="ml-auto font-bold tabular-nums">{e.value}</span>
+                <span className="w-4 shrink-0 text-right text-[11px] font-bold text-gray-400">{e.rank}</span>
+                <span className="min-w-0 truncate font-semibold text-gray-900">{e.name}</span>
+                {e.club && <span className="min-w-0 truncate text-[11px] text-gray-500">{e.club}</span>}
+                <span data-testid="leader-value" className="ml-auto shrink-0 font-bold tabular-nums">{e.value}</span>
               </li>
             ))}
           </ol>

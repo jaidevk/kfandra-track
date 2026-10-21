@@ -94,7 +94,10 @@ export default async function MatchDetailPage({
   // public record (read-only for everyone but its editors' Reopen path).
   if (match.status === "draft" && !canEdit) notFound();
   const canReopen = canReopenMatch(player);
-  const canRecord = canRecordMatches(player, managed);
+  // The matches list is also open to a creator with a draft (no club needed).
+  const showMatchesLink =
+    canRecordMatches(player, managed) ||
+    (match.status === "draft" && match.createdBy === player.id);
 
   // The pickers' option lists are only needed by an editor. A read-only viewer
   // (always a locked match) gets no member list, and clubs built from the
@@ -122,9 +125,9 @@ export default async function MatchDetailPage({
 
   return (
     <div className="mx-auto max-w-md space-y-4 p-5 pb-24">
-      <Link href={canRecord ? "/klc/matches" : "/klc/league?tab=matches"}
+      <Link href={showMatchesLink ? "/klc/matches" : "/klc/league?tab=matches"}
         className="block text-[12px] text-gray-600 hover:underline">
-        ← {canRecord ? "All matches" : "KLC League"}
+        ← {showMatchesLink ? "All matches" : "KLC League"}
       </Link>
       <MatchRecorder
         match={match}
@@ -135,6 +138,7 @@ export default async function MatchDetailPage({
         canReopen={canReopen}
         canEdit={canEdit}
         isStaff={isStaffRole(player.role)}
+        managedClubIds={[...managed]}
         activeSeasonName={season?.name ?? null}
         submittedBy={submittedBy}
         rules={rules}

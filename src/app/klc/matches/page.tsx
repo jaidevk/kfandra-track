@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentPlayer } from "@/lib/auth/current-user";
 import { isStaffRole } from "@/lib/auth/roles";
 import { fmtDayDate } from "@/lib/format-date";
-import { canEditMatch, canRecordMatches } from "@/lib/klcsra/access";
+import { canEditMatch, canRecordMatches, hasOwnDraft } from "@/lib/klcsra/access";
 import {
   getActiveSeason,
   listClubs,
@@ -50,7 +50,7 @@ export default async function MatchesPage() {
   const player = await getCurrentPlayer();
   if (!player) redirect("/login?next=/klc/matches");
   const managed = await listManagedClubIds(player.id);
-  if (!canRecordMatches(player, managed)) redirect("/klc/league?tab=matches");
+  const canRecord = canRecordMatches(player, managed);
   const staff = isStaffRole(player.role);
 
   const [all, active, seasons, clubs] = await Promise.all([
@@ -59,6 +59,9 @@ export default async function MatchesPage() {
     listSeasons(),
     listClubs(),
   ]);
+  // A creator who no longer manages a club can still edit their own drafts,
+  // so they keep the list (without New match) until those are done.
+  if (!canRecord && !hasOwnDraft(player, all)) redirect("/klc/league?tab=matches");
   // Managers see every submitted match plus the drafts they may edit.
   const matches = staff
     ? all
@@ -88,7 +91,7 @@ export default async function MatchesPage() {
 
       {!active && staff && <BetweenSeasons upcoming={upcoming} />}
 
-      <NewMatchForm today={today} myClubs={myClubs} />
+      {canRecord && <NewMatchForm today={today} myClubs={myClubs} />}
 
       {matches.length === 0 ? (
         <div

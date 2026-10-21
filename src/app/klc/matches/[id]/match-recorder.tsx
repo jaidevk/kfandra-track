@@ -65,6 +65,7 @@ export function MatchRecorder({
   canReopen,
   canEdit,
   isStaff,
+  managedClubIds,
   activeSeasonName,
   submittedBy,
   rules,
@@ -78,6 +79,8 @@ export function MatchRecorder({
   /** False for a read-only viewer (only ever a submitted match). */
   canEdit: boolean;
   isStaff: boolean;
+  /** Clubs the viewer manages; the club picker greys out what the server would refuse. */
+  managedClubIds: string[];
   /** The season a league match would be tagged with today, or null. */
   activeSeasonName: string | null;
   submittedBy: string | null;
@@ -377,6 +380,7 @@ export function MatchRecorder({
         }
         onOpenStats={setOpenAppearanceId}
         isStaff={isStaff}
+        managedClubIds={managedClubIds}
       />
 
       <StatsDialog

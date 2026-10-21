@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
-  canEditMatch, canRecordMatches, canReopenMatch, clubOnBothSlots, clubOnOtherSide, keepsManagedClub,
-  matchClubIds,
+  canEditMatch, canRecordMatches, canReopenMatch, clubOnBothSlots, clubOnOtherSide, hasOwnDraft,
+  keepsManagedClub, matchClubIds,
 } from "./access";
 
 const none = new Set<string>();
@@ -99,5 +99,19 @@ describe("clubOnBothSlots", () => {
   });
   it("ignores empty sides and empty halves", () => {
     expect(clubOnBothSlots([h("A", null), { sides: [] }])).toBeNull();
+  });
+});
+
+describe("hasOwnDraft", () => {
+  const me = { id: "me", role: "user" as const };
+  it("true for a draft I created", () => {
+    expect(hasOwnDraft(me, [{ status: "draft", createdBy: "me" }])).toBe(true);
+  });
+  it("false for my submitted match or someone else's draft", () => {
+    expect(hasOwnDraft(me, [
+      { status: "submitted", createdBy: "me" },
+      { status: "draft", createdBy: "other" },
+      { status: "draft", createdBy: null },
+    ])).toBe(false);
   });
 });

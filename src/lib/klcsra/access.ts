@@ -32,6 +32,18 @@ export function canEditMatch(
   return match.clubIds.some((id) => managed.has(id));
 }
 
+/**
+ * True if the viewer created a draft that is still open. A creator who no
+ * longer manages any club keeps edit access to their own draft (via
+ * `created_by`), so the matches list must stay reachable for them.
+ */
+export function hasOwnDraft(
+  viewer: Viewer,
+  matches: readonly { status: string; createdBy: string | null }[],
+): boolean {
+  return matches.some((m) => m.status === "draft" && m.createdBy === viewer.id);
+}
+
 export function canReopenMatch(viewer: Viewer): boolean {
   return viewer.role === "super_admin" || viewer.role === "kfandra";
 }

@@ -28,8 +28,6 @@ const WIN = String(RULES.win.football["2to3"]);
 const LOSS = String(RULES.loss);
 const DRAW = String(RULES.draw["2to3"]);
 
-const OTHER_SIDE = "That club is already on the other side of this match.";
-const KEEP_OWN_CLUB = "Keep your own club on this match.";
 
 let seasonsBefore: db.SeasonRow[];
 
@@ -225,17 +223,20 @@ test.describe("KLC League", () => {
     await expect(page.getByTestId("club-select-1-home")).toHaveValue(mine.id);
     await expect(page.getByTestId("swap-hint")).toHaveText("To swap sides, ask KFANDRA or an admin.");
 
-    // A club cannot lead both slots — not even the manager's own.
-    await page.getByTestId("club-select-1-away").selectOption(mine.id);
-    await expect(page.getByTestId("half-error-1")).toHaveText(OTHER_SIDE);
-    await expect(page.getByTestId("club-select-1-away")).toHaveValue("");
+    // The picker greys out what the server would refuse (the refusals
+    // themselves are unit-tested in actions.test.ts). A club cannot lead both
+    // slots, not even the manager's own.
+    const option = (side: "home" | "away", clubId: string) =>
+      page.getByTestId(`club-select-1-${side}`).locator(`option[value="${clubId}"]`);
+    await expect(option("away", mine.id)).toBeDisabled();
+    await expect(option("away", mine.id)).toHaveText(`${mine.name} (other side)`);
 
     await rec.pickClub(page, 1, "away", theirs.id);
 
     // Replacing their only club would take the manager off their own match.
-    await page.getByTestId("club-select-1-home").selectOption(other.id);
-    await expect(page.getByTestId("half-error-1")).toHaveText(KEEP_OWN_CLUB);
-    await expect(page.getByTestId("club-select-1-home")).toHaveValue(mine.id);
+    await expect(option("home", other.id)).toBeDisabled();
+    await expect(option("home", other.id)).toHaveText(`${other.name} (keep your club)`);
+    await expect(option("home", mine.id)).toBeEnabled();
     expect(
       (await db.listSideRows(id)).map((s) => [s.side, s.club_id]),
     ).toEqual([["away", theirs.id], ["home", mine.id]]);
@@ -252,6 +253,28 @@ test.describe("KLC League", () => {
     await expectDraft(foreign);
     const res = await page.goto(`/klc/matches/${foreign}`);
     expect(res?.status()).toBe(404);
+  });
+
+  test("a creator who no longer manages a club keeps their draft on the matches list", async ({
+    page,
+  }) => {
+    const [mine] = await db.listClubs(1);
+    const creator = await seedPlayer("user", "E2E Ex-manager");
+    await db.setClubManager(mine.id, creator.id);
+    await signIn(page.context(), creator);
+    await page.goto("/klc/matches");
+    const id = await rec.createMatch(page, { date: MATCH_DATE, sport: "football" });
+
+    // No longer a manager: the draft (theirs via created_by) keeps the list open.
+    await db.setClubManager(mine.id, null);
+    await page.goto("/klc/matches");
+    await expect(page.locator(`[data-testid="match-row"][data-match-id="${id}"]`)).toBeVisible();
+    await expect(page.getByTestId("new-match-submit")).toHaveCount(0);
+
+    // Once the draft is gone, so is the list.
+    await db.deleteAllMatches();
+    await page.goto("/klc/matches");
+    await page.waitForURL(/\/klc\/league/);
   });
 
   test("a plain player sees the league and submitted matches read-only, but not drafts", async ({

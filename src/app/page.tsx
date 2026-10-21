@@ -10,8 +10,9 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const player = await getCurrentPlayer();
   const isStaff = player ? isStaffRole(player.role) : false;
-  let canRecord = false;
-  if (player) {
+  // Staff can always record; only a non-staff player needs the club lookup.
+  let canRecord = isStaff;
+  if (player && !isStaff) {
     try {
       canRecord = canRecordMatches(player, await listManagedClubIds(player.id));
     } catch (err) {

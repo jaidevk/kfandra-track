@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { clubOnOtherSide, keepsManagedClub } from "@/lib/klcsra/access";
 import type {
   AppearanceDraft,
   HalfDraft,
@@ -48,6 +49,7 @@ export function TeamBoard({
   onRemove,
   onOpenStats,
   isStaff,
+  managedClubIds,
 }: {
   match: MatchDraft;
   clubs: RecorderClub[];
@@ -65,8 +67,23 @@ export function TeamBoard({
   onOpenStats: (appearanceId: string) => void;
   /** Staff can move a club across; a manager cannot move their own club off its slot. */
   isStaff: boolean;
+  managedClubIds: string[];
 }) {
   const half = match.halves.find((h) => h.halfNo === activeHalf) ?? match.halves[0];
+  const managed = useMemo(() => new Set(managedClubIds), [managedClubIds]);
+
+  /**
+   * Why the server would refuse `clubId` for this side, or null. Mirrors
+   * setSideClubAction: the pair rule (a club leads one slot per match, which
+   * also covers the DB's same-half rule) and, for non-staff, keep-your-own-club.
+   */
+  const refusal = (h: HalfDraft, side: SideKey, clubId: string): string | null => {
+    if (clubOnOtherSide(match.halves, side, clubId)) return "other side";
+    if (!isStaff && !keepsManagedClub(match.halves, h.id, side, clubId, managed)) {
+      return "keep your club";
+    }
+    return null;
+  };
 
   const clubOf = (h: HalfDraft, side: SideKey) => h.sides.find((s) => s.side === side) ?? null;
   const aggregate = (side: SideKey) =>
@@ -180,6 +197,7 @@ export function TeamBoard({
             summaries={summaries}
             errorFor={errorFor}
             onClub={(clubId) => onClub(half, side, clubId)}
+            refusal={(clubId) => refusal(half, side, clubId)}
             onAdd={(playerId) => onAdd(side, playerId)}
             onRemove={onRemove}
             onOpenStats={onOpenStats}
@@ -216,6 +234,7 @@ function TeamCard({
   onAdd,
   onRemove,
   onOpenStats,
+  refusal,
 }: {
   match: MatchDraft;
   half: HalfDraft;
@@ -230,6 +249,8 @@ function TeamCard({
   onAdd: (playerId: string) => void;
   onRemove: (appearanceId: string) => void;
   onOpenStats: (appearanceId: string) => void;
+  /** Why picking this club would be refused, or null. */
+  refusal: (clubId: string) => string | null;
 }) {
   const stored = half.sides.find((s) => s.side === side) ?? null;
   const club = clubs.find((c) => c.id === stored?.clubId) ?? null;
@@ -261,11 +282,15 @@ function TeamCard({
         className="w-full rounded-xl border border-gray-200 px-2 py-2 text-sm font-semibold disabled:bg-gray-50 disabled:text-gray-500"
       >
         <option value="">— pick a club —</option>
-        {clubs.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
+        {clubs.map((c) => {
+          // The stored club is never greyed out: re-picking it is a no-op.
+          const why = c.id === stored?.clubId ? null : refusal(c.id);
+          return (
+            <option key={c.id} value={c.id} disabled={why !== null}>
+              {why ? `${c.name} (${why})` : c.name}
+            </option>
+          );
+        })}
       </select>
       <p className="text-[11px] text-gray-600">
         Manager — <span className="font-semibold text-gray-800">{club?.managerName || "—"}</span>

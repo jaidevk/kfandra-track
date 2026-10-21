@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentPlayer, type CurrentPlayer } from "@/lib/auth/current-user";
 import { isStaffRole } from "@/lib/auth/roles";
 import {
-  canEditMatch, canReopenMatch, clubOnOtherSide, keepsManagedClub, matchClubIds,
+  canEditMatch, canReopenMatch, clubOnBothSlots, clubOnOtherSide, keepsManagedClub, matchClubIds,
 } from "./access";
 import { loadSportStats, loadStatRates } from "./config";
 import { computePlayerPayout } from "./payouts";
@@ -494,6 +494,15 @@ export async function submitMatchAction(
         match.halves.length > 1
           ? `Pick a club for both sides of half ${incomplete.halfNo}.`
           : "Pick a club for both sides before submitting.",
+    };
+  }
+  // The pair rule: a club leading home in one half and away in another would
+  // play itself on aggregate. setSideClubAction blocks it; this catches drafts
+  // from before that rule.
+  if (clubOnBothSlots(match.halves) !== null) {
+    return {
+      ok: false,
+      error: "A club can't be on both sides of one match. Fix the clubs before submitting.",
     };
   }
   if (match.appearances.length === 0) {

@@ -127,6 +127,13 @@ export function buildLeagueTable(
 
     const { scored: sm, agg, pts } = matchResult(m, rules);
     if (sm.halves.length === 0) continue;
+    // Defensive: a club leading home in one counted half and away in another
+    // would be scored a W and an L for one match. Submit now refuses this
+    // (the pair rule), but submitted matches from before it, made via the
+    // removed half-2 "Swap clubs" prompt, can still hold one. Such a match is
+    // left out of the table rather than scored wrongly.
+    const homeClubs = clubsOnSide(sm, "home");
+    if (clubsOnSide(sm, "away").some((id) => homeClubs.includes(id))) continue;
     const tries = TRY_SPORTS.has(m.sport);
 
     for (const side of ["home", "away"] as const) {

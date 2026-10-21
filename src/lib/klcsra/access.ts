@@ -82,3 +82,26 @@ export function keepsManagedClub(
     ),
   );
 }
+
+/**
+ * The first club that leads the home slot in one half and the away slot in
+ * another (or the same) half, or null if every club stays on one slot.
+ *
+ * Submit refuses such a match: on aggregate the club would play itself and be
+ * credited a W and an L. `setSideClubAction` blocks this going forward, but a
+ * draft from before that rule (the removed half-2 "Swap clubs" prompt) can
+ * still hold one.
+ */
+export function clubOnBothSlots(
+  halves: { sides: { side: "home" | "away"; clubId: string | null }[] }[],
+): string | null {
+  const home = new Set<string>();
+  const away = new Set<string>();
+  for (const h of halves) {
+    for (const s of h.sides) {
+      if (s.clubId !== null) (s.side === "home" ? home : away).add(s.clubId);
+    }
+  }
+  for (const id of home) if (away.has(id)) return id;
+  return null;
+}

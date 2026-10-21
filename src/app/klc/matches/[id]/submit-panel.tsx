@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { clubOnBothSlots } from "@/lib/klcsra/access";
 import { leaguePointsLine } from "@/lib/klcsra/points-preview";
 import type { StandingsRules } from "@/lib/klcsra/standings-rules";
 import type { MatchDraft, PayoutLine } from "@/lib/klcsra/types";
@@ -74,6 +75,14 @@ export function SubmitPanel({
     },
     { ok: match.appearances.length > 0, label: "At least one player added" },
   ];
+  // The pair rule (submit refuses it too): only shown when it fails, since a
+  // single-half match can't break it.
+  const twoSided = clubOnBothSlots(match.halves);
+  if (twoSided !== null) {
+    const name =
+      match.halves.flatMap((h) => h.sides).find((s) => s.clubId === twoSided)?.clubName ?? "A club";
+    checks.push({ ok: false, label: `${name} is on both sides of this match` });
+  }
   if (!match.isFriendly) {
     checks.push({
       ok: hasActiveSeason,

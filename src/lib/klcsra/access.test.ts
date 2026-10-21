@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  canEditMatch, canRecordMatches, canReopenMatch, clubOnOtherSide, keepsManagedClub,
+  canEditMatch, canRecordMatches, canReopenMatch, clubOnBothSlots, clubOnOtherSide, keepsManagedClub,
   matchClubIds,
 } from "./access";
 
@@ -84,5 +84,20 @@ describe("keepsManagedClub", () => {
   it("picking your club for an empty side is fine", () => {
     const empty = { id: "h1", sides: [{ side: "away" as const, clubId: "B" }] };
     expect(keepsManagedClub([empty], "h1", "home", "A", managed)).toBe(true);
+  });
+});
+
+describe("clubOnBothSlots", () => {
+  const h = (home: string | null, away: string | null) => ({
+    sides: [{ side: "home" as const, clubId: home }, { side: "away" as const, clubId: away }],
+  });
+  it("null when each club keeps one slot", () => {
+    expect(clubOnBothSlots([h("A", "B"), h("A", "C")])).toBeNull();
+  });
+  it("the club that leads home in H1 and away in H2", () => {
+    expect(clubOnBothSlots([h("A", "B"), h("B", "A")])).toBe("A");
+  });
+  it("ignores empty sides and empty halves", () => {
+    expect(clubOnBothSlots([h("A", null), { sides: [] }])).toBeNull();
   });
 });

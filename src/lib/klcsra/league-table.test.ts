@@ -106,6 +106,19 @@ describe("buildLeagueTable", () => {
     expect(row(t, "A")).toMatchObject({ P: 1, D: 1, GF: 2, GA: 2, Pts: 1 });
   });
 
+  it("skips a combined match where a club leads both slots (pre-pair-rule data)", () => {
+    const m: LeagueMatch = {
+      id: "c3", entryDate: "2026-10-16", sport: "football", isCombined: true, isFriendly: false,
+      totalPlayers: 12,
+      halves: [
+        { halfNo: 1, home: { clubId: "A", score: 2 }, away: { clubId: "B", score: 0 } },
+        { halfNo: 2, home: { clubId: "B", score: 1 }, away: { clubId: "A", score: 0 } },
+      ],
+    };
+    const t = buildLeagueTable([m, single("football", "C", 1, "D", 0)], "all", CLUBS, R, G);
+    expect(t.map((r) => r.clubId).sort()).toEqual(["C", "D"]);
+  });
+
   it("uses the tier from total players", () => {
     const t = buildLeagueTable([single("football", "A", 1, "B", 0, 5)], "all", CLUBS, R, G);
     expect(row(t, "A").Pts).toBe(1);

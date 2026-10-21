@@ -172,6 +172,22 @@ describe("submitMatchAction", () => {
     expect(await submitMatchAction("m1")).toEqual({ ok: false, error: LOCKED });
     expect(repo.submitMatch).not.toHaveBeenCalled();
   });
+
+  it("a club leading home in one half and away in the other is refused", async () => {
+    signIn(as("admin"));
+    vi.mocked(repo.getMatch).mockResolvedValue(draft({
+      isCombined: true,
+      halves: [
+        { id: "h1", halfNo: 1, sides: [side("home", "A"), side("away", "B")] },
+        { id: "h2", halfNo: 2, sides: [side("home", "C"), side("away", "A")] },
+      ],
+    }));
+    expect(await submitMatchAction("m1")).toEqual({
+      ok: false,
+      error: "A club can't be on both sides of one match. Fix the clubs before submitting.",
+    });
+    expect(repo.submitMatch).not.toHaveBeenCalled();
+  });
 });
 
 describe("reopenMatchAction", () => {

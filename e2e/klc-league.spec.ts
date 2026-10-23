@@ -148,6 +148,43 @@ test.describe("KLC League", () => {
     expectNoErrors(errors);
   });
 
+  test("at phone width every table chip is on screen, in two rows, with no sideways scroll", async ({
+    page,
+    errors,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await signInAs(page.context(), "admin");
+    const count = Object.keys(strings.league.groups).length;
+
+    for (const tab of ["table", "leaders"]) {
+      await page.goto(`/klc/league?tab=${tab}`);
+      const chips = page.getByTestId("group-chip");
+      await expect(chips).toHaveCount(count);
+
+      const boxes = await chips.evaluateAll((els) =>
+        els.map((el) => {
+          const r = el.getBoundingClientRect();
+          return { left: r.left, right: r.right, top: Math.round(r.top) };
+        }),
+      );
+      for (const b of boxes) {
+        expect(b.left).toBeGreaterThanOrEqual(0);
+        expect(b.right).toBeLessThanOrEqual(375);
+      }
+      expect(new Set(boxes.map((b) => b.top)).size).toBeLessThanOrEqual(2);
+
+      const overflow = await page.evaluate(() => {
+        const nav = document.querySelector('[data-testid="group-chip"]')!.parentElement!;
+        return {
+          nav: nav.scrollWidth - nav.clientWidth,
+          doc: document.documentElement.scrollWidth - window.innerWidth,
+        };
+      });
+      expect(overflow).toEqual({ nav: 0, doc: 0 });
+    }
+    expectNoErrors(errors);
+  });
+
   test("the old admin recorder path redirects staff to /klc/matches", async ({ page }) => {
     await signInAs(page.context(), "admin");
     await page.goto("/admin/klc/matches");

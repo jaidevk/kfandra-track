@@ -39,6 +39,11 @@ const LEAGUE_SQL = readFileSync(
   resolve(REPO_ROOT, "supabase/migrations/20261020120000_klc_league_scoring.sql"),
   "utf8",
 );
+/** Adds the Multi-Game Variations table (Sir, 2026-10-28). */
+const MGV_SQL = readFileSync(
+  resolve(REPO_ROOT, "supabase/migrations/20261028120000_klc_mgv_table.sql"),
+  "utf8",
+);
 /** The migration that owns each key's CURRENT value. */
 const KEYS = [
   "klcsra_stat_rates",
@@ -51,7 +56,7 @@ const SQL_FOR = {
   klcsra_stat_rates: CORE_SQL,
   klcsra_sport_stats: LEAGUE_SQL,
   klcsra_standings_rules: LEAGUE_SQL,
-  klcsra_table_groups: LEAGUE_SQL,
+  klcsra_table_groups: MGV_SQL,
 } satisfies Record<SeededKey, string>;
 
 /**

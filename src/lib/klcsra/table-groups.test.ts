@@ -7,16 +7,17 @@ import {
 } from "./table-groups";
 
 describe("DEFAULT_TABLE_GROUPS", () => {
-  it("is All + the 4 separate tables, in display order", () => {
+  it("is All + the 5 separate tables, in display order", () => {
     expect(Object.keys(G)).toEqual([
       "all", "football_fooba", "rugby_sox", "rugby_variations", "short_game_variations",
+      "multi_game_variations",
     ]);
   });
 
-  it("puts multi-game variation in All only (Q2)", () => {
-    expect(sportInGroup("multi_game_variation", "all", G)).toBe(true);
-    for (const k of Object.keys(G).filter((k) => k !== "all")) {
-      expect(sportInGroup("multi_game_variation", k, G)).toBe(false);
+  it("puts multi-game variation in All and its own table only (Sir, 2026-10-28)", () => {
+    const own = ["all", "multi_game_variations"];
+    for (const k of Object.keys(G)) {
+      expect(sportInGroup("multi_game_variation", k, G)).toBe(own.includes(k));
     }
   });
 });

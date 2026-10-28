@@ -85,6 +85,7 @@ export const strings = {
       rugby_sox: "Rugby Sox",
       rugby_variations: "Rugby Var.",
       short_game_variations: "Short Game Var.",
+      multi_game_variations: "Multi-Game Var.",
     } as Record<string, string>,
     noSeason: "No season has started yet.",
     emptyTable: "No league matches submitted yet this season.",

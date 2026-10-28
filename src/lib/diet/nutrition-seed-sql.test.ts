@@ -15,7 +15,7 @@ import { NUTRITION_SEED, type SeedFood } from "./nutrition-seed";
 import { BEGIN_MARKER, END_MARKER, renderNutritionSeedSql, sqlString } from "./nutrition-seed-sql";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const MIGRATION = resolve(HERE, "..", "..", "..", "supabase/migrations/20261016120000_diet_nutrition.sql");
+const MIGRATION = resolve(HERE, "..", "..", "..", "supabase/migrations/20261028120100_diet_catalog_additions.sql");
 
 describe("sqlString", () => {
   it("quotes and escapes single quotes", () => {
@@ -39,7 +39,7 @@ describe("renderNutritionSeedSql", () => {
   });
 
   it("renders an uncounted food with null nutrition", () => {
-    const sql = renderNutritionSeedSql([paratha]);
+    const sql = renderNutritionSeedSql([{ ...paratha, unitDetail: null, nutrition: null }]);
     expect(sql).toContain(
       "('paratha', 'Paratha', '🫓', '1 piece', null, 'Grains & Bread', 1, true, null, null, null, null, null, null, null, null, null, null)",
     );
@@ -47,7 +47,13 @@ describe("renderNutritionSeedSql", () => {
 
   it("numbers sort_order from the list position", () => {
     const sql = renderNutritionSeedSql([white, paratha]);
-    expect(sql).toMatch(/'paratha', 'Paratha', '🫓', '1 piece', null, 'Grains & Bread', 2,/);
+    expect(sql).toMatch(/'paratha', 'Paratha', '🫓', '1 piece', '~60 g', 'Grains & Bread', 2,/);
+  });
+
+  it("never overwrites a food KFANDRA edited in the food editor", () => {
+    expect(renderNutritionSeedSql([white])).toMatch(
+      /excluded\.nutrition_updated_at\nwhere public\.food_catalog\.nutrition_source is distinct from 'kfandra';/,
+    );
   });
 });
 

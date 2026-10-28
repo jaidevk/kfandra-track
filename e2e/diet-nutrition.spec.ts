@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { test, expect, expectNoErrors } from "./fixtures";
 import { seedPlayer, signIn, signInAs } from "./helpers/auth";
 import * as db from "./helpers/db";
@@ -76,5 +77,35 @@ test("editing a food in the editor changes the team totals", async ({ page, cont
 
   await page.goto("/admin/diet/nutrition");
   await expect(page.locator("tr", { hasText: "E2E Grid Player" })).toContainText("130 kcal");
+  expectNoErrors(errors);
+});
+
+test("the catalogue seed fills missing foods but never overwrites KFANDRA's edits", async () => {
+  const egg = await db.snapshotFood("egg-boiled");
+  try {
+    await db.sql(
+      `update food_catalog set kcal_per_100g = 999, nutrition_source = 'kfandra' where key = 'milk'`,
+    );
+    await db.sql(
+      `update food_catalog set grams_per_unit = null, kcal_per_100g = null, protein_g_per_100g = null,
+         carbs_g_per_100g = null, fat_g_per_100g = null, nutrition_source = null where key = 'egg-boiled'`,
+    );
+    const migration = readFileSync("supabase/migrations/20261028120100_diet_catalog_additions.sql", "utf8");
+    const block = migration.slice(migration.indexOf("-- BEGIN GENERATED"), migration.indexOf("-- END GENERATED"));
+    await db.sql(block);
+
+    expect(await db.getFoodKcalPer100g("milk")).toBe(999);
+    expect(await db.getFoodKcalPer100g("egg-boiled")).toBe(155);
+  } finally {
+    await db.restoreFood("egg-boiled", egg);
+  }
+});
+
+test("the food list says one waati is 100 g", async ({ page, context, errors }) => {
+  await signInAs(context, "user", "E2E Diet Portions");
+  await page.goto("/diet");
+  await page.getByRole("button", { name: /Breakfast/ }).first().click();
+  await expect(page.getByTestId("diet-portion-note")).toHaveText("1 waati / bowl = 100 g");
+  await expect(page.getByRole("button", { name: /🥚 Egg, boiled/ })).toContainText("1 piece · ~50 g");
   expectNoErrors(errors);
 });

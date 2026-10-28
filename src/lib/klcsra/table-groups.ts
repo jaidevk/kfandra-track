@@ -17,6 +17,7 @@ export const DEFAULT_TABLE_GROUPS: TableGroups = {
   rugby_sox: ["rugby"],
   rugby_variations: ["rugby_variation"],
   short_game_variations: ["short_game_variation"],
+  multi_game_variations: ["multi_game_variation"],
 };
 
 const isSport = (x: unknown): x is Sport =>

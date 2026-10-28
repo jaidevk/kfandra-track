@@ -631,9 +631,14 @@ function MealDetail({
       {/* Catalog */}
       {!meal.skipped && (
         <section>
-          <h2 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-600">
-            Tap to add
-          </h2>
+          <div className="mb-2 flex items-baseline justify-between gap-2">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-600">
+              Tap to add
+            </h2>
+            <p data-testid="diet-portion-note" className="text-[10px] font-semibold text-orange-700">
+              1 waati / bowl = 100 g
+            </p>
+          </div>
           <div className="space-y-4">
             {sections.map((section) => (
               <div key={section.label}>

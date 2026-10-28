@@ -1,7 +1,7 @@
 // src/lib/diet/nutrition-seed-sql.ts
 /**
  * Renders NUTRITION_SEED as the SQL upsert block that lives between the
- * markers in supabase/migrations/20261016120000_diet_nutrition.sql. Pure.
+ * markers in supabase/migrations/20261028120100_diet_catalog_additions.sql. Pure.
  */
 import { per100g, type SeedFood } from "./nutrition-seed";
 
@@ -59,7 +59,9 @@ export function renderNutritionSeedSql(foods: SeedFood[]): string {
     "values",
     body,
     "on conflict (key) do update set",
-    `${updates};`,
+    updates,
+    // A food KFANDRA saved in the food editor is his; the seed never overwrites it.
+    "where public.food_catalog.nutrition_source is distinct from 'kfandra';",
     END_MARKER,
   ].join("\n");
 }

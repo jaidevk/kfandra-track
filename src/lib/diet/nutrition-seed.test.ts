@@ -76,3 +76,44 @@ describe("per100g round-trips to KFANDRA's numbers", () => {
     expect(per100g(byKey["wada-pav"].nutrition!).sodiumMg).toBe(300);
   });
 });
+
+describe("players' additions (2026-10-28)", () => {
+  const NEW_KEYS = [
+    "pav", "bhakri-jowar", "bhakri-bajra",
+    "porridge-oats", "porridge-ragi", "porridge-dalia", "porridge-jowar", "porridge-cornmeal",
+    "sambar", "sprouts-salad", "sprouts-usal", "soup",
+    "doodhi", "sponge-gourd", "bitter-gourd", "grilled-veggies",
+    "chicken-biryani",
+    "avocado", "pear", "pomegranate", "dates", "raisins", "black-raisins", "khareek",
+    "futana", "pumpkin-seeds", "sunflower-seeds", "flax-seeds", "chia-seeds", "sabja-seeds", "pine-nuts",
+    "peanut-butter", "hummus", "coconut-chutney",
+    "egg-bhurji",
+  ];
+
+  it("adds every requested food", () => {
+    for (const key of NEW_KEYS) expect(byKey[key], key).toBeDefined();
+  });
+
+  it("counts every food: none is left without nutrition", () => {
+    expect(NUTRITION_SEED.filter((f) => !f.nutrition).map((f) => f.key)).toEqual([]);
+  });
+
+  it("makes 1 waati 100 g everywhere, except dry oats", () => {
+    for (const f of NUTRITION_SEED.filter((f) => f.unit === "1 waati" && f.key !== "oats")) {
+      expect(f.nutrition!.gramsPerUnit, f.key).toBe(100);
+      expect(f.unitDetail, f.key).toBe("100 g");
+    }
+  });
+
+  it("splits chicken biryani out of pulao", () => {
+    expect(byKey["pulao"].name).toBe("Pulao");
+    expect(byKey["chicken-biryani"].section).toBe("Rice");
+  });
+
+  it("leaves the verdict to KFANDRA for reference-table values", () => {
+    for (const f of NUTRITION_SEED.filter((f) => f.nutrition?.source === "reference")) {
+      expect(f.nutrition!.verdict, f.key).toBeNull();
+      expect(f.nutrition!.note, f.key).toBeNull();
+    }
+  });
+});

@@ -25,13 +25,14 @@ At the top of the KLC League page:
 
 <img class="figure-right" src="images/klc-league/table.png" alt="Table tab (sample data)" />
 
-Pick a table with the buttons under the tabs (all five are always visible):
+Pick a table with the buttons under the tabs (all six are always visible):
 
-- **All**: every official match, combined (Multi-Game Variations count here only)
+- **All**: every official match, combined
 - **Football / Fooba**
 - **Rugby Sox**
 - **Rugby Var.** (Rugby Variations)
 - **Short Game Var.** (Football Short Game Variations)
+- **Multi-Game Var.** (KLC's Multi-Game Variations)
 
 On a phone, **swipe the middle columns** sideways. The club name and points stay put.
 

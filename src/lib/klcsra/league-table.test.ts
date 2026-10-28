@@ -58,9 +58,10 @@ describe("buildLeagueTable", () => {
     expect(all.map((r) => r.clubId).sort()).toEqual(["A", "B", "C", "D"]);
   });
 
-  it("multi-game variation counts in All only", () => {
+  it("multi-game variation counts in All and its own table only", () => {
     const ms = [single("multi_game_variation", "A", 1, "B", 0)];
     expect(buildLeagueTable(ms, "all", CLUBS, R, G)).toHaveLength(2);
+    expect(buildLeagueTable(ms, "multi_game_variations", CLUBS, R, G)).toHaveLength(2);
     expect(buildLeagueTable(ms, "short_game_variations", CLUBS, R, G)).toHaveLength(0);
   });
 

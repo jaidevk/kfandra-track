@@ -1,0 +1,44 @@
+name: Bug
+description: Something is broken, confusing or crashing.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! Issues are public — please don't post phone numbers, PINs or other players' data.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to get there
+      placeholder: |
+        1. Open Diet
+        2. Pick yesterday
+        3. Tap Lunch → Done
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+  - type: input
+    id: when
+    attributes:
+      label: When did it happen? (date and time)
+      placeholder: "e.g. 2026-11-04 07:42"
+  - type: input
+    id: device
+    attributes:
+      label: Phone and browser
+      placeholder: "e.g. Pixel 7, Chrome"
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot (optional)
+      description: Drag an image in here.

@@ -29,4 +29,11 @@ All game rules (scoring, game types, food/gym catalogues) live in database
 tables and are editable at runtime — see the admin guide. Deployment is
 automatic: pushing to `main` runs CI and deploys to production via Vercel.
 
+## Testing & contributing
+
+- **[TESTING.md](TESTING.md)** — help test the live app: check the Diet and
+  MMG numbers, time slow actions, and report via GitHub issues.
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — local setup and the branch → pull
+  request → review workflow. `main` is production; all changes go through PRs.
+
 For AI-agent contribution conventions, see [CLAUDE.md](CLAUDE.md).

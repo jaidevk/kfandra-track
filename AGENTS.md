@@ -82,3 +82,15 @@ bd close <id>         # Complete work
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
 <!-- END BEADS INTEGRATION -->
+
+## Branches & Pull Requests
+
+`main` is production: every merge deploys to the live app. It is protected, so
+the "push" steps above mean **pushing your branch**, never `main`.
+
+- NEVER commit on `main`. Start each bead on a branch
+  (`feat/…`, `fix/…`, `perf/…`, `docs/…`) from an up-to-date `main`.
+- Push with `git push -u origin <branch>`, then open a PR against `main`
+  (`gh pr create`) and link the bead / GitHub issue.
+- The maintainer (@jaidevk) reviews and merges. Don't merge your own PR.
+- See `CONTRIBUTING.md` for the full contributor workflow.

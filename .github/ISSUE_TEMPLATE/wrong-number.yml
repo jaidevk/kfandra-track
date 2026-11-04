@@ -1,0 +1,57 @@
+name: A number looks wrong
+description: A calorie, macro or points figure doesn't match what you expect.
+title: "[Numbers] "
+labels: ["testing", "wrong-number"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! Issues are public — please don't post phone numbers, PINs or other players' data.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where?
+      options:
+        - Diet — a food's values
+        - Diet — meal or day total
+        - MMG — running total
+        - MMG — order-of-arrival points (after Finalize)
+        - MMG — total differs from the Google Sheet
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: date
+    attributes:
+      label: Date in the app
+      description: The diet day or MMG session date you were looking at.
+      placeholder: "e.g. 2026-11-04"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What you entered
+      description: Foods and counts, or games / stats / toggles.
+      placeholder: "e.g. Dal × 2 at lunch"
+    validations:
+      required: true
+  - type: input
+    id: shown
+    attributes:
+      label: What the app showed
+      placeholder: "e.g. 180 kcal, 12 g protein"
+    validations:
+      required: true
+  - type: input
+    id: expected
+    attributes:
+      label: What you expected — and where that number comes from
+      placeholder: "e.g. ~230 kcal per 2 waati (food label / the Sheet / my own sum)"
+    validations:
+      required: true
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot (optional)
+      description: Drag an image in here.

@@ -1,0 +1,57 @@
+name: Something is slow
+description: An action takes more than about 3 seconds.
+title: "[Slow] "
+labels: ["testing", "performance"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Finalize on MMG is already a known issue — your timing still helps us measure the fix.
+        If there's already an open issue for the same action, add your timing as a comment there instead.
+  - type: dropdown
+    id: action
+    attributes:
+      label: Which action?
+      options:
+        - MMG — Finalize session
+        - Opening the app (first load)
+        - Opening MMG / Gym / Diet
+        - Switching dates
+        - Saving… taking long
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: seconds
+    attributes:
+      label: Roughly how many seconds?
+      placeholder: "e.g. 12"
+    validations:
+      required: true
+  - type: input
+    id: when
+    attributes:
+      label: When did it happen? (date and time, to the minute)
+      description: We use this to find your visit in our analytics.
+      placeholder: "e.g. 2026-11-04 07:42"
+    validations:
+      required: true
+  - type: dropdown
+    id: network
+    attributes:
+      label: Network
+      options:
+        - Wi-Fi
+        - 4G
+        - 5G
+        - Not sure
+  - type: input
+    id: device
+    attributes:
+      label: Phone and browser
+      placeholder: "e.g. Pixel 7, Chrome / iPhone 13, Safari"
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else?
+      description: Does it happen every time? Did it get slower over time?

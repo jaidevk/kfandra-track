@@ -5,7 +5,7 @@ import type { MatchDraft } from "./types";
 const draft = (over: Partial<MatchDraft> = {}): MatchDraft => ({
   id: "m1", entryDate: "2026-10-18", sport: "fooba",
   isFriendly: false, isCombined: true, durationMinutes: null,
-  status: "submitted", submittedAt: "2026-10-18T10:00:00Z",
+  status: "submitted", submittedAt: "2026-10-18T10:00:00Z", homeSentAt: null, awaySentAt: null,
   seasonId: "s2", seasonName: "KLCFERRSXVSG2", createdBy: null,
   halves: [
     { id: "h1", halfNo: 1, sides: [

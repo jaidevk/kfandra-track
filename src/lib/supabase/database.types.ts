@@ -745,10 +745,12 @@ export type Database = {
       }
       klc_matches: {
         Row: {
+          away_sent_at: string | null
           created_at: string
           created_by: string | null
           duration_minutes: number | null
           entry_date: string
+          home_sent_at: string | null
           id: string
           is_combined: boolean
           is_friendly: boolean
@@ -760,10 +762,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          away_sent_at?: string | null
           created_at?: string
           created_by?: string | null
           duration_minutes?: number | null
           entry_date: string
+          home_sent_at?: string | null
           id?: string
           is_combined?: boolean
           is_friendly?: boolean
@@ -775,10 +779,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          away_sent_at?: string | null
           created_at?: string
           created_by?: string | null
           duration_minutes?: number | null
           entry_date?: string
+          home_sent_at?: string | null
           id?: string
           is_combined?: boolean
           is_friendly?: boolean
@@ -818,6 +824,7 @@ export type Database = {
           appearance_id: string
           half_no: number
           id: string
+          minutes: number[]
           stat_count: number
           stat_key: string
         }
@@ -825,6 +832,7 @@ export type Database = {
           appearance_id: string
           half_no?: number
           id?: string
+          minutes?: number[]
           stat_count?: number
           stat_key: string
         }
@@ -832,6 +840,7 @@ export type Database = {
           appearance_id?: string
           half_no?: number
           id?: string
+          minutes?: number[]
           stat_count?: number
           stat_key?: string
         }

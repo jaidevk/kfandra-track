@@ -8,7 +8,7 @@
 needs migrating.
 
 > **Confidential:** one reason behind §5 (why there is no keeper tick) is a KFANDRA rule that is
-> not announced yet. It's recorded in bd memory `klc-gk-rotation-confidential`. Don't mention it
+> not announced yet. It's recorded in bd memory `klc-confidential-2026-11-08`. Don't mention it
 > in UI text, guides, commits or PR descriptions.
 
 ---

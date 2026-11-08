@@ -29,8 +29,8 @@ import type { MatchDraft, MatchStatus, PayoutLine, Season, SideKey } from "./typ
  *     team; RLS deliberately does not enforce it (staff have blanket write
  *     access), so this file is the first lock; the `*_submit_lock` DB
  *     triggers are the backstop for official matches.
- *  3. **The payout compute.** Submit composes the pure domain
- *     (`computePlayerPayout` x `statsForSport`) over the stored draft and
+ *  3. **The payout compute.** Make official composes the pure domain
+ *     (`computePlayerPayout` x `statsForSport`) over the stored match and
  *     returns the lines. Nothing is written to a balance sheet in Phase 2.
  *
  * The repository throws on every write failure; each call is wrapped and the
@@ -284,7 +284,14 @@ export async function updateMatchMetaAction(
     }
   }
 
+  // A manager may enter a friendly's score but not a league one (D1), so
+  // flipping Friendly -> League must not carry their score across. Cleared
+  // first: if the update then fails, the match is still a friendly.
+  const toLeague = patch?.isFriendly === false && gate.data.match.isFriendly;
+  const clearsScores = toLeague && !isStaffRole(gate.data.player.role);
+
   try {
+    if (clearsScores) await repo.clearScores(matchId);
     await repo.updateMatchMeta(matchId, fields);
     revalidateMatch(matchId);
     return OK;

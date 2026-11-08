@@ -9,6 +9,7 @@ vi.mock("./repository", () => ({
   createMatch: vi.fn(),
   setSideClub: vi.fn(),
   updateMatchMeta: vi.fn(),
+  clearScores: vi.fn(),
   deleteMatch: vi.fn(),
   reopenMatch: vi.fn(),
   getActiveSeason: vi.fn(),
@@ -498,5 +499,110 @@ describe("setGoalTimesAction", () => {
     expect(await setGoalTimesAction("m1", "ap1", 1, "mainGoal", [200]))
       .toEqual({ ok: false, error: "Enter whole minutes between 0 and 150." });
     expect(repo.setGoalTimes).not.toHaveBeenCalled();
+  });
+});
+
+describe("league/friendly toggle can't launder a score", () => {
+  const friendlyWithScore = () => draft({ isFriendly: true });
+
+  it("a manager turning a friendly into a league match clears the scores", async () => {
+    signIn(as("user"));
+    manages("A");
+    vi.mocked(repo.getMatch).mockResolvedValue(friendlyWithScore());
+    expect(await updateMatchMetaAction("m1", { isFriendly: false })).toEqual({ ok: true, data: undefined });
+    expect(repo.updateMatchMeta).toHaveBeenCalledWith("m1", { isFriendly: false });
+    expect(repo.clearScores).toHaveBeenCalledWith("m1");
+  });
+
+  it("staff keep the scores when they flip it", async () => {
+    signIn(as("admin"));
+    vi.mocked(repo.getMatch).mockResolvedValue(friendlyWithScore());
+    await updateMatchMetaAction("m1", { isFriendly: false });
+    expect(repo.updateMatchMeta).toHaveBeenCalled();
+    expect(repo.clearScores).not.toHaveBeenCalled();
+  });
+
+  it("a manager turning a league match into a friendly clears nothing", async () => {
+    signIn(as("user"));
+    manages("A");
+    await updateMatchMetaAction("m1", { isFriendly: true });
+    expect(repo.updateMatchMeta).toHaveBeenCalled();
+    expect(repo.clearScores).not.toHaveBeenCalled();
+  });
+});
+
+describe("more gate checks", () => {
+  it("make official with no active season is refused, nothing written", async () => {
+    signIn(as("admin"));
+    vi.mocked(repo.getActiveSeason).mockResolvedValue(null);
+    vi.mocked(repo.getMatch).mockResolvedValue(draft(withPlayers));
+    expect(await makeOfficialAction("m1"))
+      .toEqual({ ok: false, error: "No active season. Start one in Seasons first." });
+    expect(repo.makeOfficial).not.toHaveBeenCalled();
+  });
+
+  it("staff can't add, remove or set stats on an official match", async () => {
+    signIn(as("admin"));
+    vi.mocked(repo.getMatch).mockResolvedValue(draft({ ...withPlayers, status: "submitted" }));
+    expect(await addAppearanceAction("m1", "p9", "home")).toEqual({ ok: false, error: LOCKED });
+    expect(await setStatAction("m1", "ap1", 1, "goal", 1)).toEqual({ ok: false, error: LOCKED });
+    expect(repo.addAppearance).not.toHaveBeenCalled();
+    expect(repo.setStat).not.toHaveBeenCalled();
+  });
+
+  it("staff can't send an official match back", async () => {
+    signIn(as("admin"));
+    vi.mocked(repo.getMatch).mockResolvedValue(draft({ status: "submitted" }));
+    expect(await sendBackAction("m1")).toEqual({ ok: false, error: LOCKED });
+    expect(repo.sendBack).not.toHaveBeenCalled();
+  });
+
+  describe("goal times as a manager of A", () => {
+    const app = (side: SideKey) => ({
+      id: "ap1", side, slot: 1, playerId: "p1", displayName: "P1", stats: { 1: { mainGoal: 2 } },
+    });
+    beforeEach(() => { signIn(as("user")); manages("A"); });
+
+    it("the other team's goals are off limits", async () => {
+      vi.mocked(repo.getMatch).mockResolvedValue(draft({ sport: "fooba", appearances: [app("away")] } as never));
+      expect(await setGoalTimesAction("m1", "ap1", 1, "mainGoal", [12])).toEqual({ ok: false, error: NOT_YOUR_TEAM });
+      expect(repo.setGoalTimes).not.toHaveBeenCalled();
+    });
+
+    it("their own team once sent is closed", async () => {
+      vi.mocked(repo.getMatch).mockResolvedValue(
+        draft({ sport: "fooba", homeSentAt: "t", appearances: [app("home")] } as never),
+      );
+      expect(await setGoalTimesAction("m1", "ap1", 1, "mainGoal", [12])).toEqual({ ok: false, error: TEAM_SENT });
+      expect(repo.setGoalTimes).not.toHaveBeenCalled();
+    });
+
+    it("a friendly keeps no times", async () => {
+      vi.mocked(repo.getMatch).mockResolvedValue(
+        draft({ sport: "fooba", isFriendly: true, appearances: [app("home")] } as never),
+      );
+      expect((await setGoalTimesAction("m1", "ap1", 1, "mainGoal", [12])).ok).toBe(false);
+      expect(repo.setGoalTimes).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("once one team is sent, a manager's details are fixed", () => {
+    beforeEach(() => {
+      signIn(as("user"));
+      manages("A");
+      vi.mocked(repo.getMatch).mockResolvedValue(draft({ awaySentAt: "t" }));
+    });
+
+    it("meta and delete are refused", async () => {
+      expect(await updateMatchMetaAction("m1", { isFriendly: true })).toEqual({ ok: false, error: DETAILS_FIXED });
+      expect(await deleteMatchAction("m1")).toEqual({ ok: false, error: DETAILS_FIXED });
+      expect(repo.updateMatchMeta).not.toHaveBeenCalled();
+      expect(repo.deleteMatch).not.toHaveBeenCalled();
+    });
+
+    it("changing their own side's club is refused", async () => {
+      expect((await setSideClubAction("m1", "h1", "home", "C")).ok).toBe(false);
+      expect(repo.setSideClub).not.toHaveBeenCalled();
+    });
   });
 });

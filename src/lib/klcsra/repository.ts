@@ -534,6 +534,23 @@ export async function setSideScore(
   }
 }
 
+/** Zero every side's score on a match (all halves). */
+export async function clearScores(matchId: string): Promise<void> {
+  const admin = createAdminClient();
+  const { data: halves, error: halvesError } = await admin
+    .from("klc_match_halves")
+    .select("id")
+    .eq("match_id", matchId);
+  if (halvesError) throw new Error(`Failed to clear the scores: ${halvesError.message}`);
+  const halfIds = (halves ?? []).map((h) => h.id as string);
+  if (halfIds.length === 0) return;
+  const { error } = await admin
+    .from("klc_match_sides")
+    .update({ score: 0 })
+    .in("half_id", halfIds);
+  if (error) throw new Error(`Failed to clear the scores: ${error.message}`);
+}
+
 // ── squad ───────────────────────────────────────────────────────────────────
 
 /**

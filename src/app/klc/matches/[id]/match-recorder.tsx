@@ -32,6 +32,7 @@ import type {
   PayoutLine,
   SideKey,
 } from "@/lib/klcsra/types";
+import { DuplicateBanner } from "./duplicate-banner";
 import { RecorderHeader } from "./recorder-header";
 import { type RecorderClub, type Result, type SyncStatus } from "./recorder-shared";
 import { StatsDialog } from "./stats-dialog";
@@ -385,6 +386,8 @@ export function MatchRecorder({
 
   return (
     <div className="mx-auto w-full max-w-md space-y-4">
+      <DuplicateBanner matchId={match.id} duplicates={duplicates} />
+
       <RecorderHeader
         match={match}
         seasonName={locked ? match.seasonName : activeSeasonName}

@@ -112,7 +112,7 @@ export default async function MatchesPage() {
         </section>
       )}
 
-      {listed.length === 0 ? (
+      {matches.length === 0 ? (
         <div
           data-testid="match-empty"
           className="rounded-xl border border-dashed border-gray-300 bg-white px-4 py-6 text-center"

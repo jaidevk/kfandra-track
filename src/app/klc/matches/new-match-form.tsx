@@ -53,6 +53,7 @@ export function NewMatchForm({
   /** Any change to the form makes an earlier duplicate warning stale. */
   const edit = <T,>(set: (v: T) => void) => (v: T) => {
     setDuplicates([]);
+    setError(null);
     set(v);
   };
 
@@ -122,9 +123,12 @@ export function NewMatchForm({
           </span>
           <select
             data-testid="new-match-club"
-            aria-label={isStaff ? "Home club" : "Your club"}
             value={homeClubId}
-            onChange={(e) => edit(setHomeClubId)(e.target.value)}
+            onChange={(e) => {
+              // The opponent can't be the home club: drop a now-clashing pick.
+              if (e.target.value === awayClubId) setAwayClubId("");
+              edit(setHomeClubId)(e.target.value);
+            }}
             className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900 focus:border-gray-400 focus:outline-none"
           >
             {isStaff && <option value="">— pick later —</option>}
@@ -139,7 +143,6 @@ export function NewMatchForm({
           </span>
           <select
             data-testid="new-match-opponent"
-            aria-label={isStaff ? "Away club" : "Opponent"}
             value={awayClubId}
             onChange={(e) => edit(setAwayClubId)(e.target.value)}
             className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900 focus:border-gray-400 focus:outline-none"
@@ -181,7 +184,7 @@ export function NewMatchForm({
               <Link
                 href={`/klc/matches/${d.id}`}
                 data-testid="duplicate-open"
-                className="font-bold underline"
+                className="inline-block py-2 font-bold underline"
               >
                 Open it
               </Link>
@@ -192,7 +195,7 @@ export function NewMatchForm({
             data-testid="duplicate-create-anyway"
             disabled={working}
             onClick={() => void create(true)}
-            className="text-[12px] font-semibold text-amber-900 underline disabled:opacity-40"
+            className="rounded-lg border border-amber-400 bg-white px-3 py-2 text-[12px] font-semibold text-amber-900 disabled:opacity-40"
           >
             Create a new match anyway
           </button>
@@ -201,7 +204,7 @@ export function NewMatchForm({
         <button
           data-testid="new-match-submit"
           onClick={() => void create(false)}
-          disabled={working}
+          disabled={working || (!isStaff && !awayClubId)}
           className="w-full rounded-lg bg-gray-900 px-3 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-40"
         >
           {working ? "Creating…" : "＋ New match"}

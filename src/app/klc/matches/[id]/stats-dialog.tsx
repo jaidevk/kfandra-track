@@ -191,6 +191,9 @@ export function StatsDialog({
                             disabled={!timesEditable}
                             value={list[i] ?? ""}
                             onChange={(e) => {
+                              // Half-typed input ("1e") reads as "" too; only a
+                              // truly empty box clears the minute.
+                              if (e.target.validity.badInput) return;
                               const raw = e.target.value.trim();
                               const n = raw === "" ? null : Number(raw);
                               if (n !== null && (!Number.isInteger(n) || n < 0 || n > 150)) return;

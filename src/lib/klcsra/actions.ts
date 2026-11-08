@@ -286,11 +286,13 @@ export async function updateMatchMetaAction(
     }
   }
 
-  // A manager may enter a friendly's score but not a league one (D1), so
-  // flipping Friendly -> League must not carry their score across. Cleared
-  // first: if the update then fails, the match is still a friendly.
-  const toLeague = patch?.isFriendly === false && gate.data.match.isFriendly;
-  const clearsScores = toLeague && !isStaffRole(gate.data.player.role);
+  // A manager may enter a friendly's score but not a league one (D1), so a
+  // manager's flip either way clears the score: Friendly -> League must not
+  // carry their score across, and League -> Friendly must not hand them a
+  // staff-entered league score. Cleared first: if the update then fails, the
+  // match keeps its old type.
+  const flipsType = patch?.isFriendly !== undefined && patch.isFriendly !== gate.data.match.isFriendly;
+  const clearsScores = flipsType && !isStaffRole(gate.data.player.role);
 
   try {
     if (clearsScores) await repo.clearScores(matchId);
@@ -485,7 +487,10 @@ export async function setStatAction(
   // the DB rejects them. Clamp to 0, which the repository reads as "clear".
   const value = Math.max(0, nonNegativeInt(count) ?? 0);
   // A lower count drops the latest goal times with it (minutes_len_chk).
-  const minutes = trimTimes(app.times?.[halfNo]?.[statKey] ?? [], value);
+  // Otherwise leave the column alone, so this save can't overwrite a newer
+  // times save that raced it.
+  const existing = app.times?.[halfNo]?.[statKey] ?? [];
+  const minutes = existing.length > value ? trimTimes(existing, value) : undefined;
 
   try {
     await repo.setStat(appearanceId, halfNo, statKey, value, minutes);

@@ -603,15 +603,17 @@ export async function removeAppearance(appearanceId: string): Promise<void> {
  * Set one stat tally for one appearance in one half.
  *
  * A count of 0 (or less) DELETES the row instead of storing a zero. `minutes`
- * is written with the count, already trimmed by the caller to at most
- * `count` entries (`klc_player_stats_minutes_len_chk`).
+ * is written only when given (already trimmed by the caller to at most
+ * `count` entries, `klc_player_stats_minutes_len_chk`); omitted, the column is
+ * left out of the upsert, so a conflict keeps the stored times and a new row
+ * takes the '{}' default.
  */
 export async function setStat(
   appearanceId: string,
   halfNo: number,
   statKey: StatKey,
   count: number,
-  minutes: (number | null)[] = [],
+  minutes?: (number | null)[],
 ): Promise<void> {
   const admin = createAdminClient();
   if (count <= 0) {
@@ -630,7 +632,7 @@ export async function setStat(
       {
         appearance_id: appearanceId, half_no: halfNo, stat_key: statKey, stat_count: count,
         // int[] holds nulls; the generated type just doesn't say so.
-        minutes: minutes as number[],
+        ...(minutes ? { minutes: minutes as number[] } : {}),
       },
       { onConflict: "appearance_id,half_no,stat_key" },
     );

@@ -246,6 +246,17 @@ describe("per-team edits (manager of A = home)", () => {
     await setStatAction("m1", "ap1", 1, "mainGoal", 1);
     expect(repo.setStat).toHaveBeenCalledWith("ap1", 1, "mainGoal", 1, [12]);
   });
+
+  it("leaves the goal times alone when the count doesn't need trimming", async () => {
+    vi.mocked(repo.getMatch).mockResolvedValue(draft({
+      appearances: [{
+        id: "ap1", side: "home", slot: 1, playerId: "p1", displayName: "P1",
+        stats: { 1: { mainGoal: 1 } }, times: { 1: { mainGoal: [12] } },
+      }],
+    }));
+    await setStatAction("m1", "ap1", 1, "mainGoal", 2);
+    expect(repo.setStat).toHaveBeenCalledWith("ap1", 1, "mainGoal", 2, undefined);
+  });
 });
 
 describe("staff edit both teams before official", () => {
@@ -523,10 +534,18 @@ describe("league/friendly toggle can't launder a score", () => {
     expect(repo.clearScores).not.toHaveBeenCalled();
   });
 
-  it("a manager turning a league match into a friendly clears nothing", async () => {
+  it("a manager turning a league match into a friendly clears the scores", async () => {
     signIn(as("user"));
     manages("A");
     await updateMatchMetaAction("m1", { isFriendly: true });
+    expect(repo.updateMatchMeta).toHaveBeenCalled();
+    expect(repo.clearScores).toHaveBeenCalledWith("m1");
+  });
+
+  it("a manager re-sending the same type clears nothing", async () => {
+    signIn(as("user"));
+    manages("A");
+    await updateMatchMetaAction("m1", { isFriendly: false });
     expect(repo.updateMatchMeta).toHaveBeenCalled();
     expect(repo.clearScores).not.toHaveBeenCalled();
   });

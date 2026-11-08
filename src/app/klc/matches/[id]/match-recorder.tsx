@@ -122,6 +122,24 @@ export function MatchRecorder({
   const timedStats = allowedStats.filter((k) => isTimed(match.sport, k, match.isFriendly));
   /** `${appearanceId}|${halfNo}|${statKey}` → optimistic minutes. */
   const [timesOverlay, setTimesOverlay] = useState<Record<string, (number | null)[]>>({});
+  // Once a re-read shows a minutes overlay as stored, drop it, so a later
+  // change from elsewhere isn't masked by it. (Adjusted during render, not in
+  // an effect, so the stale overlay never paints.)
+  const [timesSeen, setTimesSeen] = useState(match);
+  if (timesSeen !== match) {
+    setTimesSeen(match);
+    setTimesOverlay((o) => {
+      const next = { ...o };
+      for (const [key, minutes] of Object.entries(o)) {
+        const [appearanceId, halfNo, statKey] = key.split("|");
+        const stored = match.appearances.find((a) => a.id === appearanceId)
+          ?.times?.[Number(halfNo)]?.[statKey as StatKey] ?? [];
+        const sent = trimTimes(minutes, minutes.length);
+        if (sent.length === stored.length && sent.every((m, i) => m === stored[i])) delete next[key];
+      }
+      return next;
+    });
+  }
   const err = (slot: string) => errors[slot] ?? null;
 
   // ── mutation plumbing ─────────────────────────────────────────────────────
@@ -150,7 +168,11 @@ export function MatchRecorder({
 
   // Debounced writes, one timer per field. Held in a ref so a re-render (there
   // is one after every refresh) cannot drop a scheduled save.
-  const pendingSaves = useRef(new Map<string, { timer: ReturnType<typeof setTimeout>; go: () => void }>());
+  const pendingSaves = useRef(
+    new Map<string, { timer: ReturnType<typeof setTimeout>; go: () => Promise<void>; after?: string }>(),
+  );
+  /** Saves that have fired and not yet landed, by key. */
+  const inFlight = useRef(new Map<string, Promise<void>>());
   useEffect(() => {
     const saves = pendingSaves.current;
     return () => {
@@ -163,15 +185,25 @@ export function MatchRecorder({
       key: string,
       slot: string,
       fn: () => Promise<Result>,
-      opts: { delay?: number; refresh?: boolean; onFail?: () => void } = {},
+      // `after`: another save's key that must land first (a goal's times go
+      // after its count, or the count save could see stale times).
+      opts: { delay?: number; refresh?: boolean; onFail?: () => void; after?: string } = {},
     ) => {
-      const { delay = 700, refresh = true, onFail } = opts;
+      const { delay = 700, refresh = true, onFail, after } = opts;
       setSync("saving");
       const existing = pendingSaves.current.get(key);
       if (existing) clearTimeout(existing.timer);
 
-      const go = async () => {
-        pendingSaves.current.delete(key);
+      const save = async () => {
+        if (after) {
+          const first = pendingSaves.current.get(after);
+          if (first) {
+            clearTimeout(first.timer);
+            await first.go();
+          } else {
+            await inFlight.current.get(after);
+          }
+        }
         setErrors((e) => ({ ...e, [slot]: null }));
         // A throw counts as a refusal, so the overlay rolls back.
         const res = await fn().catch((): Result => ({ ok: false, error: UNEXPECTED }));
@@ -185,9 +217,20 @@ export function MatchRecorder({
         if (refresh) startTransition(() => router.refresh());
       };
 
+      const go = () => {
+        pendingSaves.current.delete(key);
+        const p = save();
+        inFlight.current.set(key, p);
+        void p.finally(() => {
+          if (inFlight.current.get(key) === p) inFlight.current.delete(key);
+        });
+        return p;
+      };
+
       pendingSaves.current.set(key, {
         timer: setTimeout(() => void go(), delay),
         go,
+        after,
       });
     },
     [router],
@@ -203,7 +246,11 @@ export function MatchRecorder({
    * tapped seconds before Make official can go unpaid.
    */
   const flushSaves = useCallback(async () => {
-    const queued = [...pendingSaves.current.values()];
+    // Saves with an `after` start last, so the save they wait on is already
+    // in flight.
+    const queued = [...pendingSaves.current.values()].sort(
+      (a, b) => Number(Boolean(a.after)) - Number(Boolean(b.after)),
+    );
     pendingSaves.current.clear();
     await Promise.all(
       queued.map(({ timer, go }) => {
@@ -329,6 +376,8 @@ export function MatchRecorder({
     const value = Math.max(0, count);
     const key = `${appearanceId}|${halfNo}|${statKey}`;
     setStatOverlay((o) => ({ ...o, [key]: value }));
+    // Fewer goals keep fewer minutes, as the server will store them.
+    setTimesOverlay((o) => (key in o ? { ...o, [key]: trimTimes(o[key], value) } : o));
     autosave(
       key,
       `player-${appearanceId}`,
@@ -381,6 +430,7 @@ export function MatchRecorder({
       () => setGoalTimesAction(match.id, appearanceId, halfNo, statKey, trimTimes(minutes, minutes.length)),
       {
         refresh: false,
+        after: key,
         onFail: () =>
           setTimesOverlay((o) => {
             const next = { ...o };
@@ -465,7 +515,7 @@ export function MatchRecorder({
                   const key = `${openAppearance.id}|${activeHalf}|${k}`;
                   const stored = openAppearance.times?.[activeHalf]?.[k] ?? [];
                   const count = countsFor(openAppearance.id, activeHalf, openAppearance.stats[activeHalf] ?? {})[k] ?? 0;
-                  return [k, trimTimes(timesOverlay[key] ?? stored, count).concat()];
+                  return [k, trimTimes(timesOverlay[key] ?? stored, count)];
                 }),
               )
             : {}

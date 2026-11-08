@@ -20,11 +20,11 @@ describe("DEFAULT_SPORT_STATS", () => {
 
   it("matches the spec allow-lists", () => {
     expect(DEFAULT_SPORT_STATS.football).toHaveLength(11);
-    expect(DEFAULT_SPORT_STATS.rugby).toHaveLength(8);
+    expect(DEFAULT_SPORT_STATS.rugby).toHaveLength(9);
     expect(DEFAULT_SPORT_STATS.fooba).toHaveLength(13);
-    expect(DEFAULT_SPORT_STATS.rugby_variation).toHaveLength(16);
-    expect(DEFAULT_SPORT_STATS.short_game_variation).toHaveLength(16);
-    expect(DEFAULT_SPORT_STATS.multi_game_variation).toHaveLength(16);
+    expect(DEFAULT_SPORT_STATS.rugby_variation).toHaveLength(17);
+    expect(DEFAULT_SPORT_STATS.short_game_variation).toHaveLength(17);
+    expect(DEFAULT_SPORT_STATS.multi_game_variation).toHaveLength(17);
   });
 
   it("football has goal+save but no try/tackle/fooba stats", () => {
@@ -40,6 +40,12 @@ describe("DEFAULT_SPORT_STATS", () => {
     expect(DEFAULT_SPORT_STATS.rugby).toContain("tackle");
     expect(DEFAULT_SPORT_STATS.rugby).not.toContain("save");
     expect(DEFAULT_SPORT_STATS.rugby).not.toContain("ownGoal");
+  });
+
+  it("Rugby Sox has conversion; football and fooba don't", () => {
+    expect(DEFAULT_SPORT_STATS.rugby).toContain("conversion");
+    expect(DEFAULT_SPORT_STATS.football).not.toContain("conversion");
+    expect(DEFAULT_SPORT_STATS.fooba).not.toContain("conversion");
   });
 
   it("fooba replaces goal with mainGoal/reboundGoal and adds switchover", () => {
@@ -110,9 +116,9 @@ describe("SPORT_LABELS", () => {
 describe("statsForSport", () => {
   it("returns the configured list for a sport", () => {
     // statsForSport re-sorts into canonical STAT_KEYS order, so rugby's
-    // seeded order (tackle listed 2nd) comes back with tackle after preAssist.
+    // seeded order (tackle listed 3rd) comes back with tackle after preAssist.
     expect(statsForSport("rugby")).toEqual([
-      "try", "assist", "preAssist", "tackle",
+      "try", "conversion", "assist", "preAssist", "tackle",
       "yellowCard", "redCard", "blueCard", "lateChallenge",
     ]);
     expect([...statsForSport("rugby")].sort()).toEqual(

@@ -1,7 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { clubOnOtherSide, keepsManagedClub } from "@/lib/klcsra/access";
+import {
+  clubOnOtherSide,
+  keepsManagedClub,
+  sentSides,
+  type MatchPermissions,
+} from "@/lib/klcsra/access";
+import { scorersLine } from "@/lib/klcsra/goal-times";
+import { countedHalves } from "@/lib/klcsra/league-table";
 import type {
   AppearanceDraft,
   HalfDraft,
@@ -49,6 +56,7 @@ export function TeamBoard({
   onRemove,
   onOpenStats,
   isStaff,
+  perms,
   managedClubIds,
 }: {
   match: MatchDraft;
@@ -56,6 +64,7 @@ export function TeamBoard({
   members: MemberOption[];
   activeHalf: number;
   onHalf: (halfNo: number) => void;
+  /** The match is official. */
   locked: boolean;
   busy: boolean;
   summaries: Map<string, SlotSummary>;
@@ -67,6 +76,7 @@ export function TeamBoard({
   onOpenStats: (appearanceId: string) => void;
   /** Staff can move a club across; a manager cannot move their own club off its slot. */
   isStaff: boolean;
+  perms: MatchPermissions;
   managedClubIds: string[];
 }) {
   const half = match.halves.find((h) => h.halfNo === activeHalf) ?? match.halves[0];
@@ -89,6 +99,11 @@ export function TeamBoard({
   const aggregate = (side: SideKey) =>
     match.halves.reduce((n, h) => n + (clubOf(h, side)?.score ?? 0), 0);
 
+  // A manager never sees a league score before it is official.
+  const scoreHidden = !match.isFriendly && !locked && !perms.score;
+  const halfNos = countedHalves(match).map((h) => h.halfNo);
+  const sent = sentSides(match);
+
   if (!half) {
     return (
       <p className="rounded-2xl border border-gray-200 bg-white p-4 text-[12px] text-gray-600">
@@ -101,18 +116,20 @@ export function TeamBoard({
     <section className="space-y-3">
       {match.isCombined && (
         <>
-          <p
-            data-testid="aggregate-line"
-            className="text-center text-[11px] font-semibold text-gray-600"
-          >
-            Aggregate {aggregate("home")} – {aggregate("away")}
-            {match.halves.map((h) => (
-              <span key={h.id} className="text-gray-400">
-                {" "}
-                · H{h.halfNo} {clubOf(h, "home")?.score ?? 0}–{clubOf(h, "away")?.score ?? 0}
-              </span>
-            ))}
-          </p>
+          {!scoreHidden && (
+            <p
+              data-testid="aggregate-line"
+              className="text-center text-[11px] font-semibold text-gray-600"
+            >
+              Aggregate {aggregate("home")} – {aggregate("away")}
+              {match.halves.map((h) => (
+                <span key={h.id} className="text-gray-400">
+                  {" "}
+                  · H{h.halfNo} {clubOf(h, "home")?.score ?? 0}–{clubOf(h, "away")?.score ?? 0}
+                </span>
+              ))}
+            </p>
+          )}
           <div
             data-testid="half-toggle"
             role="tablist"
@@ -151,29 +168,42 @@ export function TeamBoard({
             {clubOf(half, "home")?.clubName ?? <span className="text-gray-500">Home TBD</span>}
           </p>
           <div className="flex items-center gap-1.5">
-            <ScoreInput
-              key={`${half.id}-home`}
-              halfNo={half.halfNo}
-              side="home"
-              score={clubOf(half, "home")?.score ?? 0}
-              locked={locked}
-              onScore={(n) => onScore(half, "home", n)}
-            />
-            <span className="text-lg font-black text-gray-600">–</span>
-            <ScoreInput
-              key={`${half.id}-away`}
-              halfNo={half.halfNo}
-              side="away"
-              score={clubOf(half, "away")?.score ?? 0}
-              locked={locked}
-              onScore={(n) => onScore(half, "away", n)}
-            />
+            {scoreHidden ? (
+              <span data-testid="score-hidden" className="px-3 text-xl font-black text-gray-500">
+                ? – ?
+              </span>
+            ) : (
+              <>
+                <ScoreInput
+                  key={`${half.id}-home`}
+                  halfNo={half.halfNo}
+                  side="home"
+                  score={clubOf(half, "home")?.score ?? 0}
+                  locked={!perms.score}
+                  onScore={(n) => onScore(half, "home", n)}
+                />
+                <span className="text-lg font-black text-gray-600">–</span>
+                <ScoreInput
+                  key={`${half.id}-away`}
+                  halfNo={half.halfNo}
+                  side="away"
+                  score={clubOf(half, "away")?.score ?? 0}
+                  locked={!perms.score}
+                  onScore={(n) => onScore(half, "away", n)}
+                />
+              </>
+            )}
           </div>
           <p className="min-w-0 truncate text-left text-[12px] font-bold">
             {clubOf(half, "away")?.clubName ?? <span className="text-gray-500">Away TBD</span>}
           </p>
         </div>
       </div>
+      {scoreHidden && (
+        <p data-testid="score-by-kfandra" className="text-center text-[11px] text-gray-500">
+          KFANDRA enters the official score.
+        </p>
+      )}
       <ErrorNote message={errorFor(`half-${half.halfNo}`)} testId={`half-error-${half.halfNo}`} />
 
       {match.isCombined && (
@@ -192,7 +222,10 @@ export function TeamBoard({
             side={side}
             clubs={clubs}
             members={members}
-            locked={locked}
+            teamLocked={!perms.team[side]}
+            clubLocked={!perms.clubs[side]}
+            sent={sent[side]}
+            scorers={scorersLine(match.appearances, side, halfNos)}
             busy={busy}
             summaries={summaries}
             errorFor={errorFor}
@@ -207,7 +240,7 @@ export function TeamBoard({
       {/* A club may lead only one slot per match (clubOnOtherSide), so a
           one-step swap is refused. Staff can do it in two picks; a manager
           must keep their own club on the match, so they cannot do it at all. */}
-      {!locked && (
+      {perms.details && (
         <p data-testid="swap-hint" className="text-[11px] text-gray-500">
           {isStaff
             ? "To swap sides, pick a different club first."
@@ -226,7 +259,10 @@ function TeamCard({
   side,
   clubs,
   members,
-  locked,
+  teamLocked,
+  clubLocked,
+  sent,
+  scorers,
   busy,
   summaries,
   errorFor,
@@ -241,7 +277,13 @@ function TeamCard({
   side: SideKey;
   clubs: RecorderClub[];
   members: MemberOption[];
-  locked: boolean;
+  /** Squad and stats can't change (official, sent, or not this viewer's team). */
+  teamLocked: boolean;
+  clubLocked: boolean;
+  /** This team has been sent to KFANDRA. */
+  sent: boolean;
+  /** This team's Scorers line, or "" when nobody has scored. */
+  scorers: string;
   busy: boolean;
   summaries: Map<string, SlotSummary>;
   errorFor: (slot: string) => string | null;
@@ -268,16 +310,23 @@ function TeamCard({
         <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gray-700">
           {SIDE_LABELS[side]}
         </span>
-        <span className="text-[11px] font-semibold text-gray-500">
-          {squad.length} {squad.length === 1 ? "player" : "players"}
-        </span>
+        <div className="flex items-center gap-1.5">
+          {sent && (
+            <span data-testid={`team-sent-${side}`} className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-green-800">
+              Sent
+            </span>
+          )}
+          <span className="text-[11px] font-semibold text-gray-500">
+            {squad.length} {squad.length === 1 ? "player" : "players"}
+          </span>
+        </div>
       </div>
 
       <select
         data-testid={`club-select-${half.halfNo}-${side}`}
         aria-label={`${SIDE_LABELS[side]} club, half ${half.halfNo}`}
         value={stored?.clubId ?? ""}
-        disabled={locked || busy}
+        disabled={clubLocked || busy}
         onChange={(e) => onClub(e.target.value)}
         className="w-full rounded-xl border border-gray-200 px-2 py-2 text-sm font-semibold disabled:bg-gray-50 disabled:text-gray-500"
       >
@@ -295,6 +344,11 @@ function TeamCard({
       <p className="text-[11px] text-gray-600">
         Manager — <span className="font-semibold text-gray-800">{club?.managerName || "—"}</span>
       </p>
+      {scorers && (
+        <p data-testid={`scorers-${side}`} className="text-[11px] text-gray-700">
+          <span className="font-semibold">Scorers:</span> {scorers}
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-2">
         {slots.map((a) => (
@@ -303,15 +357,15 @@ function TeamCard({
             appearance={a}
             summary={summaries.get(a.id)}
             isFriendly={match.isFriendly}
-            locked={locked}
+            locked={teamLocked}
             busy={busy}
             error={errorFor(`player-${a.id}`)}
             onRemove={() => onRemove(a.id)}
             onOpen={() => onOpenStats(a.id)}
           />
         ))}
-        {/* A locked match is a record, not a form — no placeholders. */}
-        {Array.from({ length: locked ? 0 : empties }, (_, i) => (
+        {/* A team that can't change is a record, not a form — no placeholders. */}
+        {Array.from({ length: teamLocked ? 0 : empties }, (_, i) => (
           <div
             key={`empty-${i}`}
             data-testid="empty-slot"
@@ -333,7 +387,7 @@ function TeamCard({
               appearance={a}
               summary={summaries.get(a.id)}
               isFriendly={match.isFriendly}
-              locked={locked}
+              locked={teamLocked}
               busy={busy}
               error={errorFor(`player-${a.id}`)}
               onRemove={() => onRemove(a.id)}
@@ -343,7 +397,7 @@ function TeamCard({
         </div>
       )}
 
-      {!locked && (
+      {!teamLocked && (
         <AddPlayer
           side={side}
           members={members}

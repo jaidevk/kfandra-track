@@ -7,6 +7,7 @@
  * decided 2026-10-20). Only KFANDRA / super_admin reopen a submitted match.
  */
 import { isStaffRole, type Role } from "@/lib/auth/roles";
+import type { MatchStatus, SideKey } from "./types";
 
 export interface Viewer {
   id: string;
@@ -116,4 +117,112 @@ export function clubOnBothSlots(
   }
   for (const id of home) if (away.has(id)) return id;
   return null;
+}
+
+// ── match workflow (spec 2026-11-08 §3) ─────────────────────────────────────
+
+/** The fields `matchPermissions` reads. `MatchDraft` satisfies it. */
+export interface PermissionMatch {
+  status: MatchStatus;
+  isFriendly: boolean;
+  createdBy: string | null;
+  homeSentAt: string | null;
+  awaySentAt: string | null;
+  halves: { id: string; sides: { side: SideKey; clubId: string | null }[] }[];
+  appearances: { side: SideKey }[];
+}
+
+/** What one viewer may change on one match, right now. */
+export interface MatchPermissions {
+  /** Date, sport, duration, League/Friendly. */
+  details: boolean;
+  deleteDraft: boolean;
+  /** Squad and stats, per team. */
+  team: Record<SideKey, boolean>;
+  /** Pick the club leading this side (pair and keep-your-club rules apply on top). */
+  clubs: Record<SideKey, boolean>;
+  score: boolean;
+  /** Goal/try minutes, per team. */
+  times: Record<SideKey, boolean>;
+  /** Teams this viewer can send now. */
+  send: SideKey[];
+  makeOfficial: boolean;
+  sendBack: boolean;
+  reopen: boolean;
+}
+
+const SIDE_KEYS: readonly SideKey[] = ["home", "away"];
+const both = (v: boolean): Record<SideKey, boolean> => ({ home: v, away: v });
+
+const NOTHING: MatchPermissions = {
+  details: false, deleteDraft: false, team: both(false), clubs: both(false),
+  score: false, times: both(false), send: [], makeOfficial: false, sendBack: false, reopen: false,
+};
+
+/** The teams (aggregate sides) led by a managed club in any half. */
+export function ownedSides(
+  halves: { sides: { side: SideKey; clubId: string | null }[] }[],
+  managed: ReadonlySet<string>,
+): SideKey[] {
+  return SIDE_KEYS.filter((side) =>
+    halves.some((h) =>
+      h.sides.some((s) => s.side === side && s.clubId !== null && managed.has(s.clubId)),
+    ),
+  );
+}
+
+export function sentSides(m: { homeSentAt: string | null; awaySentAt: string | null }) {
+  return { home: m.homeSentAt !== null, away: m.awaySentAt !== null };
+}
+
+/**
+ * The one permission rule, used by the server actions (to refuse) and the
+ * recorder (to hide what would be refused).
+ *
+ *  - Official: nothing changes, except staff may add goal times (D13), and
+ *    KFANDRA may reopen.
+ *  - Staff: everything before official; they never "send", they make official.
+ *  - Manager (draft only): their own team until they send it (D9, D2); the
+ *    match details, a friendly score and the clubs on their own side until
+ *    either team is sent; the other side's club only while that team has no
+ *    players (that's how the creator names the opponent).
+ */
+export function matchPermissions(
+  viewer: Viewer,
+  m: PermissionMatch,
+  managed: ReadonlySet<string>,
+): MatchPermissions {
+  const staff = isStaffRole(viewer.role);
+  if (m.status === "submitted") {
+    return { ...NOTHING, times: both(staff), reopen: canReopenMatch(viewer) };
+  }
+  const sent = sentSides(m);
+  if (staff) {
+    return {
+      details: true, deleteDraft: true, team: both(true), clubs: both(true),
+      score: true, times: both(true), send: [], makeOfficial: true,
+      sendBack: m.status === "sent" || sent.home || sent.away, reopen: false,
+    };
+  }
+  if (m.status !== "draft") return NOTHING;
+  const owned = ownedSides(m.halves, managed);
+  const involved = owned.length > 0 || (m.createdBy !== null && m.createdBy === viewer.id);
+  if (!involved) return NOTHING;
+
+  const noneSent = !sent.home && !sent.away;
+  const team = {
+    home: owned.includes("home") && !sent.home,
+    away: owned.includes("away") && !sent.away,
+  };
+  const empty = (side: SideKey) => !m.appearances.some((a) => a.side === side);
+  const clubs = {
+    home: noneSent && (owned.includes("home") || empty("home")),
+    away: noneSent && (owned.includes("away") || empty("away")),
+  };
+  return {
+    details: noneSent, deleteDraft: noneSent, team, clubs,
+    score: m.isFriendly && noneSent, times: team,
+    send: SIDE_KEYS.filter((s) => team[s]),
+    makeOfficial: false, sendBack: false, reopen: false,
+  };
 }

@@ -5,14 +5,20 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import {
   addAppearanceAction,
   deleteMatchAction,
+  makeOfficialAction,
   removeAppearanceAction,
   reopenMatchAction,
+  sendBackAction,
+  sendTeamAction,
+  setGoalTimesAction,
   setSideClubAction,
   setSideScoreAction,
   setStatAction,
-  submitMatchAction,
   updateMatchMetaAction,
 } from "@/lib/klcsra/actions";
+import { ownedSides, type MatchPermissions } from "@/lib/klcsra/access";
+import type { DuplicateCandidate } from "@/lib/klcsra/duplicates";
+import { isTimed, trimTimes } from "@/lib/klcsra/goal-times";
 import { computePlayerPayout } from "@/lib/klcsra/payouts";
 import type { Sport } from "@/lib/klcsra/sport-stats";
 // Straight from the pure modules, never via config.ts — that would pull
@@ -26,11 +32,15 @@ import type {
   PayoutLine,
   SideKey,
 } from "@/lib/klcsra/types";
+import { DuplicateBanner } from "./duplicate-banner";
 import { RecorderHeader } from "./recorder-header";
 import { type RecorderClub, type Result, type SyncStatus } from "./recorder-shared";
 import { StatsDialog } from "./stats-dialog";
 import { SubmitPanel } from "./submit-panel";
 import { TeamBoard, type SlotSummary } from "./team-board";
+
+/** Shown when a server action throws instead of returning an error. */
+const UNEXPECTED = "Something went wrong. Try again.";
 
 type MetaPatch = {
   entryDate?: string;
@@ -62,9 +72,10 @@ export function MatchRecorder({
   members,
   allowedStats,
   rates,
-  canReopen,
+  perms,
   canEdit,
   isStaff,
+  duplicates,
   managedClubIds,
   activeSeasonName,
   submittedBy,
@@ -75,10 +86,13 @@ export function MatchRecorder({
   members: MemberOption[];
   allowedStats: StatKey[];
   rates: StatRates;
-  canReopen: boolean;
+  /** What this viewer may change right now (the server actions apply the same rule). */
+  perms: MatchPermissions;
   /** False for a read-only viewer (only ever a submitted match). */
   canEdit: boolean;
   isStaff: boolean;
+  /** Other matches between the same two clubs that day. */
+  duplicates: DuplicateCandidate[];
   /** Clubs the viewer manages; the club picker greys out what the server would refuse. */
   managedClubIds: string[];
   /** The season a league match would be tagged with today, or null. */
@@ -102,6 +116,30 @@ export function MatchRecorder({
   const [statOverlay, setStatOverlay] = useState<Record<string, number>>({});
 
   const locked = match.status === "submitted";
+  const editable =
+    perms.details || perms.score || perms.team.home || perms.team.away ||
+    perms.times.home || perms.times.away;
+  const timedStats = allowedStats.filter((k) => isTimed(match.sport, k, match.isFriendly));
+  /** `${appearanceId}|${halfNo}|${statKey}` → optimistic minutes. */
+  const [timesOverlay, setTimesOverlay] = useState<Record<string, (number | null)[]>>({});
+  // Once a re-read shows a minutes overlay as stored, drop it, so a later
+  // change from elsewhere isn't masked by it. (Adjusted during render, not in
+  // an effect, so the stale overlay never paints.)
+  const [timesSeen, setTimesSeen] = useState(match);
+  if (timesSeen !== match) {
+    setTimesSeen(match);
+    setTimesOverlay((o) => {
+      const next = { ...o };
+      for (const [key, minutes] of Object.entries(o)) {
+        const [appearanceId, halfNo, statKey] = key.split("|");
+        const stored = match.appearances.find((a) => a.id === appearanceId)
+          ?.times?.[Number(halfNo)]?.[statKey as StatKey] ?? [];
+        const sent = trimTimes(minutes, minutes.length);
+        if (sent.length === stored.length && sent.every((m, i) => m === stored[i])) delete next[key];
+      }
+      return next;
+    });
+  }
   const err = (slot: string) => errors[slot] ?? null;
 
   // ── mutation plumbing ─────────────────────────────────────────────────────
@@ -111,18 +149,30 @@ export function MatchRecorder({
     async (slot: string, fn: () => Promise<Result>) => {
       setWorking(true);
       setErrors((e) => ({ ...e, [slot]: null }));
-      const res = await fn();
-      if (!res.ok) setErrors((e) => ({ ...e, [slot]: res.error }));
-      else startTransition(() => router.refresh());
-      setWorking(false);
-      return res.ok;
+      try {
+        const res = await fn();
+        if (!res.ok) setErrors((e) => ({ ...e, [slot]: res.error }));
+        else startTransition(() => router.refresh());
+        return res.ok;
+      } catch {
+        // A thrown action (network drop, server crash) must not leave every
+        // control disabled.
+        setErrors((e) => ({ ...e, [slot]: UNEXPECTED }));
+        return false;
+      } finally {
+        setWorking(false);
+      }
     },
     [router],
   );
 
   // Debounced writes, one timer per field. Held in a ref so a re-render (there
   // is one after every refresh) cannot drop a scheduled save.
-  const pendingSaves = useRef(new Map<string, { timer: ReturnType<typeof setTimeout>; go: () => void }>());
+  const pendingSaves = useRef(
+    new Map<string, { timer: ReturnType<typeof setTimeout>; go: () => Promise<boolean>; after?: string }>(),
+  );
+  /** Saves that have fired and not yet landed, by key; each resolves to whether it stored. */
+  const inFlight = useRef(new Map<string, Promise<boolean>>());
   useEffect(() => {
     const saves = pendingSaves.current;
     return () => {
@@ -135,30 +185,60 @@ export function MatchRecorder({
       key: string,
       slot: string,
       fn: () => Promise<Result>,
-      opts: { delay?: number; refresh?: boolean; onFail?: () => void } = {},
+      // `after`: another save's key that must land first (a goal's times go
+      // after its count, or the count save could see stale times).
+      opts: { delay?: number; refresh?: boolean; onFail?: () => void; after?: string } = {},
     ) => {
-      const { delay = 700, refresh = true, onFail } = opts;
+      const { delay = 700, refresh = true, onFail, after } = opts;
       setSync("saving");
       const existing = pendingSaves.current.get(key);
       if (existing) clearTimeout(existing.timer);
 
-      const go = async () => {
-        pendingSaves.current.delete(key);
+      const save = async (): Promise<boolean> => {
+        if (after) {
+          const first = pendingSaves.current.get(after);
+          let ok = true;
+          if (first) {
+            clearTimeout(first.timer);
+            ok = await first.go();
+          } else {
+            ok = (await inFlight.current.get(after)) ?? true;
+          }
+          // The save this one depends on was refused: its error is already
+          // showing, so roll this one back without sending or clearing it.
+          if (!ok) {
+            onFail?.();
+            return false;
+          }
+        }
         setErrors((e) => ({ ...e, [slot]: null }));
-        const res = await fn();
+        // A throw counts as a refusal, so the overlay rolls back.
+        const res = await fn().catch((): Result => ({ ok: false, error: UNEXPECTED }));
         if (!res.ok) {
           setErrors((e) => ({ ...e, [slot]: res.error }));
           setSync("error");
           onFail?.();
-          return;
+          return false;
         }
         setSync("saved");
         if (refresh) startTransition(() => router.refresh());
+        return true;
+      };
+
+      const go = () => {
+        pendingSaves.current.delete(key);
+        const p = save();
+        inFlight.current.set(key, p);
+        void p.finally(() => {
+          if (inFlight.current.get(key) === p) inFlight.current.delete(key);
+        });
+        return p;
       };
 
       pendingSaves.current.set(key, {
         timer: setTimeout(() => void go(), delay),
         go,
+        after,
       });
     },
     [router],
@@ -168,13 +248,17 @@ export function MatchRecorder({
    * Fire every scheduled save now (leaving the popup, submitting) and resolve
    * once they have all landed.
    *
-   * Awaiting matters on Submit: submitMatchAction locks the match, and a stat
-   * write still in flight would then be refused against a locked match and be
-   * missing from the payout the lock just computed. Fire-and-forget here means
-   * a goal tapped seconds before Submit can go unpaid.
+   * Awaiting matters on Send and Make official: both move the match on, and a
+   * stat write still in flight would then be refused and be missing from the
+   * team sent or the payout just computed. Fire-and-forget here means a goal
+   * tapped seconds before Make official can go unpaid.
    */
   const flushSaves = useCallback(async () => {
-    const queued = [...pendingSaves.current.values()];
+    // Saves with an `after` start last, so the save they wait on is already
+    // in flight.
+    const queued = [...pendingSaves.current.values()].sort(
+      (a, b) => Number(Boolean(a.after)) - Number(Boolean(b.after)),
+    );
     pendingSaves.current.clear();
     await Promise.all(
       queued.map(({ timer, go }) => {
@@ -296,14 +380,29 @@ export function MatchRecorder({
     );
   };
 
+  // The newest minutes per stat, trimmed as counts drop. A minutes save reads
+  // these when it fires, not when it was scheduled, so a count change in
+  // between can't make it send times the server has already trimmed away.
+  const latestTimes = useRef<Record<string, (number | null)[]>>({});
+
   const onSetStat = (appearanceId: string, halfNo: number, statKey: StatKey, count: number) => {
     const value = Math.max(0, count);
     const key = `${appearanceId}|${halfNo}|${statKey}`;
     setStatOverlay((o) => ({ ...o, [key]: value }));
+    // Fewer goals keep fewer minutes, as the server will store them.
+    setTimesOverlay((o) => (key in o ? { ...o, [key]: trimTimes(o[key], value) } : o));
+    if (key in latestTimes.current) latestTimes.current[key] = trimTimes(latestTimes.current[key], value);
+    // A minutes save already sent may be longer than this count; let it land
+    // first, or the server would refuse it after trimming to the new count.
+    // (Only one in flight: a pending one already waits on this count.)
+    const timesInFlight = inFlight.current.get(`times-${key}`);
     autosave(
       key,
       `player-${appearanceId}`,
-      () => setStatAction(match.id, appearanceId, halfNo, statKey, value),
+      async () => {
+        await timesInFlight;
+        return setStatAction(match.id, appearanceId, halfNo, statKey, value);
+      },
       {
         delay: 400,
         // No re-read per tap: the totals on screen are computed from the
@@ -326,15 +425,45 @@ export function MatchRecorder({
     startTransition(() => router.refresh());
   };
 
-  const onSubmit = async () => {
+  /** A workflow step (send, make official, send back): flush typing first. */
+  const step = async (slot: string, fn: () => Promise<Result>) => {
     setWorking(true);
-    // Await: a write still in flight would be refused by the lock below.
-    await flushSaves();
-    setErrors((e) => ({ ...e, submit: null }));
-    const res = await submitMatchAction(match.id);
-    if (res.ok) startTransition(() => router.refresh());
-    else setErrors((e) => ({ ...e, submit: res.error }));
-    setWorking(false);
+    try {
+      // Await: a write still in flight would be refused once the match moves on.
+      await flushSaves();
+      setErrors((e) => ({ ...e, [slot]: null }));
+      const res = await fn();
+      if (res.ok) startTransition(() => router.refresh());
+      else setErrors((e) => ({ ...e, [slot]: res.error }));
+    } catch {
+      setErrors((e) => ({ ...e, [slot]: UNEXPECTED }));
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const onSetTimes = (appearanceId: string, halfNo: number, statKey: StatKey, minutes: (number | null)[]) => {
+    const key = `${appearanceId}|${halfNo}|${statKey}`;
+    setTimesOverlay((o) => ({ ...o, [key]: minutes }));
+    latestTimes.current[key] = minutes;
+    autosave(
+      `times-${key}`,
+      `player-${appearanceId}`,
+      () => {
+        const latest = latestTimes.current[key] ?? minutes;
+        return setGoalTimesAction(match.id, appearanceId, halfNo, statKey, trimTimes(latest, latest.length));
+      },
+      {
+        refresh: false,
+        after: key,
+        onFail: () =>
+          setTimesOverlay((o) => {
+            const next = { ...o };
+            delete next[key];
+            return next;
+          }),
+      },
+    );
   };
 
   const openAppearance =
@@ -349,10 +478,13 @@ export function MatchRecorder({
 
   return (
     <div className="mx-auto w-full max-w-md space-y-4">
+      <DuplicateBanner matchId={match.id} duplicates={duplicates} />
+
       <RecorderHeader
         match={match}
         seasonName={locked ? match.seasonName : activeSeasonName}
-        locked={locked}
+        locked={!perms.details}
+        showSync={editable}
         sync={sync}
         error={err("header")}
         onMeta={onMeta}
@@ -380,6 +512,7 @@ export function MatchRecorder({
         }
         onOpenStats={setOpenAppearanceId}
         isStaff={isStaff}
+        perms={perms}
         managedClubIds={managedClubIds}
       />
 
@@ -398,7 +531,24 @@ export function MatchRecorder({
         kr={openSummary?.kr ?? 0}
         mmg={openSummary?.mmg ?? 0}
         isFriendly={match.isFriendly}
-        locked={locked}
+        locked={!openAppearance || !perms.team[openAppearance.side]}
+        timedStats={timedStats}
+        times={
+          openAppearance
+            ? Object.fromEntries(
+                timedStats.map((k) => {
+                  const key = `${openAppearance.id}|${activeHalf}|${k}`;
+                  const stored = openAppearance.times?.[activeHalf]?.[k] ?? [];
+                  const count = countsFor(openAppearance.id, activeHalf, openAppearance.stats[activeHalf] ?? {})[k] ?? 0;
+                  return [k, trimTimes(timesOverlay[key] ?? stored, count)];
+                }),
+              )
+            : {}
+        }
+        timesEditable={openAppearance ? perms.times[openAppearance.side] : false}
+        onSetTimes={(statKey, minutes) =>
+          openAppearance && onSetTimes(openAppearance.id, activeHalf, statKey, minutes)
+        }
         error={openAppearance ? err(`player-${openAppearance.id}`) : null}
         onSetStat={(statKey, count) =>
           openAppearance && onSetStat(openAppearance.id, activeHalf, statKey, count)
@@ -411,16 +561,21 @@ export function MatchRecorder({
         lines={lines}
         locked={locked}
         busy={busy}
-        canReopen={canReopen}
+        perms={perms}
         canEdit={canEdit}
+        isStaff={isStaff}
+        owned={ownedSides(match.halves, new Set(managedClubIds))}
         hasActiveSeason={activeSeasonName !== null}
         seasonName={activeSeasonName}
         submittedBy={submittedBy}
         rules={rules}
         submitError={err("submit")}
+        sendBackError={err("send-back")}
         reopenError={err("reopen")}
         deleteError={err("delete")}
-        onSubmit={() => void onSubmit()}
+        onSend={(side) => void step("submit", () => sendTeamAction(match.id, side))}
+        onMakeOfficial={() => void step("submit", () => makeOfficialAction(match.id))}
+        onSendBack={() => void step("send-back", () => sendBackAction(match.id))}
         onReopen={() => void run("reopen", () => reopenMatchAction(match.id))}
         onDelete={async () => {
           if (!confirm("Delete this draft match?")) return;

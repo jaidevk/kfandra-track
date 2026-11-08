@@ -115,3 +115,149 @@ describe("hasOwnDraft", () => {
     ])).toBe(false);
   });
 });
+
+import { matchPermissions, ownedSides, type PermissionMatch } from "./access";
+
+const pm = (over: Partial<PermissionMatch> = {}): PermissionMatch => ({
+  status: "draft", isFriendly: false, createdBy: null,
+  homeSentAt: null, awaySentAt: null,
+  halves: [{ id: "h1", sides: [{ side: "home", clubId: "A" }, { side: "away", clubId: "B" }] }],
+  appearances: [],
+  ...over,
+});
+const userV = { id: "u", role: "user" as const };
+const adminV = { id: "s", role: "admin" as const };
+const kfandraV = { id: "k", role: "kfandra" as const };
+const A = new Set(["A"]);
+
+describe("ownedSides", () => {
+  it("is every side led by a managed club in any half", () => {
+    const halves = [
+      { id: "h1", sides: [{ side: "home" as const, clubId: "A" }, { side: "away" as const, clubId: "B" }] },
+      { id: "h2", sides: [{ side: "home" as const, clubId: "C" }, { side: "away" as const, clubId: "D" }] },
+    ];
+    expect(ownedSides(halves, new Set(["D"]))).toEqual(["away"]);
+    expect(ownedSides(halves, new Set(["A", "D"]))).toEqual(["home", "away"]);
+    expect(ownedSides(halves, new Set())).toEqual([]);
+  });
+});
+
+describe("matchPermissions — manager", () => {
+  it("edits only their own team, and no league score", () => {
+    const p = matchPermissions(userV, pm(), A);
+    expect(p.team).toEqual({ home: true, away: false });
+    expect(p.times).toEqual({ home: true, away: false });
+    expect(p.score).toBe(false);
+    expect(p.details).toBe(true);
+    expect(p.send).toEqual(["home"]);
+    expect(p.makeOfficial).toBe(false);
+  });
+
+  it("can set the opponent's club only while that team is empty", () => {
+    expect(matchPermissions(userV, pm(), A).clubs).toEqual({ home: true, away: true });
+    const withAway = pm({ appearances: [{ side: "away" }] });
+    expect(matchPermissions(userV, withAway, A).clubs.away).toBe(false);
+  });
+
+  it("enters a friendly score until a team is sent", () => {
+    expect(matchPermissions(userV, pm({ isFriendly: true }), A).score).toBe(true);
+    const sent = pm({ isFriendly: true, awaySentAt: "t" });
+    expect(matchPermissions(userV, sent, A).score).toBe(false);
+  });
+
+  it("after sending, their team, details and send are closed", () => {
+    const p = matchPermissions(userV, pm({ homeSentAt: "t" }), A);
+    expect(p.team.home).toBe(false);
+    expect(p.details).toBe(false);
+    expect(p.deleteDraft).toBe(false);
+    expect(p.send).toEqual([]);
+    expect(p.clubs.home).toBe(false);
+  });
+
+  it("the other manager keeps their own team while one team is sent", () => {
+    const p = matchPermissions(userV, pm({ awaySentAt: "t" }), A);
+    expect(p.team.home).toBe(true);
+    expect(p.send).toEqual(["home"]);
+    expect(p.details).toBe(false);
+  });
+
+  it("the away manager's club is fixed once the home team is sent", () => {
+    const p = matchPermissions(userV, pm({ homeSentAt: "t" }), new Set(["B"]));
+    expect(p.clubs).toEqual({ home: false, away: false });
+    expect(p.team.away).toBe(true);
+    expect(p.send).toEqual(["away"]);
+  });
+
+  it("with nothing sent, the home manager sets the away club only while it is empty", () => {
+    expect(matchPermissions(userV, pm(), A).clubs).toEqual({ home: true, away: true });
+    const withAway = pm({ appearances: [{ side: "away" }] });
+    expect(matchPermissions(userV, withAway, A).clubs).toEqual({ home: true, away: false });
+  });
+
+  it("a manager of both clubs controls both teams", () => {
+    const p = matchPermissions(userV, pm(), new Set(["A", "B"]));
+    expect(p.team).toEqual({ home: true, away: true });
+    expect(p.send).toEqual(["home", "away"]);
+  });
+
+  it("can change nothing once the match is sent or official", () => {
+    for (const status of ["sent", "submitted"] as const) {
+      const p = matchPermissions(userV, pm({ status }), A);
+      expect(p.team).toEqual({ home: false, away: false });
+      expect(p.times).toEqual({ home: false, away: false });
+      expect(p.reopen).toBe(false);
+    }
+  });
+
+  it("an unrelated manager gets nothing", () => {
+    const p = matchPermissions(userV, pm(), new Set(["Z"]));
+    expect(p.details).toBe(false);
+    expect(p.team).toEqual({ home: false, away: false });
+  });
+
+  it("a creator who manages nothing keeps the details but has no team", () => {
+    const p = matchPermissions(userV, pm({ createdBy: "u" }), new Set());
+    expect(p.details).toBe(true);
+    expect(p.team).toEqual({ home: false, away: false });
+  });
+});
+
+describe("matchPermissions — staff", () => {
+  it("edit everything before official, and make official", () => {
+    for (const status of ["draft", "sent"] as const) {
+      const p = matchPermissions(adminV, pm({ status }), new Set());
+      expect(p.team).toEqual({ home: true, away: true });
+      expect(p.score).toBe(true);
+      expect(p.details).toBe(true);
+      expect(p.makeOfficial).toBe(true);
+      expect(p.send).toEqual([]);
+    }
+  });
+
+  it("send back only when a team has been sent", () => {
+    expect(matchPermissions(adminV, pm(), new Set()).sendBack).toBe(false);
+    expect(matchPermissions(adminV, pm({ homeSentAt: "t" }), new Set()).sendBack).toBe(true);
+    expect(matchPermissions(adminV, pm({ status: "sent" }), new Set()).sendBack).toBe(true);
+  });
+
+  it("on an official match: goal times only; only KFANDRA reopens", () => {
+    const admin = matchPermissions(adminV, pm({ status: "submitted" }), new Set());
+    expect(admin.times).toEqual({ home: true, away: true });
+    expect(admin.team).toEqual({ home: false, away: false });
+    expect(admin.score).toBe(false);
+    expect(admin.reopen).toBe(false);
+    expect(matchPermissions(kfandraV, pm({ status: "submitted" }), new Set()).reopen).toBe(true);
+  });
+
+  it("on an official match staff change no details, clubs or status", () => {
+    for (const v of [adminV, { id: "x", role: "super_admin" as const }]) {
+      const p = matchPermissions(v, pm({ status: "submitted" }), new Set());
+      expect(p.details).toBe(false);
+      expect(p.clubs).toEqual({ home: false, away: false });
+      expect(p.makeOfficial).toBe(false);
+      expect(p.sendBack).toBe(false);
+      expect(p.times).toEqual({ home: true, away: true });
+    }
+    expect(matchPermissions({ id: "x", role: "super_admin" }, pm({ status: "submitted" }), new Set()).reopen).toBe(true);
+  });
+});

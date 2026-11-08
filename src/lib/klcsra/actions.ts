@@ -5,13 +5,16 @@ import { getCurrentPlayer, type CurrentPlayer } from "@/lib/auth/current-user";
 import { isStaffRole } from "@/lib/auth/roles";
 import {
   canEditMatch, canReopenMatch, clubOnBothSlots, clubOnOtherSide, keepsManagedClub, matchClubIds,
+  matchPermissions, ownedSides, sentSides, type MatchPermissions,
 } from "./access";
 import { loadSportStats, loadStatRates } from "./config";
 import { computePlayerPayout } from "./payouts";
 import * as repo from "./repository";
 import { SPORTS, statsForSport, type Sport } from "./sport-stats";
 import { STAT_KEYS, type StatKey, type StatRates } from "./stat-rates";
-import type { MatchDraft, PayoutLine, Season, SideKey } from "./types";
+import { cleanTimes, isTimed, trimTimes } from "./goal-times";
+import { asCandidate, findDuplicates, type DuplicateCandidate } from "./duplicates";
+import type { MatchDraft, MatchStatus, PayoutLine, Season, SideKey } from "./types";
 
 /**
  * Server actions for the KLCSRA match recorder.
@@ -22,12 +25,12 @@ import type { MatchDraft, PayoutLine, Season, SideKey } from "./types";
  *     Season actions require staff; match actions require a match editor
  *     (`access.ts`: staff, the creator, or a manager of a club on the match).
  *     A client-supplied identity is never trusted.
- *  2. **The submit lock.** Every mutating action refuses when the match is
- *     `submitted`. RLS deliberately does not enforce this (staff have blanket
- *     write access to the KLCSRA tables), so this file is the first lock; the
- *     `*_submit_lock` DB triggers are the backstop.
- *  3. **The payout compute.** Submit composes the pure domain
- *     (`computePlayerPayout` x `statsForSport`) over the stored draft and
+ *  2. **Who may change what.** `matchPermissions` (access.ts) per state and
+ *     team; RLS deliberately does not enforce it (staff have blanket write
+ *     access), so this file is the first lock; the `*_submit_lock` DB
+ *     triggers are the backstop for official matches.
+ *  3. **The payout compute.** Make official composes the pure domain
+ *     (`computePlayerPayout` x `statsForSport`) over the stored match and
  *     returns the lines. Nothing is written to a balance sheet in Phase 2.
  *
  * The repository throws on every write failure; each call is wrapped and the
@@ -49,6 +52,13 @@ const NO_MATCH = "Match not found.";
 const KEEP_OWN_CLUB = "Keep your own club on this match.";
 const LOCKED = "This match is locked. Reopen it first.";
 const NO_ACTIVE_SEASON = "No active season. Start one in Seasons first.";
+const WAITING = "Waiting for KFANDRA to make this official.";
+const TEAM_SENT = "Your team has been sent. Ask KFANDRA to send it back if something needs fixing.";
+const NOT_YOUR_TEAM = "You can only edit your own team.";
+const DETAILS_FIXED =
+  "A team has been sent, so the match details are fixed. Ask KFANDRA to send it back if something needs fixing.";
+const STAFF_SCORE = "Only KFANDRA or an admin can enter a league score.";
+const OTHER_CLUB = "That side belongs to the other club now. Ask their manager or KFANDRA.";
 
 const MATCHES_PATH = "/klc/matches";
 const LEAGUE_PATH = "/klc/league";
@@ -87,42 +97,51 @@ async function loadManaged(playerId: string): Promise<ActionResult<Set<string>>>
   }
 }
 
-interface EditorGate {
+interface MatchGate {
   player: CurrentPlayer;
   match: MatchDraft;
-  /** The caller's managed clubs when looked up; null for staff or the creator. */
-  managed: Set<string> | null;
+  /** The caller's managed clubs; empty for staff (never looked up). */
+  managed: Set<string>;
+  perms: MatchPermissions;
 }
 
 /**
- * Signed in + the match exists + the caller may edit it: staff, the draft's
- * creator, or the manager of any club on it (design §5.1).
+ * Signed in + the match exists + the caller is staff or involved in it
+ * (creator, or manager of a club on it). What they may CHANGE is
+ * `perms` (`matchPermissions`, spec §3); each action checks its own slice.
  */
-async function requireMatchEditor(matchId: string): Promise<ActionResult<EditorGate>> {
+async function loadMatchGate(matchId: string): Promise<ActionResult<MatchGate>> {
   const player = await getCurrentPlayer();
   if (!player) return { ok: false, error: NOT_SIGNED_IN };
   const match = await repo.getMatch(matchId);
   if (!match) return { ok: false, error: NO_MATCH };
-  // Staff and the creator are decided without a lookup.
-  if (isStaffRole(player.role) || match.createdBy === player.id) {
-    return { ok: true, data: { player, match, managed: null } };
+  let managed = new Set<string>();
+  if (!isStaffRole(player.role)) {
+    const loaded = await loadManaged(player.id);
+    if (!loaded.ok) return loaded;
+    managed = loaded.data;
+    const ownership = { createdBy: match.createdBy, clubIds: matchClubIds(match.halves) };
+    if (!canEditMatch(player, ownership, managed)) return { ok: false, error: NOT_STAFF };
   }
-  const loaded = await loadManaged(player.id);
-  if (!loaded.ok) return loaded;
-  const ownership = { createdBy: match.createdBy, clubIds: matchClubIds(match.halves) };
-  if (!canEditMatch(player, ownership, loaded.data)) return { ok: false, error: NOT_STAFF };
-  return { ok: true, data: { player, match, managed: loaded.data } };
+  return { ok: true, data: { player, match, managed, perms: matchPermissions(player, match, managed) } };
 }
 
-/**
- * Editor gate + still a draft. Every mutating match action starts here; it is
- * the first place the submit lock is checked (the DB trigger is the second).
- */
-async function requireEditableMatch(matchId: string): Promise<ActionResult<EditorGate>> {
-  const gate = await requireMatchEditor(matchId);
-  if (!gate.ok) return gate;
-  if (gate.data.match.status === "submitted") return { ok: false, error: LOCKED };
-  return gate;
+/** The state-level refusal (locked, or waiting for KFANDRA), if any. */
+function stateRefusal(g: MatchGate): string | null {
+  if (g.match.status === "submitted") return LOCKED;
+  if (g.match.status === "sent" && !isStaffRole(g.player.role)) return WAITING;
+  return null;
+}
+
+function teamRefusal(g: MatchGate, side: SideKey): string | null {
+  if (g.perms.team[side]) return null;
+  return stateRefusal(g) ?? (sentSides(g.match)[side] && ownedSides(g.match.halves, g.managed).includes(side)
+    ? TEAM_SENT
+    : NOT_YOUR_TEAM);
+}
+
+function detailsRefusal(g: MatchGate): string | null {
+  return g.perms.details ? null : (stateRefusal(g) ?? DETAILS_FIXED);
 }
 
 // ── input coercion ──────────────────────────────────────────────────────────
@@ -151,12 +170,25 @@ export interface CreateMatchFields {
   isFriendly: boolean;
   /** Required for a club manager (must be a club they manage); optional for staff. */
   homeClubId?: string | null;
+  /** The opponent. Required for a club manager; optional for staff. */
+  awayClubId?: string | null;
+  /** Create even though a match between the same clubs exists that day (spec §4). */
+  allowDuplicate?: boolean;
 }
 
-/** Create a draft match (with its half rows). Returns the new match id. */
+export type CreateMatchOutcome =
+  | { kind: "created"; id: string }
+  | { kind: "duplicates"; matches: DuplicateCandidate[] };
+
+/**
+ * Create a draft match (with its half rows, and half 1's clubs when given).
+ * When both clubs are known and another match on that date has the same two
+ * clubs on opposite sides, nothing is created and those matches are returned,
+ * so the form can offer "Open it" (D8). `allowDuplicate` skips the check.
+ */
 export async function createMatchAction(
   input: CreateMatchFields,
-): Promise<ActionResult<string>> {
+): Promise<ActionResult<CreateMatchOutcome>> {
   const player = await getCurrentPlayer();
   if (!player) return { ok: false, error: NOT_SIGNED_IN };
 
@@ -166,10 +198,30 @@ export async function createMatchAction(
   if (!isSport(input.sport)) return { ok: false, error: "Pick a valid sport." };
 
   const homeClubId = input.homeClubId || null;
+  const awayClubId = input.awayClubId || null;
   if (!isStaffRole(player.role)) {
     const managed = await loadManaged(player.id);
     if (!managed.ok) return managed;
     if (!homeClubId || !managed.data.has(homeClubId)) return { ok: false, error: NOT_STAFF };
+    if (!awayClubId) return { ok: false, error: "Pick the other club." };
+  }
+  if (homeClubId && awayClubId && homeClubId === awayClubId) {
+    return { ok: false, error: "Pick two different clubs." };
+  }
+
+  if (homeClubId && awayClubId && !input.allowDuplicate) {
+    const sameDay = await repo.listMatches({ entryDate: input.entryDate });
+    const matches = findDuplicates(
+      {
+        id: null,
+        entryDate: input.entryDate,
+        sideClubs: [{ side: "home", clubId: homeClubId }, { side: "away", clubId: awayClubId }],
+      },
+      sameDay,
+    );
+    if (matches.length > 0) {
+      return { ok: true, data: { kind: "duplicates", matches: matches.map(asCandidate) } };
+    }
   }
 
   try {
@@ -180,9 +232,10 @@ export async function createMatchAction(
       isFriendly: Boolean(input.isFriendly),
       createdBy: player.id,
       homeClubId,
+      awayClubId,
     });
     revalidatePath(MATCHES_PATH);
-    return { ok: true, data: id };
+    return { ok: true, data: { kind: "created", id } };
   } catch (e) {
     return failed(e, "Failed to create the match.");
   }
@@ -200,8 +253,10 @@ export async function updateMatchMetaAction(
   matchId: string,
   patch: MatchMetaFields,
 ): Promise<ActionResult> {
-  const gate = await requireEditableMatch(matchId);
+  const gate = await loadMatchGate(matchId);
   if (!gate.ok) return gate;
+  const why = detailsRefusal(gate.data);
+  if (why) return { ok: false, error: why };
 
   const fields: repo.MatchMetaPatch = {};
   if (patch?.entryDate !== undefined) {
@@ -231,7 +286,16 @@ export async function updateMatchMetaAction(
     }
   }
 
+  // A manager may enter a friendly's score but not a league one (D1), so a
+  // manager's flip either way clears the score: Friendly -> League must not
+  // carry their score across, and League -> Friendly must not hand them a
+  // staff-entered league score. Cleared first: if the update then fails, the
+  // match keeps its old type.
+  const flipsType = patch?.isFriendly !== undefined && patch.isFriendly !== gate.data.match.isFriendly;
+  const clearsScores = flipsType && !isStaffRole(gate.data.player.role);
+
   try {
+    if (clearsScores) await repo.clearScores(matchId);
     await repo.updateMatchMeta(matchId, fields);
     revalidateMatch(matchId);
     return OK;
@@ -242,8 +306,11 @@ export async function updateMatchMetaAction(
 
 /** Delete a draft match; halves, sides, squad and stats cascade with it. */
 export async function deleteMatchAction(matchId: string): Promise<ActionResult> {
-  const gate = await requireEditableMatch(matchId);
+  const gate = await loadMatchGate(matchId);
   if (!gate.ok) return gate;
+  if (!gate.data.perms.deleteDraft) {
+    return { ok: false, error: stateRefusal(gate.data) ?? DETAILS_FIXED };
+  }
 
   try {
     await repo.deleteMatch(matchId);
@@ -274,29 +341,26 @@ export async function setSideClubAction(
   side: SideKey,
   clubId: string,
 ): Promise<ActionResult> {
-  const gate = await requireEditableMatch(matchId);
+  const gate = await loadMatchGate(matchId);
   if (!gate.ok) return gate;
 
   if (!isSideKey(side)) return { ok: false, error: "Unknown side." };
   if (!clubId) return { ok: false, error: "Pick a club." };
-  if (!gate.data.match.halves.some((h) => h.id === halfId)) {
+  const { player, match, managed, perms } = gate.data;
+  if (!match.halves.some((h) => h.id === halfId)) {
     return { ok: false, error: "That half does not belong to this match." };
   }
-  if (clubOnOtherSide(gate.data.match.halves, side, clubId)) {
+  if (!perms.clubs[side]) {
+    const why = stateRefusal(gate.data) ??
+      (ownedSides(match.halves, managed).includes(side) ? TEAM_SENT : OTHER_CLUB);
+    return { ok: false, error: why };
+  }
+  if (clubOnOtherSide(match.halves, side, clubId)) {
     return { ok: false, error: "That club is already on the other side of this match." };
   }
   // A manager may not edit their own club off the match. Staff are exempt.
-  const { player, match } = gate.data;
-  if (!isStaffRole(player.role)) {
-    let managed = gate.data.managed;
-    if (!managed) {
-      const loaded = await loadManaged(player.id);
-      if (!loaded.ok) return loaded;
-      managed = loaded.data;
-    }
-    if (!keepsManagedClub(match.halves, halfId, side, clubId, managed)) {
-      return { ok: false, error: KEEP_OWN_CLUB };
-    }
+  if (!isStaffRole(player.role) && !keepsManagedClub(match.halves, halfId, side, clubId, managed)) {
+    return { ok: false, error: KEEP_OWN_CLUB };
   }
 
   try {
@@ -316,8 +380,12 @@ export async function setSideScoreAction(
   side: SideKey,
   score: number,
 ): Promise<ActionResult> {
-  const gate = await requireEditableMatch(matchId);
+  const gate = await loadMatchGate(matchId);
   if (!gate.ok) return gate;
+  if (!gate.data.perms.score) {
+    const why = stateRefusal(gate.data) ?? (gate.data.match.isFriendly ? DETAILS_FIXED : STAFF_SCORE);
+    return { ok: false, error: why };
+  }
 
   if (!isSideKey(side)) return { ok: false, error: "Unknown side." };
   if (!gate.data.match.halves.some((h) => h.id === halfId)) {
@@ -347,11 +415,18 @@ export async function addAppearanceAction(
   playerId: string,
   side: SideKey,
 ): Promise<ActionResult<string>> {
-  const gate = await requireEditableMatch(matchId);
+  const gate = await loadMatchGate(matchId);
   if (!gate.ok) return gate;
 
   if (!isSideKey(side)) return { ok: false, error: "Unknown side." };
   if (!playerId) return { ok: false, error: "Pick a player." };
+  const why = teamRefusal(gate.data, side);
+  if (why) return { ok: false, error: why };
+  // Re-adding moves a player between sides: never out of a team the caller can't edit.
+  const existing = gate.data.match.appearances.find((a) => a.playerId === playerId);
+  if (existing && existing.side !== side && !gate.data.perms.team[existing.side]) {
+    return { ok: false, error: "That player is already in the other team." };
+  }
 
   try {
     const id = await repo.addAppearance(matchId, playerId, side);
@@ -367,12 +442,13 @@ export async function removeAppearanceAction(
   matchId: string,
   appearanceId: string,
 ): Promise<ActionResult> {
-  const gate = await requireEditableMatch(matchId);
+  const gate = await loadMatchGate(matchId);
   if (!gate.ok) return gate;
 
-  if (!gate.data.match.appearances.some((a) => a.id === appearanceId)) {
-    return { ok: false, error: "That player is not in this match." };
-  }
+  const app = gate.data.match.appearances.find((a) => a.id === appearanceId);
+  if (!app) return { ok: false, error: "That player is not in this match." };
+  const why = teamRefusal(gate.data, app.side);
+  if (why) return { ok: false, error: why };
 
   try {
     await repo.removeAppearance(appearanceId);
@@ -394,24 +470,30 @@ export async function setStatAction(
   statKey: StatKey,
   count: number,
 ): Promise<ActionResult> {
-  const gate = await requireEditableMatch(matchId);
+  const gate = await loadMatchGate(matchId);
   if (!gate.ok) return gate;
 
   const { match } = gate.data;
-  if (!match.appearances.some((a) => a.id === appearanceId)) {
-    return { ok: false, error: "That player is not in this match." };
-  }
+  const app = match.appearances.find((a) => a.id === appearanceId);
+  if (!app) return { ok: false, error: "That player is not in this match." };
   if (!match.halves.some((h) => h.halfNo === halfNo)) {
     return { ok: false, error: "This match has no such half." };
   }
   if (!KNOWN_STATS.has(statKey)) return { ok: false, error: "Unknown stat." };
+  const why = teamRefusal(gate.data, app.side);
+  if (why) return { ok: false, error: why };
 
   // Negative tallies are meaningless — the +/- sign lives in the rates — and
   // the DB rejects them. Clamp to 0, which the repository reads as "clear".
   const value = Math.max(0, nonNegativeInt(count) ?? 0);
+  // A lower count drops the latest goal times with it (minutes_len_chk).
+  // Otherwise leave the column alone, so this save can't overwrite a newer
+  // times save that raced it.
+  const existing = app.times?.[halfNo]?.[statKey] ?? [];
+  const minutes = existing.length > value ? trimTimes(existing, value) : undefined;
 
   try {
-    await repo.setStat(appearanceId, halfNo, statKey, value);
+    await repo.setStat(appearanceId, halfNo, statKey, value, minutes);
     revalidateMatch(matchId);
     return OK;
   } catch (e) {
@@ -464,47 +546,70 @@ function buildPayoutLines(
   });
 }
 
-/**
- * Lock a match and return what it paid.
- *
- * A league match tags the ACTIVE season; a friendly carries none and pays no
- * Kroopies. Both are database constraints as well as spec rules, so an
- * unstarted season is refused here with a message that says what to do.
- *
- * Phase 2 only DISPLAYS the lines — landing them on the balance sheet is
- * Phase 5.
- */
-export async function submitMatchAction(
-  matchId: string,
-): Promise<ActionResult<PayoutLine[]>> {
-  const gate = await requireEditableMatch(matchId);
-  if (!gate.ok) return gate;
-  const { player, match } = gate.data;
-
-  if (match.halves.length === 0) {
-    return { ok: false, error: "This match has no halves." };
-  }
-  // Sides are created lazily, so a side with no club is an ABSENT row — never
-  // a row with a null club_id. Fewer than two sides means a club is missing.
+/** The checks Send and Make official share. Null when the match is complete. */
+function completenessRefusal(match: MatchDraft, verb: "sending" | "submitting"): string | null {
+  if (match.halves.length === 0) return "This match has no halves.";
+  // Sides are created lazily, so a side with no club is an ABSENT row.
   const incomplete = match.halves.find((h) => h.sides.length < 2);
   if (incomplete) {
-    return {
-      ok: false,
-      error:
-        match.halves.length > 1
-          ? `Pick a club for both sides of half ${incomplete.halfNo}.`
-          : "Pick a club for both sides before submitting.",
-    };
+    return match.halves.length > 1
+      ? `Pick a club for both sides of half ${incomplete.halfNo}.`
+      : `Pick a club for both sides before ${verb}.`;
   }
-  // The pair rule: a club leading home in one half and away in another would
-  // play itself on aggregate. setSideClubAction blocks it; this catches drafts
-  // from before that rule.
   if (clubOnBothSlots(match.halves) !== null) {
-    return {
-      ok: false,
-      error: "A club can't be on both sides of one match. Fix the clubs before submitting.",
-    };
+    return `A club can't be on both sides of one match. Fix the clubs before ${verb}.`;
   }
+  return null;
+}
+
+/**
+ * A manager sends their own team (D2, D9). It then locks for them. When both
+ * teams are sent, a league match moves to Sent (waiting for KFANDRA) and a
+ * friendly is submitted. Returns the match status after the send.
+ */
+export async function sendTeamAction(
+  matchId: string,
+  side: SideKey,
+): Promise<ActionResult<MatchStatus>> {
+  const gate = await loadMatchGate(matchId);
+  if (!gate.ok) return gate;
+  if (!isSideKey(side)) return { ok: false, error: "Unknown side." };
+  const { player, match, perms } = gate.data;
+  if (!perms.send.includes(side)) {
+    return { ok: false, error: teamRefusal(gate.data, side) ?? NOT_YOUR_TEAM };
+  }
+  const incomplete = completenessRefusal(match, "sending");
+  if (incomplete) return { ok: false, error: incomplete };
+  if (!match.appearances.some((a) => a.side === side)) {
+    return { ok: false, error: "Add at least one player to your team before sending." };
+  }
+
+  try {
+    await repo.sendTeam(matchId, side);
+    const status = await repo.finishSending(matchId, player.id);
+    revalidateMatch(matchId);
+    return { ok: true, data: status };
+  } catch (e) {
+    return failed(e, "Failed to send your team.");
+  }
+}
+
+/**
+ * Staff make a match official (D3): it locks and, for a league match, tags the
+ * ACTIVE season and starts counting in the tables. Works from Draft or Sent
+ * (a club may never send). A friendly made official here carries no season.
+ * Returns the payout lines, as Submit did.
+ */
+export async function makeOfficialAction(
+  matchId: string,
+): Promise<ActionResult<PayoutLine[]>> {
+  const gate = await loadMatchGate(matchId);
+  if (!gate.ok) return gate;
+  const { player, match, perms } = gate.data;
+  if (!perms.makeOfficial) return { ok: false, error: stateRefusal(gate.data) ?? NOT_STAFF };
+
+  const incomplete = completenessRefusal(match, "submitting");
+  if (incomplete) return { ok: false, error: incomplete };
   if (match.appearances.length === 0) {
     return { ok: false, error: "Add at least one player before submitting." };
   }
@@ -517,42 +622,96 @@ export async function submitMatchAction(
   }
 
   const [rates, sportStats] = await Promise.all([loadStatRates(), loadSportStats()]);
-  const allowed = statsForSport(match.sport, sportStats);
-  const lines = buildPayoutLines(match, rates, allowed);
+  const lines = buildPayoutLines(match, rates, statsForSport(match.sport, sportStats));
 
   try {
-    await repo.submitMatch(matchId, seasonId, player.id);
+    await repo.makeOfficial(matchId, seasonId, player.id);
   } catch (e) {
-    return failed(e, "Failed to submit the match.");
+    return failed(e, "Failed to make the match official.");
   }
   revalidateMatch(matchId);
   return { ok: true, data: lines };
 }
 
+/** Staff send a match back to the managers (D5): both teams editable again. */
+export async function sendBackAction(matchId: string): Promise<ActionResult> {
+  const gate = await loadMatchGate(matchId);
+  if (!gate.ok) return gate;
+  if (!isStaffRole(gate.data.player.role)) {
+    return { ok: false, error: stateRefusal(gate.data) ?? NOT_STAFF };
+  }
+  if (gate.data.match.status === "submitted") return { ok: false, error: LOCKED };
+  if (!gate.data.perms.sendBack) return { ok: false, error: "No team has been sent yet." };
+
+  try {
+    await repo.sendBack(matchId);
+    revalidateMatch(matchId);
+    return OK;
+  } catch (e) {
+    return failed(e, "Failed to send the match back.");
+  }
+}
+
 /**
- * Unlock a submitted match for editing.
- *
- * KFANDRA-only: reopening un-tags the season and re-opens a payout that has
- * already been read as final, so a plain `admin` is refused. Reopening a match
- * that is already a draft is a no-op rather than an error.
+ * Unlock an official match (KFANDRA only, D6). A league match goes back to
+ * Sent, so KFANDRA edits and re-officials without involving the managers; a
+ * friendly goes back to Draft. Reopening a match that isn't official is a no-op.
  */
 export async function reopenMatchAction(matchId: string): Promise<ActionResult> {
   const player = await getCurrentPlayer();
   if (!player) return { ok: false, error: NOT_SIGNED_IN };
-  if (!canReopenMatch(player)) {
-    return { ok: false, error: NOT_KFANDRA };
-  }
+  if (!canReopenMatch(player)) return { ok: false, error: NOT_KFANDRA };
 
   const match = await repo.getMatch(matchId);
   if (!match) return { ok: false, error: NO_MATCH };
-  if (match.status === "draft") return OK;
+  if (match.status !== "submitted") return OK;
 
   try {
-    await repo.reopenMatch(matchId);
+    await repo.reopenMatch(matchId, match.isFriendly ? "draft" : "sent");
     revalidateMatch(matchId);
     return OK;
   } catch (e) {
     return failed(e, "Failed to reopen the match.");
+  }
+}
+
+/**
+ * Set the goal/try minutes for one tally (D12). A manager, for their own team
+ * while it's editable; staff any time, including on an official match (D13:
+ * times don't touch the score or the tables). Trailing blanks are dropped.
+ */
+export async function setGoalTimesAction(
+  matchId: string,
+  appearanceId: string,
+  halfNo: number,
+  statKey: StatKey,
+  minutes: (number | null)[],
+): Promise<ActionResult> {
+  const gate = await loadMatchGate(matchId);
+  if (!gate.ok) return gate;
+  const { match, perms } = gate.data;
+  const app = match.appearances.find((a) => a.id === appearanceId);
+  if (!app) return { ok: false, error: "That player is not in this match." };
+  if (!perms.times[app.side]) {
+    return { ok: false, error: stateRefusal(gate.data) ?? teamRefusal(gate.data, app.side) ?? LOCKED };
+  }
+  if (!KNOWN_STATS.has(statKey) || !isTimed(match.sport, statKey, match.isFriendly)) {
+    return { ok: false, error: "Times are only kept for league Fooba goals and Rugby Sox tries." };
+  }
+  const cleaned = cleanTimes(minutes);
+  if (!cleaned) return { ok: false, error: "Enter whole minutes between 0 and 150." };
+  const count = app.stats[halfNo]?.[statKey] ?? 0;
+  const trimmed = trimTimes(cleaned, cleaned.length);
+  if (trimmed.length > count) {
+    return { ok: false, error: "More times than goals: lower the times first." };
+  }
+
+  try {
+    await repo.setGoalTimes(appearanceId, halfNo, statKey, trimmed);
+    revalidateMatch(matchId);
+    return OK;
+  } catch (e) {
+    return failed(e, "Failed to save the times.");
   }
 }
 
@@ -600,22 +759,23 @@ export async function startSeasonAction(seasonId: string): Promise<ActionResult>
 }
 
 /**
- * Close a season, refusing while drafts dated inside it remain.
+ * Close a season, refusing while unfinished (draft or sent) matches dated
+ * inside it remain.
  *
- * The guard is by DATE, not by `season_id`: a draft never carries a season
- * (it is stamped at Submit and cleared by Reopen), so a season_id count would
- * always be 0 and this guard would never fire. See
- * `countDraftMatchesDatedInSeason`.
+ * The guard is by DATE, not by `season_id`: an unfinished match never carries
+ * a season (it is stamped when made official and cleared by Reopen), so a
+ * season_id count would always be 0 and this guard would never fire. See
+ * `countUnfinishedMatchesDatedInSeason`.
  */
 export async function closeSeasonAction(seasonId: string): Promise<ActionResult> {
   const auth = await requireStaff();
   if (!auth.ok) return auth;
 
-  const drafts = await repo.countDraftMatchesDatedInSeason(seasonId);
+  const drafts = await repo.countUnfinishedMatchesDatedInSeason(seasonId);
   if (drafts > 0) {
     return {
       ok: false,
-      error: `${drafts} draft match${drafts === 1 ? "" : "es"} dated in this season. Submit or delete them first.`,
+      error: `${drafts} unfinished match${drafts === 1 ? "" : "es"} dated in this season. Finish or delete them first.`,
     };
   }
 

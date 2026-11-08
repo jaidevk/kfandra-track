@@ -157,7 +157,7 @@ test.describe("KLCSRA recorder", () => {
     ).toHaveCount(0);
 
     await rec.submitMatch(page);
-    await expect(page.getByTestId("match-status")).toHaveText("submitted");
+    await expect(page.getByTestId("match-status")).toHaveText("Official");
     await expect(page.getByTestId("audit-line")).toContainText("E2E Admin");
     await rec.expectTotals(page, total);
 
@@ -177,7 +177,7 @@ test.describe("KLCSRA recorder", () => {
     await page.goto("/klc/matches");
     const row = rec.matchRow(page, matchId);
     await expect(row.getByTestId("tag-season")).toHaveText(SEASON);
-    await expect(row.getByTestId("match-status")).toHaveText("submitted");
+    await expect(row.getByTestId("match-status")).toHaveText("Official");
     await expect(row.getByTestId("match-score")).toContainText("3 - 1");
     await expect(row.getByTestId("match-sport")).toHaveText("Football");
     // Grouped under its own date heading.
@@ -348,11 +348,12 @@ test.describe("KLCSRA recorder", () => {
       await signIn(kfandra.context, kfandra.player);
       await kfandra.page.getByTestId("reopen-confirm").click();
       await expect(kfandra.page.getByTestId("submit-match")).toBeVisible();
-      await expect(kfandra.page.getByTestId("match-status")).toHaveText("draft");
+      await expect(kfandra.page.getByTestId("match-status")).toHaveText("Waiting for KFANDRA");
       await expect(kfandra.page.getByTestId("lock-banner")).toHaveCount(0);
 
       const reopened = await db.getMatchRow(matchId);
-      expect(reopened?.status).toBe("draft");
+      // A league match reopens to Sent (spec D6/§3.2), not Draft.
+      expect(reopened?.status).toBe("sent");
       // Reopening un-tags the season — it is re-stamped on the next Submit.
       expect(reopened?.season_id).toBeNull();
       expect(reopened?.submitted_at).toBeNull();

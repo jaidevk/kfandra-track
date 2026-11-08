@@ -23,7 +23,7 @@ function match(overrides: Partial<MatchDraft>): MatchDraft {
   return {
     id: "m1", entryDate: "2026-10-01", sport: "football",
     isFriendly: false, isCombined: false, durationMinutes: null,
-    status: "draft", submittedAt: null, seasonId: null, seasonName: null, createdBy: null,
+    status: "draft", submittedAt: null, homeSentAt: null, awaySentAt: null, seasonId: null, seasonName: null, createdBy: null,
     halves: [half(1, ["A", 1], ["B", 0])],
     appearances: players(8),
     ...overrides,

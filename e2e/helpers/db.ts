@@ -197,17 +197,20 @@ export async function setClubManager(clubId: string, playerId: string | null): P
 export interface MatchRow {
   id: string;
   entry_date: string;
-  status: "draft" | "submitted";
+  status: "draft" | "sent" | "submitted";
   is_friendly: boolean;
   is_combined: boolean;
   season_id: string | null;
   submitted_at: string | null;
+  home_sent_at: string | null;
+  away_sent_at: string | null;
 }
 
 export async function getMatchRow(id: string): Promise<MatchRow | null> {
   const rows = await sql<MatchRow>(
     `select id, to_char(entry_date, 'YYYY-MM-DD') as entry_date, status,
-            is_friendly, is_combined, season_id, submitted_at
+            is_friendly, is_combined, season_id, submitted_at,
+            home_sent_at, away_sent_at
        from klc_matches where id = $1`,
     [id],
   );

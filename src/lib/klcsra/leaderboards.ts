@@ -32,7 +32,7 @@ const tally = (keys: StatKey[]) => (row: StatRow) => (keys.includes(row.statKey)
 
 export const BOARDS: readonly BoardDef[] = [
   { key: "goals", label: "Goals", includeFriendlies: false, value: tally(["goal", "mainGoal", "reboundGoal"]) },
-  { key: "tries", label: "Tries", includeFriendlies: false, value: tally(["try"]) },
+  { key: "tries", label: "Tries", includeFriendlies: false, value: tally(["try", "conversion"]) },
   { key: "assists", label: "Assists", includeFriendlies: false, value: tally(["assist"]) },
   { key: "preAssists", label: "Pre-assists", includeFriendlies: false, value: tally(["preAssist"]) },
   { key: "saves", label: "Saves", includeFriendlies: false, value: tally(["save"]) },

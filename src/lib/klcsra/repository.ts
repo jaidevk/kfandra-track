@@ -128,8 +128,8 @@ export async function renameSeason(id: string, name: string): Promise<void> {
 }
 
 /**
- * How many matches are still in `draft` with an `entry_date` inside this
- * season's window — `start_date` .. `end_date`, or today while the season is
+ * How many matches are still unfinished (`draft` or `sent`) with an
+ * `entry_date` inside this season's window — `start_date` .. `end_date`, or today while the season is
  * still open-ended.
  *
  * Deliberately DATE-based rather than `season_id`-based. `klc_matches.season_id`
@@ -140,7 +140,7 @@ export async function renameSeason(id: string, name: string): Promise<void> {
  *
  * Returns 0 for an unknown season id — nothing to block on.
  */
-export async function countDraftMatchesDatedInSeason(id: string): Promise<number> {
+export async function countUnfinishedMatchesDatedInSeason(id: string): Promise<number> {
   const admin = createAdminClient();
   const { data: season } = await admin
     .from("klc_seasons")
@@ -153,7 +153,7 @@ export async function countDraftMatchesDatedInSeason(id: string): Promise<number
   const { count } = await admin
     .from("klc_matches")
     .select("id", { count: "exact", head: true })
-    .eq("status", "draft")
+    .in("status", ["draft", "sent"])
     .gte("entry_date", season.start_date)
     .lte("entry_date", end);
   return count ?? 0;
@@ -253,23 +253,30 @@ function scoreLine(halves: HalfDraft[]): string {
   return `${home} - ${away}`;
 }
 
-/** Every match, newest first, with its aggregate score line. */
-export async function listMatches(): Promise<MatchSummary[]> {
+/** Matches newest first (optionally one date only), with their aggregate score line. */
+export async function listMatches(opts: { entryDate?: string } = {}): Promise<MatchSummary[]> {
   const admin = createAdminClient();
-  const { data } = await admin
+  let query = admin
     .from("klc_matches")
     .select(
       `id, entry_date, sport, is_friendly, is_combined, status,
-       created_by,
+       created_by, home_sent_at, away_sent_at,
        klc_seasons(name),
        klc_match_halves(id, half_no,
          klc_match_sides(id, side, score, club_id, clubs(name)))`,
-    )
+    );
+  if (opts.entryDate) query = query.eq("entry_date", opts.entryDate);
+  const { data } = await query
     .order("entry_date", { ascending: false })
     .order("created_at", { ascending: false });
 
   return (data ?? []).map((m) => {
     const halves = toHalfDrafts(m.klc_match_halves as HalfRow[] | null);
+    const sideClubs = halves.flatMap((h) =>
+      h.sides
+        .filter((s): s is SideDraft & { clubId: string } => s.clubId !== null)
+        .map((s) => ({ side: s.side, clubId: s.clubId })),
+    );
     return {
       id: m.id,
       entryDate: m.entry_date,
@@ -279,8 +286,10 @@ export async function listMatches(): Promise<MatchSummary[]> {
       status: m.status as MatchStatus,
       seasonName: one(m.klc_seasons as ToOne<{ name: string }>)?.name ?? null,
       createdBy: m.created_by,
-      clubIds: [...new Set(halves.flatMap((h) => h.sides.map((s) => s.clubId)))]
-        .filter((id): id is string => id !== null),
+      clubIds: [...new Set(sideClubs.map((s) => s.clubId))],
+      homeSentAt: m.home_sent_at,
+      awaySentAt: m.away_sent_at,
+      sideClubs,
       homeLabel: sideLabel(halves, "home"),
       awayLabel: sideLabel(halves, "away"),
       scoreLine: scoreLine(halves),
@@ -288,7 +297,7 @@ export async function listMatches(): Promise<MatchSummary[]> {
   });
 }
 
-interface StatRow { half_no: number; stat_key: string; stat_count: number }
+interface StatRow { half_no: number; stat_key: string; stat_count: number; minutes: (number | null)[] | null }
 interface AppearanceRow {
   id: string; player_id: string; side: string; slot: number;
   players: ToOne<{ display_name: string }>;
@@ -297,9 +306,12 @@ interface AppearanceRow {
 
 function toAppearanceDraft(a: AppearanceRow): AppearanceDraft {
   const stats: Record<number, Partial<Record<StatKey, number>>> = {};
+  const times: Record<number, Partial<Record<StatKey, (number | null)[]>>> = {};
   for (const s of a.klc_player_stats ?? []) {
-    const half = (stats[s.half_no] ??= {});
-    half[s.stat_key as StatKey] = s.stat_count;
+    (stats[s.half_no] ??= {})[s.stat_key as StatKey] = s.stat_count;
+    if (s.minutes && s.minutes.length > 0) {
+      (times[s.half_no] ??= {})[s.stat_key as StatKey] = s.minutes;
+    }
   }
   return {
     id: a.id,
@@ -308,23 +320,25 @@ function toAppearanceDraft(a: AppearanceRow): AppearanceDraft {
     side: a.side as SideKey,
     slot: a.slot,
     stats,
+    ...(Object.keys(times).length > 0 ? { times } : {}),
   };
 }
 
 export const MATCH_DRAFT_COLS = `id, entry_date, sport, is_friendly, is_combined, duration_minutes,
-   status, submitted_at, season_id, created_by,
+   status, submitted_at, season_id, created_by, home_sent_at, away_sent_at,
    klc_seasons(name),
    klc_match_halves(id, half_no,
      klc_match_sides(id, side, score, club_id, clubs(name))),
    klc_match_appearances(id, player_id, side, slot,
      players(display_name),
-     klc_player_stats(half_no, stat_key, stat_count))`;
+     klc_player_stats(half_no, stat_key, stat_count, minutes))`;
 
 export interface MatchDraftRow {
   id: string; entry_date: string; sport: string;
   is_friendly: boolean; is_combined: boolean; duration_minutes: number | null;
   status: string; submitted_at: string | null; season_id: string | null;
   created_by: string | null;
+  home_sent_at: string | null; away_sent_at: string | null;
   klc_seasons: unknown; klc_match_halves: unknown; klc_match_appearances: unknown;
 }
 
@@ -344,6 +358,8 @@ export function toMatchDraft(data: MatchDraftRow): MatchDraft {
     durationMinutes: data.duration_minutes,
     status: data.status as MatchStatus,
     submittedAt: data.submitted_at,
+    homeSentAt: data.home_sent_at,
+    awaySentAt: data.away_sent_at,
     seasonId: data.season_id,
     seasonName: one(data.klc_seasons as ToOne<{ name: string }>)?.name ?? null,
     createdBy: data.created_by,
@@ -371,11 +387,13 @@ export interface CreateMatchInput {
   createdBy: string | null;
   /** Created as half 1's home side when given (a manager's own club). */
   homeClubId: string | null;
+  /** Created as half 1's away side when given (the opponent). */
+  awayClubId: string | null;
 }
 
 /**
  * Create a draft match and its half rows (1, or 1 and 2 when combined), plus
- * half 1's home side when `homeClubId` is given.
+ * half 1's home and away sides when `homeClubId` / `awayClubId` are given.
  *
  * Other side rows are NOT created here: `klc_match_sides.club_id` is NOT NULL,
  * so an empty side is unrepresentable. `setSideClub` creates them.
@@ -409,16 +427,20 @@ export async function createMatch(input: CreateMatchInput): Promise<string> {
     throw new Error(`Failed to create match halves: ${halvesErr.message}`);
   }
 
-  if (input.homeClubId) {
-    const first = halves?.find((h) => h.half_no === 1);
+  const first = halves?.find((h) => h.half_no === 1);
+  const sides = [
+    input.homeClubId ? { side: "home", club_id: input.homeClubId } : null,
+    input.awayClubId ? { side: "away", club_id: input.awayClubId } : null,
+  ].filter((s): s is { side: string; club_id: string } => s !== null);
+  if (sides.length > 0) {
     const { error: sideErr } = first
-      ? await admin.from("klc_match_sides").insert({
-          half_id: first.id, side: "home", club_id: input.homeClubId, role: "home",
-        })
+      ? await admin.from("klc_match_sides").insert(
+          sides.map((s) => ({ half_id: first.id, side: s.side, club_id: s.club_id, role: s.side })),
+        )
       : { error: { message: "half 1 was not returned" } };
     if (sideErr) {
       await admin.from("klc_matches").delete().eq("id", data.id);
-      throw new Error(`Failed to set your club: ${sideErr.message}`);
+      throw new Error(`Failed to set the clubs: ${sideErr.message}`);
     }
   }
   return data.id;
@@ -512,6 +534,23 @@ export async function setSideScore(
   }
 }
 
+/** Zero every side's score on a match (all halves). */
+export async function clearScores(matchId: string): Promise<void> {
+  const admin = createAdminClient();
+  const { data: halves, error: halvesError } = await admin
+    .from("klc_match_halves")
+    .select("id")
+    .eq("match_id", matchId);
+  if (halvesError) throw new Error(`Failed to clear the scores: ${halvesError.message}`);
+  const halfIds = (halves ?? []).map((h) => h.id as string);
+  if (halfIds.length === 0) return;
+  const { error } = await admin
+    .from("klc_match_sides")
+    .update({ score: 0 })
+    .in("half_id", halfIds);
+  if (error) throw new Error(`Failed to clear the scores: ${error.message}`);
+}
+
 // ── squad ───────────────────────────────────────────────────────────────────
 
 /**
@@ -563,15 +602,18 @@ export async function removeAppearance(appearanceId: string): Promise<void> {
 /**
  * Set one stat tally for one appearance in one half.
  *
- * A count of 0 (or less) DELETES the row instead of storing a zero: the tally
- * is constrained `>= 0`, and absent-means-zero keeps the table free of rows
- * that say nothing.
+ * A count of 0 (or less) DELETES the row instead of storing a zero. `minutes`
+ * is written only when given (already trimmed by the caller to at most
+ * `count` entries, `klc_player_stats_minutes_len_chk`); omitted, the column is
+ * left out of the upsert, so a conflict keeps the stored times and a new row
+ * takes the '{}' default.
  */
 export async function setStat(
   appearanceId: string,
   halfNo: number,
   statKey: StatKey,
   count: number,
+  minutes?: (number | null)[],
 ): Promise<void> {
   const admin = createAdminClient();
   if (count <= 0) {
@@ -587,23 +629,95 @@ export async function setStat(
   const { error } = await admin
     .from("klc_player_stats")
     .upsert(
-      { appearance_id: appearanceId, half_no: halfNo, stat_key: statKey, stat_count: count },
+      {
+        appearance_id: appearanceId, half_no: halfNo, stat_key: statKey, stat_count: count,
+        // int[] holds nulls; the generated type just doesn't say so.
+        ...(minutes ? { minutes: minutes as number[] } : {}),
+      },
       { onConflict: "appearance_id,half_no,stat_key" },
     );
   if (error) throw new Error(`Failed to record ${statKey}: ${error.message}`);
 }
 
-// ── lock ────────────────────────────────────────────────────────────────────
+/**
+ * Set the goal/try minutes on an existing tally. The only write the submit
+ * lock lets through on an official match (minutes-only UPDATE).
+ */
+export async function setGoalTimes(
+  appearanceId: string,
+  halfNo: number,
+  statKey: StatKey,
+  minutes: (number | null)[],
+): Promise<void> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("klc_player_stats")
+    .update({ minutes: minutes as number[] })
+    .eq("appearance_id", appearanceId)
+    .eq("half_no", halfNo)
+    .eq("stat_key", statKey)
+    .select("id");
+  if (error) throw new Error(`Failed to save the times: ${error.message}`);
+  if ((data ?? []).length === 0) throw new Error("Record the goal before its time.");
+}
+
+// ── workflow ────────────────────────────────────────────────────────────────
+
+/** Stamp one team as sent. Only a draft with that team unsent changes. */
+export async function sendTeam(id: string, side: SideKey): Promise<void> {
+  const admin = createAdminClient();
+  const col = side === "home" ? "home_sent_at" : "away_sent_at";
+  const now = new Date().toISOString();
+  const { data, error } = await admin
+    .from("klc_matches")
+    .update(side === "home" ? { home_sent_at: now } : { away_sent_at: now })
+    .eq("id", id)
+    .eq("status", "draft")
+    .is(col, null)
+    .select("id");
+  if (error) throw new Error(`Failed to send your team: ${error.message}`);
+  if (!data || data.length === 0) throw new Error("This team has already been sent.");
+}
 
 /**
- * Lock a match. `seasonId` must be null for a friendly and non-null for a
- * league match — both are database constraints, and the caller (actions.ts)
- * is what decides which season applies.
+ * Move a draft on once BOTH teams are sent: a league match to `sent`, a
+ * friendly straight to `submitted`. Safe to call twice (two managers sending
+ * at once): the guard makes the second call a no-op. Returns the status after.
  */
-export async function submitMatch(
+export async function finishSending(id: string, by: string | null): Promise<MatchStatus> {
+  const admin = createAdminClient();
+  const { data: row, error } = await admin
+    .from("klc_matches")
+    .select("status, is_friendly, home_sent_at, away_sent_at")
+    .eq("id", id)
+    .single();
+  if (error) throw new Error(`Failed to read the match: ${error.message}`);
+  if (row.status !== "draft" || !row.home_sent_at || !row.away_sent_at) {
+    return row.status as MatchStatus;
+  }
+  const next = row.is_friendly
+    ? { status: "submitted", submitted_at: new Date().toISOString(), submitted_by: by }
+    : { status: "sent" };
+  const { error: upErr } = await admin
+    .from("klc_matches")
+    .update(next)
+    .eq("id", id)
+    .eq("status", "draft")
+    .not("home_sent_at", "is", null)
+    .not("away_sent_at", "is", null);
+  if (upErr) throw new Error(`Failed to send the match: ${upErr.message}`);
+  return next.status as MatchStatus;
+}
+
+/**
+ * Make a match official (lock it). `seasonId` is null for a friendly and the
+ * active season for a league match (both DB constraints). Only a draft or a
+ * sent match flips, so a lost race updates 0 rows.
+ */
+export async function makeOfficial(
   id: string,
   seasonId: string | null,
-  submittedBy: string | null,
+  by: string | null,
 ): Promise<void> {
   const admin = createAdminClient();
   const { data, error } = await admin
@@ -611,29 +725,45 @@ export async function submitMatch(
     .update({
       status: "submitted",
       submitted_at: new Date().toISOString(),
-      submitted_by: submittedBy,
+      submitted_by: by,
       season_id: seasonId,
     })
     .eq("id", id)
-    // Only a draft flips. Two concurrent submits both pass the action's
-    // status check; this makes the second one update 0 rows.
-    .eq("status", "draft")
+    .in("status", ["draft", "sent"])
     .select("id");
-  if (error) throw new Error(`Failed to submit the match: ${error.message}`);
+  if (error) throw new Error(`Failed to make the match official: ${error.message}`);
   if (!data || data.length === 0) throw new Error("This match is locked. Reopen it first.");
 }
 
-/**
- * Unlock a match for editing. `submitted_at` and `season_id` are cleared in
- * the SAME update as the status flip: `klc_matches_submitted_at_chk` and
- * `klc_matches_league_season_chk` are both checked per-statement, so any
- * ordering that separates them fails.
- */
-export async function reopenMatch(id: string): Promise<void> {
+/** KFANDRA's Send back: both teams editable again. */
+export async function sendBack(id: string): Promise<void> {
   const admin = createAdminClient();
   const { error } = await admin
     .from("klc_matches")
-    .update({ status: "draft", submitted_at: null, season_id: null })
-    .eq("id", id);
+    .update({ status: "draft", home_sent_at: null, away_sent_at: null })
+    .eq("id", id)
+    .in("status", ["draft", "sent"]);
+  if (error) throw new Error(`Failed to send the match back: ${error.message}`);
+}
+
+/**
+ * Unlock an official match. A league match goes back to `sent` (KFANDRA edits
+ * and re-officials without the managers); a friendly goes back to `draft`
+ * with its stamps cleared. `submitted_at` and `season_id` are cleared in the
+ * SAME update as the status flip: `klc_matches_submitted_at_chk` and
+ * `klc_matches_league_season_chk` are checked per statement.
+ */
+export async function reopenMatch(id: string, to: "sent" | "draft"): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("klc_matches")
+    .update({
+      status: to,
+      submitted_at: null,
+      season_id: null,
+      ...(to === "draft" ? { home_sent_at: null, away_sent_at: null } : {}),
+    })
+    .eq("id", id)
+    .eq("status", "submitted");
   if (error) throw new Error(`Failed to reopen the match: ${error.message}`);
 }

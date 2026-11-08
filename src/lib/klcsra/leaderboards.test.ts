@@ -35,6 +35,11 @@ describe("buildLeaderboards", () => {
     ]);
   });
 
+  it("Tries counts tries plus conversions", () => {
+    const rows = [r("a", "try", 2, { sport: "rugby" }), r("a", "conversion", 1, { sport: "rugby" })];
+    expect(board(rows, "tries")!.entries[0].value).toBe(3);
+  });
+
   it("Discipline sums all four sanctions", () => {
     const rows = [r("a", "yellowCard", 1), r("a", "redCard", 1), r("a", "blueCard", 1), r("a", "lateChallenge", 2)];
     expect(board(rows, "discipline")!.entries[0].value).toBe(5);

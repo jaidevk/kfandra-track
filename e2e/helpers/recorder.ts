@@ -81,32 +81,44 @@ export interface NewMatch {
   sport?: Sport;
   combined?: boolean;
   friendly?: boolean;
+  /** Home club id. A manager's form preselects their own club. */
+  home?: string;
+  /** Away club id (the opponent). Required for a manager. */
+  away?: string;
 }
 
 const MATCH_URL = /\/klc\/matches\/[0-9a-f-]{36}$/;
 
 /**
- * Create a match from the list page and land on its detail page.
+ * Fill the new-match form and press + New match, without waiting to land
+ * anywhere (a duplicate keeps the page on the list with a warning).
  *
  * Waits for the form to hydrate before touching it. The inputs are controlled,
  * so a value filled into the server HTML is silently reset to the server's
- * `today` when React takes over — and the match is then saved on the wrong
- * date. The values are asserted again right before Submit for the same reason.
- *
- * @returns the new match id (taken from the URL it navigated to).
+ * `today` when React takes over.
  */
-export async function createMatch(page: Page, match: NewMatch): Promise<string> {
+export async function startMatch(page: Page, match: NewMatch): Promise<void> {
   await page.goto("/klc/matches");
   await expect(page.getByTestId("new-match-form")).toHaveAttribute("data-hydrated", "true");
   const date = page.getByTestId("new-match-date");
   const sport = page.getByTestId("new-match-sport");
   await date.fill(match.date);
   await sport.selectOption(match.sport ?? "football");
+  if (match.home) await page.getByTestId("new-match-club").selectOption(match.home);
+  if (match.away) await page.getByTestId("new-match-opponent").selectOption(match.away);
   if (match.combined) await page.getByTestId("new-match-combined").check();
   if (match.friendly) await page.getByTestId("new-match-friendly").check();
   await expect(date).toHaveValue(match.date);
   await expect(sport).toHaveValue(match.sport ?? "football");
   await page.getByTestId("new-match-submit").click();
+}
+
+/**
+ * Create a match from the list page and land on its detail page.
+ * @returns the new match id (taken from the URL it navigated to).
+ */
+export async function createMatch(page: Page, match: NewMatch): Promise<string> {
+  await startMatch(page, match);
   await page.waitForURL(MATCH_URL);
   const id = page.url().split("/").pop();
   if (!id) throw new Error(`Could not read a match id out of ${page.url()}`);
@@ -339,6 +351,30 @@ export async function expectTotals(
 export async function submitMatch(page: Page): Promise<void> {
   await page.getByTestId("submit-match").click();
   await expect(page.getByTestId("lock-banner")).toBeVisible();
+}
+
+/** A manager sends their own team; the card then shows Sent. */
+export async function sendTeam(page: Page, side: SideKey): Promise<void> {
+  await page.getByTestId(`send-team-${side}`).click();
+  await expect(page.getByTestId(`team-sent-${side}`)).toBeVisible();
+}
+
+/**
+ * Type one goal/try minute in the OPEN stats popup and wait for it to save.
+ * Catching `saving` first rules out a stale `saved` (700ms debounce).
+ */
+export async function setMinute(
+  page: Page,
+  statKey: StatKey,
+  index: number,
+  minute: number,
+): Promise<void> {
+  const input = statsDialog(page).locator(
+    `[data-testid="minute-input"][data-stat-key="${statKey}"][data-index="${index}"]`,
+  );
+  await input.fill(String(minute));
+  await expect(syncBadge(page)).toHaveAttribute("data-sync-status", "saving");
+  await expectSaved(page);
 }
 
 /** Press Submit expecting a refusal, and return the message shown. */

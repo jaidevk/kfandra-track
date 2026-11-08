@@ -44,7 +44,7 @@ export const DEFAULT_SPORT_STATS: SportStats = {
     "ownGoal", "ownAssist", "ownPreAssist",
   ],
   rugby: [
-    "try", "tackle", "assist", "preAssist",
+    "try", "conversion", "tackle", "assist", "preAssist",
     "yellowCard", "redCard", "blueCard", "lateChallenge",
   ],
   fooba: [

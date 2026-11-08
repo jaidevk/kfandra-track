@@ -17,7 +17,7 @@
 import type { StatKey } from "./stat-rates";
 import type { Sport } from "./sport-stats";
 
-export type MatchStatus = "draft" | "submitted";
+export type MatchStatus = "draft" | "sent" | "submitted";
 export type SideKey = "home" | "away";
 export type SeasonStatus = "upcoming" | "active" | "closed";
 
@@ -41,6 +41,11 @@ export interface AppearanceDraft {
   id: string; playerId: string; displayName: string;
   side: SideKey; slot: number;
   stats: Record<number, Partial<Record<StatKey, number>>>;
+  /**
+   * Goal/try minutes per half per stat, in entry order (null = not entered).
+   * Absent when none are recorded.
+   */
+  times?: Record<number, Partial<Record<StatKey, (number | null)[]>>>;
 }
 
 export interface MatchDraft {
@@ -48,6 +53,9 @@ export interface MatchDraft {
   isFriendly: boolean; isCombined: boolean;
   durationMinutes: number | null;
   status: MatchStatus; submittedAt: string | null;
+  /** When each team's manager tapped Send my team; null until then. */
+  homeSentAt: string | null;
+  awaySentAt: string | null;
   seasonId: string | null; seasonName: string | null;
   /** Who created the draft; null for matches created before 2026-10-20. */
   createdBy: string | null;
@@ -62,6 +70,10 @@ export interface MatchSummary {
   createdBy: string | null;
   /** Every club on any side of any half. */
   clubIds: string[];
+  homeSentAt: string | null;
+  awaySentAt: string | null;
+  /** Every (side, club) pair across the halves. Used for duplicate detection. */
+  sideClubs: { side: SideKey; clubId: string }[];
   homeLabel: string; awayLabel: string; scoreLine: string;
 }
 

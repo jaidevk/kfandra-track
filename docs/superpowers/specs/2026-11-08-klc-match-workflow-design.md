@@ -7,10 +7,6 @@
 **Baseline:** `main` @ `90da0ce`. Prod has **no KLC matches** (checked 2026-11-07), so nothing
 needs migrating.
 
-> **Confidential:** one reason behind §5 (why there is no keeper tick) is a KFANDRA rule that is
-> not announced yet. It's recorded in bd memory `klc-confidential-2026-11-08`. Don't mention it
-> in UI text, guides, commits or PR descriptions.
-
 ---
 
 ## 1. Goal

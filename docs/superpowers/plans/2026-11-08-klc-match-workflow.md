@@ -14,8 +14,6 @@
 
 **Spec:** `docs/superpowers/specs/2026-11-08-klc-match-workflow-design.md`. Approved by Jaidev on 2026-11-08, including the §12 choices: per-team send, friendlies use per-team send too, and Reopen goes back to Sent. **Bead:** Helper-bsr.16. **Branch:** `feat/klc-match-workflow`, which already exists and holds the spec commit.
 
-> **Confidential:** this plan gives no reason for the missing keeper tick, and the code mustn't either. Read bd memory `klc-confidential-2026-11-08` before starting. Nothing it describes may appear in UI text, comments, commits, PR text or the guide.
-
 ---
 
 ## File map
@@ -4082,7 +4080,7 @@ A friendly earns no league points and no Kroopies, but counts towards MMG.
 - In §9, change "Can players see drafts?" to "Can players see drafts? | No. Only official matches appear for everyone. A draft or a match waiting for KFANDRA is visible only to the clubs involved and staff."
 - In §4 (Leaders), change the Tries bullet to: "**Tries** (includes Rugby Sox conversions)".
 
-Make sure the guide says nothing about keepers (see bd memory `klc-confidential-2026-11-08`).
+Make sure the guide says nothing about keepers.
 
 - [ ] **Step 3: Rebuild the PDF and check it**
 
@@ -4114,7 +4112,7 @@ Expected: everything is green. Report any e2e flake honestly with its output.
 
 - [ ] **Step 2: Confidentiality check**
 
-Run the pre-PR check named in bd memory `klc-confidential-2026-11-08` against `git diff main`.
+Run the pre-PR check from the bd memories against `git diff main`.
 Expected: no matches.
 
 - [ ] **Step 3: Push and open the PR**

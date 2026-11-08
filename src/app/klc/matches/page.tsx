@@ -11,6 +11,7 @@ import {
   listMatches,
   listSeasons,
 } from "@/lib/klcsra/repository";
+import { statusLabel } from "@/lib/klcsra/match-status";
 import { SPORT_LABELS } from "@/lib/klcsra/sport-stats";
 import type { MatchSummary, Season } from "@/lib/klcsra/types";
 import { NewMatchForm } from "./new-match-form";
@@ -66,10 +67,13 @@ export default async function MatchesPage() {
   const matches = staff
     ? all
     : all.filter((m) => m.status === "submitted" || canEditMatch(player, m, managed));
+  // Staff: league matches both clubs have sent wait at the top, oldest first.
+  const waiting = staff ? matches.filter((m) => m.status === "sent").reverse() : [];
+  const listed = staff ? matches.filter((m) => m.status !== "sent") : matches;
   const myClubs = staff ? [] : clubs.filter((c) => managed.has(c.id));
   const upcoming = seasons.find((s) => s.status === "upcoming") ?? null;
   const today = todayIso();
-  const groups = groupByDate(matches);
+  const groups = groupByDate(listed);
 
   return (
     <div className="mx-auto max-w-md space-y-4 p-5 pb-24">
@@ -91,9 +95,24 @@ export default async function MatchesPage() {
 
       {!active && staff && <BetweenSeasons upcoming={upcoming} />}
 
-      {canRecord && <NewMatchForm today={today} myClubs={myClubs} />}
+      {canRecord && (
+        <NewMatchForm today={today} myClubs={myClubs} allClubs={clubs} isStaff={staff} />
+      )}
 
-      {matches.length === 0 ? (
+      {waiting.length > 0 && (
+        <section data-testid="waiting-for-kfandra" className="space-y-1.5">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-amber-800">
+            Waiting for KFANDRA
+          </p>
+          <ul className="space-y-2">
+            {waiting.map((m) => (
+              <MatchCard key={m.id} match={m} />
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {listed.length === 0 ? (
         <div
           data-testid="match-empty"
           className="rounded-xl border border-dashed border-gray-300 bg-white px-4 py-6 text-center"
@@ -181,7 +200,6 @@ function BetweenSeasons({ upcoming }: { upcoming: Season | null }) {
 // ── one match ───────────────────────────────────────────────────────────────
 
 function MatchCard({ match: m }: { match: MatchSummary }) {
-  const submitted = m.status === "submitted";
   return (
     <li data-testid="match-row" data-match-id={m.id}>
       <Link
@@ -202,11 +220,16 @@ function MatchCard({ match: m }: { match: MatchSummary }) {
           </p>
           <span
             data-testid="match-status"
-            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold capitalize tracking-wide ${
-              submitted ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-700"
+            data-status={m.status}
+            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide ${
+              m.status === "submitted"
+                ? "bg-green-100 text-green-800"
+                : m.status === "sent"
+                  ? "bg-amber-100 text-amber-900"
+                  : "bg-gray-100 text-gray-700"
             }`}
           >
-            {m.status}
+            {statusLabel(m)}
           </span>
         </div>
         <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-gray-600">

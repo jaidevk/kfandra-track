@@ -7,13 +7,19 @@ import {
 } from "./stat-rates";
 
 describe("DEFAULT_STAT_RATES", () => {
-  it("has all 16 stats with the agreed KR/MMG values", () => {
-    expect(STAT_KEYS).toHaveLength(16);
+  it("has all 17 stats with the agreed KR/MMG values", () => {
+    expect(STAT_KEYS).toHaveLength(17);
     expect(DEFAULT_STAT_RATES.goal).toEqual({ kr: 20, mmg: 500 });
     expect(DEFAULT_STAT_RATES.try).toEqual({ kr: 25, mmg: 500 });
     expect(DEFAULT_STAT_RATES.save).toEqual({ kr: 5, mmg: 200 });
     expect(DEFAULT_STAT_RATES.blueCard).toEqual({ kr: -30, mmg: -1000 });
     expect(DEFAULT_STAT_RATES.ownPreAssist).toEqual({ kr: -5, mmg: -100 });
+  });
+
+  it("conversion pays the try rate and sits right after try (2026-11-04)", () => {
+    expect(DEFAULT_STAT_RATES.conversion).toEqual(DEFAULT_STAT_RATES.try);
+    expect(STAT_KEYS.indexOf("conversion")).toBe(STAT_KEYS.indexOf("try") + 1);
+    expect(STAT_LABELS.conversion).toBe("Conversion");
   });
 
   it("has the three Fooba stats", () => {

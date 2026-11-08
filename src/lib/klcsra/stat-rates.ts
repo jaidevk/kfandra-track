@@ -5,7 +5,7 @@
  */
 
 export type StatKey =
-  | "goal" | "try" | "mainGoal" | "reboundGoal"
+  | "goal" | "try" | "conversion" | "mainGoal" | "reboundGoal"
   | "assist" | "preAssist" | "switchover"
   | "tackle" | "save"
   | "yellowCard" | "redCard" | "blueCard" | "lateChallenge"
@@ -23,7 +23,7 @@ export type StatRates = Record<StatKey, StatRate>;
  * contributions, then defensive, then sanctions, then own-goals.
  */
 export const STAT_KEYS: readonly StatKey[] = [
-  "goal", "try", "mainGoal", "reboundGoal",
+  "goal", "try", "conversion", "mainGoal", "reboundGoal",
   "assist", "preAssist", "switchover",
   "tackle", "save",
   "yellowCard", "redCard", "blueCard", "lateChallenge",
@@ -34,6 +34,7 @@ export const STAT_KEYS: readonly StatKey[] = [
 export const STAT_LABELS: Record<StatKey, string> = {
   goal: "Goal",
   try: "Try",
+  conversion: "Conversion",
   mainGoal: "Main Goal",
   reboundGoal: "Rebound Goal",
   assist: "Assist",
@@ -53,6 +54,8 @@ export const STAT_LABELS: Record<StatKey, string> = {
 export const DEFAULT_STAT_RATES: StatRates = {
   goal: { kr: 20, mmg: 500 },
   try: { kr: 25, mmg: 500 },
+  // Rugby Sox conversion: counts like a try and pays the try rate (2026-11-04).
+  conversion: { kr: 25, mmg: 500 },
   mainGoal: { kr: 20, mmg: 500 },
   reboundGoal: { kr: 10, mmg: 300 },
   assist: { kr: 10, mmg: 200 },

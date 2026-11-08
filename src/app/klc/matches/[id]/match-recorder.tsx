@@ -169,10 +169,10 @@ export function MatchRecorder({
   // Debounced writes, one timer per field. Held in a ref so a re-render (there
   // is one after every refresh) cannot drop a scheduled save.
   const pendingSaves = useRef(
-    new Map<string, { timer: ReturnType<typeof setTimeout>; go: () => Promise<void>; after?: string }>(),
+    new Map<string, { timer: ReturnType<typeof setTimeout>; go: () => Promise<boolean>; after?: string }>(),
   );
-  /** Saves that have fired and not yet landed, by key. */
-  const inFlight = useRef(new Map<string, Promise<void>>());
+  /** Saves that have fired and not yet landed, by key; each resolves to whether it stored. */
+  const inFlight = useRef(new Map<string, Promise<boolean>>());
   useEffect(() => {
     const saves = pendingSaves.current;
     return () => {
@@ -194,14 +194,21 @@ export function MatchRecorder({
       const existing = pendingSaves.current.get(key);
       if (existing) clearTimeout(existing.timer);
 
-      const save = async () => {
+      const save = async (): Promise<boolean> => {
         if (after) {
           const first = pendingSaves.current.get(after);
+          let ok = true;
           if (first) {
             clearTimeout(first.timer);
-            await first.go();
+            ok = await first.go();
           } else {
-            await inFlight.current.get(after);
+            ok = (await inFlight.current.get(after)) ?? true;
+          }
+          // The save this one depends on was refused: its error is already
+          // showing, so roll this one back without sending or clearing it.
+          if (!ok) {
+            onFail?.();
+            return false;
           }
         }
         setErrors((e) => ({ ...e, [slot]: null }));
@@ -211,10 +218,11 @@ export function MatchRecorder({
           setErrors((e) => ({ ...e, [slot]: res.error }));
           setSync("error");
           onFail?.();
-          return;
+          return false;
         }
         setSync("saved");
         if (refresh) startTransition(() => router.refresh());
+        return true;
       };
 
       const go = () => {
@@ -372,16 +380,29 @@ export function MatchRecorder({
     );
   };
 
+  // The newest minutes per stat, trimmed as counts drop. A minutes save reads
+  // these when it fires, not when it was scheduled, so a count change in
+  // between can't make it send times the server has already trimmed away.
+  const latestTimes = useRef<Record<string, (number | null)[]>>({});
+
   const onSetStat = (appearanceId: string, halfNo: number, statKey: StatKey, count: number) => {
     const value = Math.max(0, count);
     const key = `${appearanceId}|${halfNo}|${statKey}`;
     setStatOverlay((o) => ({ ...o, [key]: value }));
     // Fewer goals keep fewer minutes, as the server will store them.
     setTimesOverlay((o) => (key in o ? { ...o, [key]: trimTimes(o[key], value) } : o));
+    if (key in latestTimes.current) latestTimes.current[key] = trimTimes(latestTimes.current[key], value);
+    // A minutes save already sent may be longer than this count; let it land
+    // first, or the server would refuse it after trimming to the new count.
+    // (Only one in flight: a pending one already waits on this count.)
+    const timesInFlight = inFlight.current.get(`times-${key}`);
     autosave(
       key,
       `player-${appearanceId}`,
-      () => setStatAction(match.id, appearanceId, halfNo, statKey, value),
+      async () => {
+        await timesInFlight;
+        return setStatAction(match.id, appearanceId, halfNo, statKey, value);
+      },
       {
         delay: 400,
         // No re-read per tap: the totals on screen are computed from the
@@ -424,10 +445,14 @@ export function MatchRecorder({
   const onSetTimes = (appearanceId: string, halfNo: number, statKey: StatKey, minutes: (number | null)[]) => {
     const key = `${appearanceId}|${halfNo}|${statKey}`;
     setTimesOverlay((o) => ({ ...o, [key]: minutes }));
+    latestTimes.current[key] = minutes;
     autosave(
       `times-${key}`,
       `player-${appearanceId}`,
-      () => setGoalTimesAction(match.id, appearanceId, halfNo, statKey, trimTimes(minutes, minutes.length)),
+      () => {
+        const latest = latestTimes.current[key] ?? minutes;
+        return setGoalTimesAction(match.id, appearanceId, halfNo, statKey, trimTimes(latest, latest.length));
+      },
       {
         refresh: false,
         after: key,

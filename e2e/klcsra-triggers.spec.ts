@@ -187,3 +187,40 @@ test("reopen then edit works", async () => {
   );
   expect(row.score).toBe(4);
 });
+
+test("'sent' is for league matches only", async () => {
+  const { matchId } = await makeMatch("draft"); // a friendly
+  await expect(
+    db.sql(`update klc_matches set status = 'sent' where id = $1`, [matchId]),
+  ).rejects.toThrow(/klc_matches_sent_league_chk/);
+  await db.sql(`update klc_matches set is_friendly = false where id = $1`, [matchId]);
+  await db.sql(`update klc_matches set status = 'sent' where id = $1`, [matchId]);
+  expect((await db.getMatchRow(matchId))?.status).toBe("sent");
+});
+
+test("goal times can be added to an official match, and nothing else can", async () => {
+  const { appearanceId } = await makeMatch("submitted");
+  await db.sql(`update klc_player_stats set minutes = '{12}' where appearance_id = $1`, [appearanceId]);
+  const [row] = await db.sql<{ minutes: number[] }>(
+    `select minutes from klc_player_stats where appearance_id = $1`, [appearanceId],
+  );
+  expect(row.minutes).toEqual([12]);
+  await expect(
+    db.sql(
+      `update klc_player_stats set minutes = '{12}', stat_count = 2 where appearance_id = $1`,
+      [appearanceId],
+    ),
+  ).rejects.toThrow(/match is submitted/);
+});
+
+test("times can't outnumber the tally or leave 0..150", async () => {
+  const { appearanceId } = await makeMatch("draft");
+  await expect(
+    db.sql(`update klc_player_stats set minutes = '{1,2}' where appearance_id = $1`, [appearanceId]),
+  ).rejects.toThrow(/klc_player_stats_minutes_len_chk/);
+  await expect(
+    db.sql(`update klc_player_stats set minutes = '{151}' where appearance_id = $1`, [appearanceId]),
+  ).rejects.toThrow(/klc_player_stats_minutes_range_chk/);
+  // A blank (null) time is allowed.
+  await db.sql(`update klc_player_stats set minutes = '{null}' where appearance_id = $1`, [appearanceId]);
+});

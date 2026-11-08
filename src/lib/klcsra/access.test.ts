@@ -181,6 +181,25 @@ describe("matchPermissions — manager", () => {
     expect(p.details).toBe(false);
   });
 
+  it("the away manager's club is fixed once the home team is sent", () => {
+    const p = matchPermissions(userV, pm({ homeSentAt: "t" }), new Set(["B"]));
+    expect(p.clubs).toEqual({ home: false, away: false });
+    expect(p.team.away).toBe(true);
+    expect(p.send).toEqual(["away"]);
+  });
+
+  it("with nothing sent, the home manager sets the away club only while it is empty", () => {
+    expect(matchPermissions(userV, pm(), A).clubs).toEqual({ home: true, away: true });
+    const withAway = pm({ appearances: [{ side: "away" }] });
+    expect(matchPermissions(userV, withAway, A).clubs).toEqual({ home: true, away: false });
+  });
+
+  it("a manager of both clubs controls both teams", () => {
+    const p = matchPermissions(userV, pm(), new Set(["A", "B"]));
+    expect(p.team).toEqual({ home: true, away: true });
+    expect(p.send).toEqual(["home", "away"]);
+  });
+
   it("can change nothing once the match is sent or official", () => {
     for (const status of ["sent", "submitted"] as const) {
       const p = matchPermissions(userV, pm({ status }), A);
@@ -228,5 +247,17 @@ describe("matchPermissions — staff", () => {
     expect(admin.score).toBe(false);
     expect(admin.reopen).toBe(false);
     expect(matchPermissions(kfandraV, pm({ status: "submitted" }), new Set()).reopen).toBe(true);
+  });
+
+  it("on an official match staff change no details, clubs or status", () => {
+    for (const v of [adminV, { id: "x", role: "super_admin" as const }]) {
+      const p = matchPermissions(v, pm({ status: "submitted" }), new Set());
+      expect(p.details).toBe(false);
+      expect(p.clubs).toEqual({ home: false, away: false });
+      expect(p.makeOfficial).toBe(false);
+      expect(p.sendBack).toBe(false);
+      expect(p.times).toEqual({ home: true, away: true });
+    }
+    expect(matchPermissions({ id: "x", role: "super_admin" }, pm({ status: "submitted" }), new Set()).reopen).toBe(true);
   });
 });

@@ -183,9 +183,9 @@ export function sentSides(m: { homeSentAt: string | null; awaySentAt: string | n
  *    KFANDRA may reopen.
  *  - Staff: everything before official; they never "send", they make official.
  *  - Manager (draft only): their own team until they send it (D9, D2); the
- *    match details and a friendly score until either team is sent; the other
- *    side's club only while that team has no players (that's how the creator
- *    names the opponent).
+ *    match details, a friendly score and the clubs on their own side until
+ *    either team is sent; the other side's club only while that team has no
+ *    players (that's how the creator names the opponent).
  */
 export function matchPermissions(
   viewer: Viewer,
@@ -216,8 +216,8 @@ export function matchPermissions(
   };
   const empty = (side: SideKey) => !m.appearances.some((a) => a.side === side);
   const clubs = {
-    home: owned.includes("home") ? !sent.home : noneSent && empty("home"),
-    away: owned.includes("away") ? !sent.away : noneSent && empty("away"),
+    home: noneSent && (owned.includes("home") || empty("home")),
+    away: noneSent && (owned.includes("away") || empty("away")),
   };
   return {
     details: noneSent, deleteDraft: noneSent, team, clubs,

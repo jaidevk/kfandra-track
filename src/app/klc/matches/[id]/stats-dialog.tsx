@@ -35,6 +35,10 @@ export function StatsDialog({
   mmg,
   isFriendly,
   locked,
+  timedStats,
+  times,
+  timesEditable,
+  onSetTimes,
   error,
   onSetStat,
   onDone,
@@ -53,6 +57,13 @@ export function StatsDialog({
   mmg: number;
   isFriendly: boolean;
   locked: boolean;
+  /** Stats that take a minute per event (league Fooba goals, Rugby Sox tries). */
+  timedStats: StatKey[];
+  /** Optimistic minutes for this appearance in this half. */
+  times: Partial<Record<StatKey, (number | null)[]>>;
+  /** True when this viewer may enter minutes for this player's team (also on an official match, for staff). */
+  timesEditable: boolean;
+  onSetTimes: (statKey: StatKey, minutes: (number | null)[]) => void;
   error: string | null;
   onSetStat: (statKey: StatKey, count: number) => void;
   onDone: () => void;
@@ -112,50 +123,87 @@ export function StatsDialog({
                   data-testid="stat-cell"
                   data-stat-key={key}
                   data-stat-count={count}
-                  className="flex items-center justify-between gap-2 py-2"
+                  className="space-y-1.5 py-2"
                 >
-                  <div className="min-w-0">
-                    <p className="truncate text-[13px] font-semibold text-gray-900">
-                      {STAT_LABELS[key]}
-                    </p>
-                    <p className="text-[10px] tabular-nums text-gray-500">
-                      {/* A friendly credits no Kroopies, so quoting a KR rate here would
-                          promise something the payout will not pay. */}
-                      {isFriendly ? "" : `${signed(rate.kr)} KR · `}
-                      {signed(rate.mmg)} MMG
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    {!locked && (
-                      <button
-                        type="button"
-                        data-testid="stat-dec"
-                        aria-label={`Remove one ${STAT_LABELS[key]}`}
-                        disabled={count === 0}
-                        onClick={() => onSetStat(key, count - 1)}
-                        className="h-9 w-9 rounded-full border border-gray-200 text-lg font-bold leading-none text-gray-700 disabled:opacity-30"
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] font-semibold text-gray-900">
+                        {STAT_LABELS[key]}
+                      </p>
+                      <p className="text-[10px] tabular-nums text-gray-500">
+                        {/* A friendly credits no Kroopies, so quoting a KR rate here would
+                            promise something the payout will not pay. */}
+                        {isFriendly ? "" : `${signed(rate.kr)} KR · `}
+                        {signed(rate.mmg)} MMG
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      {!locked && (
+                        <button
+                          type="button"
+                          data-testid="stat-dec"
+                          aria-label={`Remove one ${STAT_LABELS[key]}`}
+                          disabled={count === 0}
+                          onClick={() => onSetStat(key, count - 1)}
+                          className="h-9 w-9 rounded-full border border-gray-200 text-lg font-bold leading-none text-gray-700 disabled:opacity-30"
+                        >
+                          −
+                        </button>
+                      )}
+                      <span
+                        data-testid="stat-count"
+                        className="w-7 text-center text-base font-black tabular-nums text-gray-900"
                       >
-                        −
-                      </button>
-                    )}
-                    <span
-                      data-testid="stat-count"
-                      className="w-7 text-center text-base font-black tabular-nums text-gray-900"
-                    >
-                      {count}
-                    </span>
-                    {!locked && (
-                      <button
-                        type="button"
-                        data-testid="stat-inc"
-                        aria-label={`Add one ${STAT_LABELS[key]}`}
-                        onClick={() => onSetStat(key, count + 1)}
-                        className="h-9 w-9 rounded-full bg-gray-900 text-lg font-bold leading-none text-white"
-                      >
-                        +
-                      </button>
-                    )}
+                        {count}
+                      </span>
+                      {!locked && (
+                        <button
+                          type="button"
+                          data-testid="stat-inc"
+                          aria-label={`Add one ${STAT_LABELS[key]}`}
+                          onClick={() => onSetStat(key, count + 1)}
+                          className="h-9 w-9 rounded-full bg-gray-900 text-lg font-bold leading-none text-white"
+                        >
+                          +
+                        </button>
+                      )}
+                    </div>
                   </div>
+                  {timedStats.includes(key) && count > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                        Minute
+                      </span>
+                      {Array.from({ length: count }, (_, i) => {
+                        const list = times[key] ?? [];
+                        return (
+                          <input
+                            key={i}
+                            type="number"
+                            min={0}
+                            max={150}
+                            inputMode="numeric"
+                            data-testid="minute-input"
+                            data-stat-key={key}
+                            data-index={i}
+                            aria-label={`${STAT_LABELS[key]} ${i + 1} minute`}
+                            placeholder="–"
+                            disabled={!timesEditable}
+                            value={list[i] ?? ""}
+                            onChange={(e) => {
+                              const raw = e.target.value.trim();
+                              const n = raw === "" ? null : Number(raw);
+                              if (n !== null && (!Number.isInteger(n) || n < 0 || n > 150)) return;
+                              const next = Array.from({ length: count }, (_, j) => list[j] ?? null);
+                              next[i] = n;
+                              onSetTimes(key, next);
+                            }}
+                            className="w-12 rounded-lg border border-gray-200 px-1 py-1 text-center text-[12px] tabular-nums disabled:bg-gray-50"
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
                 </li>
               );
             })}

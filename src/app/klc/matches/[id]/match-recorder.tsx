@@ -440,6 +440,23 @@ export function MatchRecorder({
         mmg={openSummary?.mmg ?? 0}
         isFriendly={match.isFriendly}
         locked={!openAppearance || !perms.team[openAppearance.side]}
+        timedStats={timedStats}
+        times={
+          openAppearance
+            ? Object.fromEntries(
+                timedStats.map((k) => {
+                  const key = `${openAppearance.id}|${activeHalf}|${k}`;
+                  const stored = openAppearance.times?.[activeHalf]?.[k] ?? [];
+                  const count = countsFor(openAppearance.id, activeHalf, openAppearance.stats[activeHalf] ?? {})[k] ?? 0;
+                  return [k, trimTimes(timesOverlay[key] ?? stored, count).concat()];
+                }),
+              )
+            : {}
+        }
+        timesEditable={openAppearance ? perms.times[openAppearance.side] : false}
+        onSetTimes={(statKey, minutes) =>
+          openAppearance && onSetTimes(openAppearance.id, activeHalf, statKey, minutes)
+        }
         error={openAppearance ? err(`player-${openAppearance.id}`) : null}
         onSetStat={(statKey, count) =>
           openAppearance && onSetStat(openAppearance.id, activeHalf, statKey, count)

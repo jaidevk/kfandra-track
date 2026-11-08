@@ -3,8 +3,8 @@
 How to use the **KLC League** section of the app: tables, results, leaders, and
 recording matches. No technical knowledge needed.
 
-> **In one line:** club managers record and submit their own club's matches, the
-> app works out the league points automatically, and every player can see the
+> **In one line:** club managers record their own club's teams, KFANDRA makes matches
+> official, the app works out the league points automatically, and every player can see the
 > tables, results and leaderboards.
 
 <!-- Source of docs/klc-league-guide.pdf. Rebuild with `npm run docs:pdf:league`. -->
@@ -53,7 +53,7 @@ scored, then by club name.
 
 <img class="figure-right" src="images/klc-league/matches.png" alt="Matches tab (sample data)" />
 
-The Matches tab lists every **submitted** league match in the season, newest
+The Matches tab lists every **official** league match in the season, newest
 first, grouped by date. Each card shows:
 
 - the clubs and the score
@@ -75,7 +75,7 @@ Tap a match to see its full record (squads and stats), read-only.
 The top 10 for the season on each board:
 
 - **Goals** (includes Fooba main and rebound goals)
-- **Tries**
+- **Tries** (includes Rugby Sox conversions)
 - **Assists** and **Pre-assists**
 - **Saves**
 - **Tackles**
@@ -116,47 +116,72 @@ teams together**.
 - Points are always worked out again from the recorded score, so **correcting a
   match updates every table automatically**.
 
-## 7. Recording a match — club managers and KFANDRA
+## 7. Recording a match — club managers
 
-1. On the home screen, tap **Record a match**. You'll see your club's drafts and
-   all submitted matches.
+Each club enters **its own team** on **one shared match**. Managers don't see
+the score of a league match until it's **Official**: the recorder shows
+"? – ?" and the Matches list shows "vs". KFANDRA enters the score.
+
+1. On the home screen, tap **Record a match**.
 2. Under **New match**:
    - Set the date and the match type.
-   - Tick **Combined** for a joint-manager match (two halves), and/or
-     **Friendly**.
-   - Managers also choose **Your club**, which becomes the home side.
+   - Your club is the home side. Pick the **Opponent** (you can't tap
+     **+ New match** until you do).
+   - Tick **Combined** for a joint-manager match (two halves), and/or **Friendly**.
    - Tap **+ New match**.
-3. In the recorder:
-   - Pick the other club.
-   - Enter the score.
-   - Add each team's players.
-   - Tap a player to record their stats.
+3. **Already recorded?** If the other club has already started this match, the
+   app says so and offers **Open it**. Open it and add your team there, so the
+   match is only entered once.
+4. In the recorder, add **your team's** players and tap a player to record their
+   stats. Everything saves as you go. You can see the other team, but not change it.
+5. In league Fooba and Rugby Sox matches, you can type each goal's or try's
+   **minute** (from the referee) for your own team before sending. It's optional.
+   Fooba main and rebound goals and Rugby Sox tries have a minute box.
+6. Check the **Before sending** list, then tap **Send my team**.
+7. A match shows its status:
+   - **Draft**: nobody has sent yet.
+   - **Draft · 1 of 2 teams sent**: one team is in, waiting for the other.
+   - **Waiting for KFANDRA**: both teams are sent (league match).
+   - **Official**: KFANDRA has made the league match official.
+   - **Submitted**: a friendly, which is submitted as soon as both teams are sent.
 
-   Everything saves as you go. There's no Save button.
-4. For a combined match, switch to **half 2** and fill it in the same way.
-5. Check the **Before submitting** list and the **League points** preview, e.g.
-   "Tier 7+ · 3 – 1 · Kraken Leviathans 5 · Paper Tigers 0".
-6. Tap **Submit**. The match locks and appears in the tables straight away.
+**Saves:** record a save only when it's a proper save: a shot on target, or a
+save that stops a clear goal-scoring chance.
+
+**Conversions** (Rugby Sox) count like a try, at the try's rate.
+
+### Friendlies
+
+Either manager enters the score of a friendly, before the first team is sent.
+A friendly earns no league points and no Kroopies, but counts towards MMG.
+If you switch a match between **League** and **Friendly**, any score already
+entered is cleared.
 
 ### Rules the recorder checks for you
 
-- **Who can edit:** managers can record and edit matches their club plays in,
-  and so can the other club's manager.
-- **Keep your own club on the match:** a manager can't remove their last club
-  from it.
+- **Your own team only:** you add and edit your own club's players and stats.
+- **Keep your own club on the match:** a manager can't remove their last club from it.
 - **Clubs stay with their pair:** in a combined match, a club can't be on both
-  sides (e.g. home in half 1 and away in half 2).
-  - Clubs that aren't allowed are greyed out.
-  - To swap sides, ask KFANDRA or an admin.
-- **League / Friendly** can be switched while the match is a draft. A friendly
-  earns no league points and no Kroopies, but still counts towards MMG.
-- **Submitting needs an active season:** a league match can only be submitted
-  while a season is active. Until KFANDRA starts the season, record friendlies,
-  or keep league matches as drafts.
+  sides. Clubs that aren't allowed are greyed out. To swap sides, ask KFANDRA or an admin.
+- **After sending:** once either team is sent, the match details and each
+  side's clubs are fixed, and a sent team can't be changed. Ask **KFANDRA** to
+  send the match back.
+- **Official needs an active season:** a league match can only be made
+  official while a season is active. Until KFANDRA starts the season, record
+  friendlies, or keep league matches as drafts.
 
-> **Made a mistake after submitting?** A submitted match is locked. Ask
-> **KFANDRA** to reopen it, then correct it and submit again. The tables update
-> by themselves.
+## 7a. Making a match official — KFANDRA and admins
+
+1. **Record a match** lists **Waiting for KFANDRA** first.
+2. Open the match. You can change anything: clubs, players, stats, times.
+3. Enter the **official score**. Next to it, **Recorded goals** shows what the
+   managers recorded. If the two differ, it turns amber. **Your score is used.**
+4. Tap **Make official**. The match locks and counts in the tables.
+5. Something wrong? Tap **Send back to managers** instead. Both teams can edit again.
+6. **Goal and try times** can be added at any time, even after a match is
+   Official, without reopening it.
+7. **Reopen** an official match to correct it: a league match goes back to
+   **Waiting for KFANDRA**; a friendly goes back to **Draft**.
 
 ## 8. Running the season — KFANDRA
 
@@ -166,16 +191,16 @@ teams together**.
   - Only one season runs at a time.
   - Starting a new season closes the old one.
 - **Close a season:** tap **Close** when it ends.
-  - It's refused while draft matches dated in that season are still open.
-  - Submit or delete them first.
+  - It's refused while unfinished matches (draft or waiting for KFANDRA) dated in that season are still open.
+  - Make them official or delete them first.
 - **Which season a match counts for:** the season that's **active when it's
-  submitted**.
-- **Reopen:** only KFANDRA can reopen a submitted match.
+  made official**.
+- **Reopen:** only KFANDRA can reopen an official match. A league match goes back to **Waiting for KFANDRA**; a friendly goes back to draft.
 - **Staff** (KFANDRA and admins) can record and edit any club's match.
 
 <div class="clear"></div>
 
-> If an old match is reopened after the next season has started, resubmitting
+> If an old match is reopened after the next season has started, making it official again
 > moves it into the new season. Where possible, fix old matches before starting
 > the next season.
 
@@ -183,8 +208,8 @@ teams together**.
 
 | Question | Answer |
 |---|---|
-| My match isn't in the table. | It's either still a **draft** (not submitted), marked **Friendly**, or a different match type from the chip you picked. Try **All**. |
-| Can players see drafts? | No. Only submitted matches appear for everyone. A draft is visible only to the people who can edit it. |
+| My match isn't in the table. | It's either still a **draft** or **waiting for KFANDRA** (not official yet), marked **Friendly**, or a different match type from the chip you picked. Try **All**. |
+| Can players see drafts? | No. Only official matches appear for everyone. A draft or a match waiting for KFANDRA is visible only to the clubs involved and staff. |
 | Why did a 6 v 6 game count as 7+? | Players are counted across both teams: 6 + 6 = 12. |
 | Where is Season 1? | Season 1 stays on Coach's sheet. It used older scoring rules, so it isn't re-scored in the app. |
 | Who decides the points scale? | KFANDRA. The Scoring tab always shows the scale the app is using. |

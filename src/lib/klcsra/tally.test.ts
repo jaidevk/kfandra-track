@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { goalTally, officialScore } from "./tally";
+import { goalTally, hideLeagueScore, leagueScoreHidden, officialScore } from "./tally";
 import type { AppearanceDraft, MatchDraft } from "./types";
 
 const app = (side: "home" | "away", stats: AppearanceDraft["stats"]): AppearanceDraft =>
@@ -40,5 +40,35 @@ describe("officialScore", () => {
     ];
     expect(officialScore(m({ halves }))).toEqual({ home: 2, away: 1 });
     expect(officialScore(m({ halves, isCombined: true }))).toEqual({ home: 3, away: 2 });
+  });
+});
+
+describe("hideLeagueScore", () => {
+  const halves = [
+    { id: "h1", halfNo: 1, sides: [
+      { id: "s1", side: "home" as const, clubId: "a", clubName: "A", score: 3 },
+      { id: "s2", side: "away" as const, clubId: "b", clubName: "B", score: 1 },
+    ] },
+  ];
+  const scores = (x: { halves: typeof halves }) => x.halves.flatMap((h) => h.sides.map((s) => s.score));
+
+  it("zeroes every side score on a league match that is not official yet", () => {
+    for (const status of ["draft", "sent"] as const) {
+      const out = hideLeagueScore({ isFriendly: false, status, halves });
+      expect(scores(out)).toEqual([0, 0]);
+      expect(out.halves[0].sides[0].clubName).toBe("A");
+    }
+    expect(scores({ halves })).toEqual([3, 1]);
+  });
+
+  it("leaves an official league match and every friendly alone", () => {
+    expect(scores(hideLeagueScore({ isFriendly: false, status: "submitted", halves }))).toEqual([3, 1]);
+    expect(scores(hideLeagueScore({ isFriendly: true, status: "draft", halves }))).toEqual([3, 1]);
+  });
+
+  it("leagueScoreHidden says the same", () => {
+    expect(leagueScoreHidden({ isFriendly: false, status: "sent" })).toBe(true);
+    expect(leagueScoreHidden({ isFriendly: false, status: "submitted" })).toBe(false);
+    expect(leagueScoreHidden({ isFriendly: true, status: "draft" })).toBe(false);
   });
 });

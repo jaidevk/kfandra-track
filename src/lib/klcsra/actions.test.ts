@@ -295,7 +295,8 @@ describe("createMatchAction", () => {
       homeSentAt: null, awaySentAt: null, homeLabel: "B", awayLabel: "A",
       sideClubs: [{ side: "home", clubId: "B" }, { side: "away", clubId: "A" }],
     };
-    vi.mocked(repo.listMatches).mockResolvedValue([dup as never]);
+    // The summary's score line never goes back to the form.
+    vi.mocked(repo.listMatches).mockResolvedValue([{ ...dup, scoreLine: "3 - 1" } as never]);
     const res = await createMatchAction({ ...newMatch, homeClubId: "A", awayClubId: "B" });
     expect(res).toEqual({ ok: true, data: { kind: "duplicates", matches: [dup] } });
     expect(repo.listMatches).toHaveBeenCalledWith({ entryDate: newMatch.entryDate });

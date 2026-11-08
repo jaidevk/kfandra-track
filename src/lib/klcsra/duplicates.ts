@@ -41,3 +41,15 @@ export function findDuplicates<C extends DuplicateCandidate>(
     return meets(cHome, cAway) || meets(cAway, cHome);
   });
 }
+
+/**
+ * Just the fields a warning shows. A full summary also carries its score
+ * line, and a league score must not reach a manager before it is official.
+ */
+export function asCandidate(m: DuplicateCandidate): DuplicateCandidate {
+  return {
+    id: m.id, entryDate: m.entryDate, status: m.status, isFriendly: m.isFriendly,
+    homeSentAt: m.homeSentAt, awaySentAt: m.awaySentAt, sideClubs: m.sideClubs,
+    homeLabel: m.homeLabel, awayLabel: m.awayLabel,
+  };
+}

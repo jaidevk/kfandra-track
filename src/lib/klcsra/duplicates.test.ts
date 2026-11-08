@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findDuplicates, sideClubsOf, type DuplicateCandidate } from "./duplicates";
+import { asCandidate, findDuplicates, sideClubsOf, type DuplicateCandidate } from "./duplicates";
 
 const cand = (id: string, sideClubs: DuplicateCandidate["sideClubs"], entryDate = "2026-11-08"): DuplicateCandidate => ({
   id, entryDate, status: "draft", isFriendly: false, homeSentAt: null, awaySentAt: null,
@@ -42,5 +42,12 @@ describe("sideClubsOf", () => {
   it("lists every (side, club) with a club", () => {
     expect(sideClubsOf([{ sides: [{ side: "home", clubId: "A" }, { side: "away", clubId: null }] }]))
       .toEqual([{ side: "home", clubId: "A" }]);
+  });
+});
+
+describe("asCandidate", () => {
+  it("keeps only what the warning shows (no score line)", () => {
+    const c = cand("m1", [{ side: "home", clubId: "A" }]);
+    expect(asCandidate({ ...c, sport: "fooba", scoreLine: "3 - 1", clubIds: ["A"] } as never)).toEqual(c);
   });
 });

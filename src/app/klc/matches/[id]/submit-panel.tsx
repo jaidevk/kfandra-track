@@ -35,6 +35,7 @@ export function SubmitPanel({
   perms,
   canEdit,
   isStaff,
+  owned,
   hasActiveSeason,
   seasonName,
   submittedBy,
@@ -58,6 +59,8 @@ export function SubmitPanel({
   /** False for a read-only viewer of an official match: editor-only hints are hidden. */
   canEdit: boolean;
   isStaff: boolean;
+  /** The teams led by a club this viewer manages. */
+  owned: SideKey[];
   hasActiveSeason: boolean;
   seasonName: string | null;
   submittedBy: string | null;
@@ -157,7 +160,9 @@ export function SubmitPanel({
           data-testid="sent-note"
           className="rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-[12px] text-gray-700"
         >
-          Your team has been sent. Waiting for the other club to send theirs.
+          {owned.length > 0 && owned.every((side) => sent[side])
+            ? "Your team has been sent. Waiting for the other club to send theirs."
+            : `${sentLabel(sent)} sent. Waiting for the other team.`}
         </p>
       )}
       {!locked && match.status === "sent" && isStaff && (
@@ -417,4 +422,12 @@ export function SubmitPanel({
       )}
     </section>
   );
+}
+
+/** "The Home team has been sent" style wording, for a viewer who sent neither. */
+function sentLabel(sent: Record<SideKey, boolean>): string {
+  const sides = (["home", "away"] as const).filter((s) => sent[s]);
+  return sides.length === 2
+    ? "Both teams have been"
+    : `The ${SIDE_LABELS[sides[0]]} team has been`;
 }

@@ -32,3 +32,21 @@ export function officialScore(m: TallyMatch): Score {
   for (const h of countedHalves(m)) for (const side of h.sides) s[side.side] += side.score;
   return s;
 }
+
+/** A league score stays with staff until the match is official (D4). */
+export function leagueScoreHidden(m: Pick<MatchDraft, "isFriendly" | "status">): boolean {
+  return !m.isFriendly && m.status !== "submitted";
+}
+
+/**
+ * The match as a non-staff viewer may receive it: every side score zeroed
+ * while {@link leagueScoreHidden}. Applied on the server, so the score never
+ * reaches a manager's browser, not just their screen.
+ */
+export function hideLeagueScore<M extends Pick<MatchDraft, "isFriendly" | "status" | "halves">>(m: M): M {
+  if (!leagueScoreHidden(m)) return m;
+  return {
+    ...m,
+    halves: m.halves.map((h) => ({ ...h, sides: h.sides.map((s) => ({ ...s, score: 0 })) })),
+  };
+}

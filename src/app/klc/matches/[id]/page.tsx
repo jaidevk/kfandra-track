@@ -13,7 +13,7 @@ import {
   matchClubIds,
   matchPermissions,
 } from "@/lib/klcsra/access";
-import { findDuplicates, sideClubsOf } from "@/lib/klcsra/duplicates";
+import { asCandidate, findDuplicates, sideClubsOf } from "@/lib/klcsra/duplicates";
 import { loadSportStats, loadStandingsRules, loadStatRates } from "@/lib/klcsra/config";
 import {
   getActiveSeason,
@@ -24,6 +24,7 @@ import {
   listMatches,
 } from "@/lib/klcsra/repository";
 import { statsForSport } from "@/lib/klcsra/sport-stats";
+import { hideLeagueScore } from "@/lib/klcsra/tally";
 import type { MatchDraft } from "@/lib/klcsra/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { MatchRecorder } from "./match-recorder";
@@ -105,7 +106,9 @@ export default async function MatchDetailPage({
       : findDuplicates(
           { id: match.id, entryDate: match.entryDate, sideClubs: sideClubsOf(match.halves) },
           await listMatches({ entryDate: match.entryDate }),
-        ).filter((d) => staff || d.status === "submitted" || canEditMatch(player, d, managed));
+        )
+          .filter((d) => staff || d.status === "submitted" || canEditMatch(player, d, managed))
+          .map(asCandidate);
   // The matches list is also open to a creator with a draft (no club needed).
   const showMatchesLink =
     canRecordMatches(player, managed) ||
@@ -142,7 +145,8 @@ export default async function MatchDetailPage({
         ← {showMatchesLink ? "All matches" : "KLC League"}
       </Link>
       <MatchRecorder
-        match={match}
+        // A manager never receives a league score before it is official.
+        match={staff ? match : hideLeagueScore(match)}
         clubs={recorderClubs}
         members={members}
         allowedStats={allowedStats}

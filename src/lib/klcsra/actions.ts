@@ -13,7 +13,7 @@ import * as repo from "./repository";
 import { SPORTS, statsForSport, type Sport } from "./sport-stats";
 import { STAT_KEYS, type StatKey, type StatRates } from "./stat-rates";
 import { cleanTimes, isTimed, trimTimes } from "./goal-times";
-import { findDuplicates, type DuplicateCandidate } from "./duplicates";
+import { asCandidate, findDuplicates, type DuplicateCandidate } from "./duplicates";
 import type { MatchDraft, MatchStatus, PayoutLine, Season, SideKey } from "./types";
 
 /**
@@ -219,7 +219,9 @@ export async function createMatchAction(
       },
       sameDay,
     );
-    if (matches.length > 0) return { ok: true, data: { kind: "duplicates", matches } };
+    if (matches.length > 0) {
+      return { ok: true, data: { kind: "duplicates", matches: matches.map(asCandidate) } };
+    }
   }
 
   try {

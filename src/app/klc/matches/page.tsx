@@ -12,6 +12,7 @@ import {
   listSeasons,
 } from "@/lib/klcsra/repository";
 import { statusLabel } from "@/lib/klcsra/match-status";
+import { leagueScoreHidden } from "@/lib/klcsra/tally";
 import { SPORT_LABELS } from "@/lib/klcsra/sport-stats";
 import type { MatchSummary, Season } from "@/lib/klcsra/types";
 import { NewMatchForm } from "./new-match-form";
@@ -73,7 +74,10 @@ export default async function MatchesPage() {
   const myClubs = staff ? [] : clubs.filter((c) => managed.has(c.id));
   const upcoming = seasons.find((s) => s.status === "upcoming") ?? null;
   const today = todayIso();
-  const groups = groupByDate(listed);
+  // A manager never sees a league score before it is official.
+  const groups = groupByDate(
+    staff ? listed : listed.map((m) => (leagueScoreHidden(m) ? { ...m, scoreLine: "vs" } : m)),
+  );
 
   return (
     <div className="mx-auto max-w-md space-y-4 p-5 pb-24">

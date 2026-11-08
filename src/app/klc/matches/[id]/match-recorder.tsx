@@ -16,7 +16,7 @@ import {
   setStatAction,
   updateMatchMetaAction,
 } from "@/lib/klcsra/actions";
-import type { MatchPermissions } from "@/lib/klcsra/access";
+import { ownedSides, type MatchPermissions } from "@/lib/klcsra/access";
 import type { DuplicateCandidate } from "@/lib/klcsra/duplicates";
 import { isTimed, trimTimes } from "@/lib/klcsra/goal-times";
 import { computePlayerPayout } from "@/lib/klcsra/payouts";
@@ -38,6 +38,9 @@ import { type RecorderClub, type Result, type SyncStatus } from "./recorder-shar
 import { StatsDialog } from "./stats-dialog";
 import { SubmitPanel } from "./submit-panel";
 import { TeamBoard, type SlotSummary } from "./team-board";
+
+/** Shown when a server action throws instead of returning an error. */
+const UNEXPECTED = "Something went wrong. Try again.";
 
 type MetaPatch = {
   entryDate?: string;
@@ -128,11 +131,19 @@ export function MatchRecorder({
     async (slot: string, fn: () => Promise<Result>) => {
       setWorking(true);
       setErrors((e) => ({ ...e, [slot]: null }));
-      const res = await fn();
-      if (!res.ok) setErrors((e) => ({ ...e, [slot]: res.error }));
-      else startTransition(() => router.refresh());
-      setWorking(false);
-      return res.ok;
+      try {
+        const res = await fn();
+        if (!res.ok) setErrors((e) => ({ ...e, [slot]: res.error }));
+        else startTransition(() => router.refresh());
+        return res.ok;
+      } catch {
+        // A thrown action (network drop, server crash) must not leave every
+        // control disabled.
+        setErrors((e) => ({ ...e, [slot]: UNEXPECTED }));
+        return false;
+      } finally {
+        setWorking(false);
+      }
     },
     [router],
   );
@@ -162,7 +173,8 @@ export function MatchRecorder({
       const go = async () => {
         pendingSaves.current.delete(key);
         setErrors((e) => ({ ...e, [slot]: null }));
-        const res = await fn();
+        // A throw counts as a refusal, so the overlay rolls back.
+        const res = await fn().catch((): Result => ({ ok: false, error: UNEXPECTED }));
         if (!res.ok) {
           setErrors((e) => ({ ...e, [slot]: res.error }));
           setSync("error");
@@ -346,13 +358,18 @@ export function MatchRecorder({
   /** A workflow step (send, make official, send back): flush typing first. */
   const step = async (slot: string, fn: () => Promise<Result>) => {
     setWorking(true);
-    // Await: a write still in flight would be refused once the match moves on.
-    await flushSaves();
-    setErrors((e) => ({ ...e, [slot]: null }));
-    const res = await fn();
-    if (res.ok) startTransition(() => router.refresh());
-    else setErrors((e) => ({ ...e, [slot]: res.error }));
-    setWorking(false);
+    try {
+      // Await: a write still in flight would be refused once the match moves on.
+      await flushSaves();
+      setErrors((e) => ({ ...e, [slot]: null }));
+      const res = await fn();
+      if (res.ok) startTransition(() => router.refresh());
+      else setErrors((e) => ({ ...e, [slot]: res.error }));
+    } catch {
+      setErrors((e) => ({ ...e, [slot]: UNEXPECTED }));
+    } finally {
+      setWorking(false);
+    }
   };
 
   const onSetTimes = (appearanceId: string, halfNo: number, statKey: StatKey, minutes: (number | null)[]) => {
@@ -472,6 +489,7 @@ export function MatchRecorder({
         perms={perms}
         canEdit={canEdit}
         isStaff={isStaff}
+        owned={ownedSides(match.halves, new Set(managedClubIds))}
         hasActiveSeason={activeSeasonName !== null}
         seasonName={activeSeasonName}
         submittedBy={submittedBy}

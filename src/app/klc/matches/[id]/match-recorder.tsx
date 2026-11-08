@@ -5,14 +5,20 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import {
   addAppearanceAction,
   deleteMatchAction,
+  makeOfficialAction,
   removeAppearanceAction,
   reopenMatchAction,
+  sendBackAction,
+  sendTeamAction,
+  setGoalTimesAction,
   setSideClubAction,
   setSideScoreAction,
   setStatAction,
-  submitMatchAction,
   updateMatchMetaAction,
 } from "@/lib/klcsra/actions";
+import type { MatchPermissions } from "@/lib/klcsra/access";
+import type { DuplicateCandidate } from "@/lib/klcsra/duplicates";
+import { isTimed, trimTimes } from "@/lib/klcsra/goal-times";
 import { computePlayerPayout } from "@/lib/klcsra/payouts";
 import type { Sport } from "@/lib/klcsra/sport-stats";
 // Straight from the pure modules, never via config.ts — that would pull
@@ -62,9 +68,10 @@ export function MatchRecorder({
   members,
   allowedStats,
   rates,
-  canReopen,
+  perms,
   canEdit,
   isStaff,
+  duplicates,
   managedClubIds,
   activeSeasonName,
   submittedBy,
@@ -75,10 +82,13 @@ export function MatchRecorder({
   members: MemberOption[];
   allowedStats: StatKey[];
   rates: StatRates;
-  canReopen: boolean;
+  /** What this viewer may change right now (the server actions apply the same rule). */
+  perms: MatchPermissions;
   /** False for a read-only viewer (only ever a submitted match). */
   canEdit: boolean;
   isStaff: boolean;
+  /** Other matches between the same two clubs that day. */
+  duplicates: DuplicateCandidate[];
   /** Clubs the viewer manages; the club picker greys out what the server would refuse. */
   managedClubIds: string[];
   /** The season a league match would be tagged with today, or null. */
@@ -102,6 +112,12 @@ export function MatchRecorder({
   const [statOverlay, setStatOverlay] = useState<Record<string, number>>({});
 
   const locked = match.status === "submitted";
+  const editable =
+    perms.details || perms.score || perms.team.home || perms.team.away ||
+    perms.times.home || perms.times.away;
+  const timedStats = allowedStats.filter((k) => isTimed(match.sport, k, match.isFriendly));
+  /** `${appearanceId}|${halfNo}|${statKey}` → optimistic minutes. */
+  const [timesOverlay, setTimesOverlay] = useState<Record<string, (number | null)[]>>({});
   const err = (slot: string) => errors[slot] ?? null;
 
   // ── mutation plumbing ─────────────────────────────────────────────────────
@@ -168,10 +184,10 @@ export function MatchRecorder({
    * Fire every scheduled save now (leaving the popup, submitting) and resolve
    * once they have all landed.
    *
-   * Awaiting matters on Submit: submitMatchAction locks the match, and a stat
-   * write still in flight would then be refused against a locked match and be
-   * missing from the payout the lock just computed. Fire-and-forget here means
-   * a goal tapped seconds before Submit can go unpaid.
+   * Awaiting matters on Send and Make official: both move the match on, and a
+   * stat write still in flight would then be refused and be missing from the
+   * team sent or the payout just computed. Fire-and-forget here means a goal
+   * tapped seconds before Make official can go unpaid.
    */
   const flushSaves = useCallback(async () => {
     const queued = [...pendingSaves.current.values()];
@@ -326,15 +342,35 @@ export function MatchRecorder({
     startTransition(() => router.refresh());
   };
 
-  const onSubmit = async () => {
+  /** A workflow step (send, make official, send back): flush typing first. */
+  const step = async (slot: string, fn: () => Promise<Result>) => {
     setWorking(true);
-    // Await: a write still in flight would be refused by the lock below.
+    // Await: a write still in flight would be refused once the match moves on.
     await flushSaves();
-    setErrors((e) => ({ ...e, submit: null }));
-    const res = await submitMatchAction(match.id);
+    setErrors((e) => ({ ...e, [slot]: null }));
+    const res = await fn();
     if (res.ok) startTransition(() => router.refresh());
-    else setErrors((e) => ({ ...e, submit: res.error }));
+    else setErrors((e) => ({ ...e, [slot]: res.error }));
     setWorking(false);
+  };
+
+  const onSetTimes = (appearanceId: string, halfNo: number, statKey: StatKey, minutes: (number | null)[]) => {
+    const key = `${appearanceId}|${halfNo}|${statKey}`;
+    setTimesOverlay((o) => ({ ...o, [key]: minutes }));
+    autosave(
+      `times-${key}`,
+      `player-${appearanceId}`,
+      () => setGoalTimesAction(match.id, appearanceId, halfNo, statKey, trimTimes(minutes, minutes.length)),
+      {
+        refresh: false,
+        onFail: () =>
+          setTimesOverlay((o) => {
+            const next = { ...o };
+            delete next[key];
+            return next;
+          }),
+      },
+    );
   };
 
   const openAppearance =
@@ -352,7 +388,8 @@ export function MatchRecorder({
       <RecorderHeader
         match={match}
         seasonName={locked ? match.seasonName : activeSeasonName}
-        locked={locked}
+        locked={!perms.details}
+        showSync={editable}
         sync={sync}
         error={err("header")}
         onMeta={onMeta}
@@ -380,6 +417,7 @@ export function MatchRecorder({
         }
         onOpenStats={setOpenAppearanceId}
         isStaff={isStaff}
+        perms={perms}
         managedClubIds={managedClubIds}
       />
 
@@ -398,7 +436,7 @@ export function MatchRecorder({
         kr={openSummary?.kr ?? 0}
         mmg={openSummary?.mmg ?? 0}
         isFriendly={match.isFriendly}
-        locked={locked}
+        locked={!openAppearance || !perms.team[openAppearance.side]}
         error={openAppearance ? err(`player-${openAppearance.id}`) : null}
         onSetStat={(statKey, count) =>
           openAppearance && onSetStat(openAppearance.id, activeHalf, statKey, count)
@@ -411,16 +449,20 @@ export function MatchRecorder({
         lines={lines}
         locked={locked}
         busy={busy}
-        canReopen={canReopen}
+        perms={perms}
         canEdit={canEdit}
+        isStaff={isStaff}
         hasActiveSeason={activeSeasonName !== null}
         seasonName={activeSeasonName}
         submittedBy={submittedBy}
         rules={rules}
         submitError={err("submit")}
+        sendBackError={err("send-back")}
         reopenError={err("reopen")}
         deleteError={err("delete")}
-        onSubmit={() => void onSubmit()}
+        onSend={(side) => void step("submit", () => sendTeamAction(match.id, side))}
+        onMakeOfficial={() => void step("submit", () => makeOfficialAction(match.id))}
+        onSendBack={() => void step("send-back", () => sendBackAction(match.id))}
         onReopen={() => void run("reopen", () => reopenMatchAction(match.id))}
         onDelete={async () => {
           if (!confirm("Delete this draft match?")) return;

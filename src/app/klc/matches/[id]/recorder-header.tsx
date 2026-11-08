@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { statusLabel } from "@/lib/klcsra/match-status";
 import { SPORTS, SPORT_LABELS, type Sport } from "@/lib/klcsra/sport-stats";
 import type { MatchDraft } from "@/lib/klcsra/types";
 import { ErrorNote, SyncBadge, Tag, type SyncStatus } from "./recorder-shared";
@@ -21,6 +22,7 @@ export function RecorderHeader({
   match,
   seasonName,
   locked,
+  showSync,
   sync,
   error,
   onMeta,
@@ -28,7 +30,10 @@ export function RecorderHeader({
   match: MatchDraft;
   /** The season this match will be (or was) tagged with; null when there is none. */
   seasonName: string | null;
+  /** The header fields are disabled. */
   locked: boolean;
+  /** The viewer can change something on this match, so autosave status means something. */
+  showSync: boolean;
   sync: SyncStatus;
   error: string | null;
   onMeta: (
@@ -55,8 +60,8 @@ export function RecorderHeader({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
-          <Tag testId="match-status" tone={locked ? "green" : "gray"}>
-            {match.status}
+          <Tag testId="match-status" tone={match.status === "submitted" ? "green" : match.status === "sent" ? "amber" : "gray"}>
+            {statusLabel(match)}
           </Tag>
           {friendly ? (
             <Tag tone="blue">No season — friendly</Tag>
@@ -70,8 +75,8 @@ export function RecorderHeader({
             </Link>
           )}
         </div>
-        {/* A locked match saves nothing, so the badge would only mislead. */}
-        {!locked && <SyncBadge status={sync} />}
+        {/* A viewer who can change nothing saves nothing, so the badge would only mislead. */}
+        {showSync && <SyncBadge status={sync} />}
       </div>
 
       {/* Sport chips — 3 across, 2 rows. */}

@@ -10,9 +10,10 @@ import { listClubs as listClubProfiles } from "@/lib/klc/repository";
 import {
   canEditMatch,
   canRecordMatches,
-  canReopenMatch,
   matchClubIds,
+  matchPermissions,
 } from "@/lib/klcsra/access";
+import { findDuplicates, sideClubsOf } from "@/lib/klcsra/duplicates";
 import { loadSportStats, loadStandingsRules, loadStatRates } from "@/lib/klcsra/config";
 import {
   getActiveSeason,
@@ -20,6 +21,7 @@ import {
   listActiveMembers,
   listClubs,
   listManagedClubIds,
+  listMatches,
 } from "@/lib/klcsra/repository";
 import { statsForSport } from "@/lib/klcsra/sport-stats";
 import type { MatchDraft } from "@/lib/klcsra/types";
@@ -90,14 +92,24 @@ export default async function MatchDetailPage({
     { createdBy: match.createdBy, clubIds: matchClubIds(match.halves) },
     managed,
   );
-  // A draft is private to the people who may edit it; a submitted match is a
-  // public record (read-only for everyone but its editors' Reopen path).
-  if (match.status === "draft" && !canEdit) notFound();
-  const canReopen = canReopenMatch(player);
+  // Only an official match is a public record; drafts and sent matches are
+  // private to the people involved.
+  if (match.status !== "submitted" && !canEdit) notFound();
+  const perms = matchPermissions(player, match, managed);
+  const staff = isStaffRole(player.role);
+  // Matches between the same two clubs that day (spec §4), shown as a banner
+  // until this one is official. A manager sees only those they could open.
+  const duplicates =
+    match.status === "submitted"
+      ? []
+      : findDuplicates(
+          { id: match.id, entryDate: match.entryDate, sideClubs: sideClubsOf(match.halves) },
+          await listMatches({ entryDate: match.entryDate }),
+        ).filter((d) => staff || d.status === "submitted" || canEditMatch(player, d, managed));
   // The matches list is also open to a creator with a draft (no club needed).
   const showMatchesLink =
     canRecordMatches(player, managed) ||
-    (match.status === "draft" && match.createdBy === player.id);
+    (match.status !== "submitted" && match.createdBy === player.id);
 
   // The pickers' option lists are only needed by an editor. A read-only viewer
   // (always a locked match) gets no member list, and clubs built from the
@@ -135,9 +147,10 @@ export default async function MatchDetailPage({
         members={members}
         allowedStats={allowedStats}
         rates={rates}
-        canReopen={canReopen}
+        perms={perms}
         canEdit={canEdit}
-        isStaff={isStaffRole(player.role)}
+        isStaff={staff}
+        duplicates={duplicates}
         managedClubIds={[...managed]}
         activeSeasonName={season?.name ?? null}
         submittedBy={submittedBy}

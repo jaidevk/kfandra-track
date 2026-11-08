@@ -8,56 +8,67 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { clubOnBothSlots } from "@/lib/klcsra/access";
+import { clubOnBothSlots, sentSides, type MatchPermissions } from "@/lib/klcsra/access";
+import { sideClubLabel } from "@/lib/klcsra/league-data";
 import { leaguePointsLine } from "@/lib/klcsra/points-preview";
 import type { StandingsRules } from "@/lib/klcsra/standings-rules";
-import type { MatchDraft, PayoutLine } from "@/lib/klcsra/types";
-import { ErrorNote, fmtStamp, signed } from "./recorder-shared";
+import { goalTally, officialScore } from "@/lib/klcsra/tally";
+import type { MatchDraft, PayoutLine, SideKey } from "@/lib/klcsra/types";
+import { ErrorNote, SIDE_LABELS, fmtStamp, signed } from "./recorder-shared";
 
 /**
- * Screen 6 — pre-submit checks, the league points and totals previews, and the lock.
+ * Screen 6 — where a match moves on (spec §3).
  *
- * The checks are ADVISORY: `submit-match` stays enabled whatever they say, so
- * the refusal KFANDRA reads is always the action's own wording ("No active
- * season. Start one in Seasons first.") rather than a guess made here.
+ *  - A manager sends their own team (Send my team), then waits.
+ *  - Staff see the managers' goal tally next to the official score, make the
+ *    match official, or send it back.
+ *  - KFANDRA reopens an official match.
  *
- * Copy match report (Phase 4) and View balance sheets (Phase 5) are
- * deliberately absent — not stubbed.
+ * The checks are ADVISORY: the buttons stay enabled whatever they say, so the
+ * refusal shown is always the action's own wording.
  */
 export function SubmitPanel({
   match,
   lines,
   locked,
   busy,
-  canReopen,
+  perms,
   canEdit,
+  isStaff,
   hasActiveSeason,
   seasonName,
   submittedBy,
   rules,
   submitError,
+  sendBackError,
   reopenError,
   deleteError,
-  onSubmit,
+  onSend,
+  onMakeOfficial,
+  onSendBack,
   onReopen,
   onDelete,
 }: {
   match: MatchDraft;
   lines: PayoutLine[];
+  /** The match is official (submitted). */
   locked: boolean;
   busy: boolean;
-  canReopen: boolean;
-  /** False for a read-only viewer of a submitted match: editor-only hints are hidden. */
+  perms: MatchPermissions;
+  /** False for a read-only viewer of an official match: editor-only hints are hidden. */
   canEdit: boolean;
+  isStaff: boolean;
   hasActiveSeason: boolean;
   seasonName: string | null;
   submittedBy: string | null;
-  /** League points rules, for the points preview. */
   rules: StandingsRules;
   submitError: string | null;
+  sendBackError: string | null;
   reopenError: string | null;
   deleteError: string | null;
-  onSubmit: () => void;
+  onSend: (side: SideKey) => void;
+  onMakeOfficial: () => void;
+  onSendBack: () => void;
   onReopen: () => void;
   onDelete: () => void;
 }) {
@@ -65,6 +76,7 @@ export function SubmitPanel({
 
   const totalKr = lines.reduce((n, l) => n + l.kr, 0);
   const totalMmg = lines.reduce((n, l) => n + l.mmg, 0);
+  const sent = sentSides(match);
 
   // Sides are created lazily, so "fewer than two rows" IS "a club is missing".
   const clubsOk = match.halves.length > 0 && match.halves.every((h) => h.sides.length === 2);
@@ -73,17 +85,26 @@ export function SubmitPanel({
       ok: clubsOk,
       label: match.isCombined ? "Clubs picked for both halves" : "Clubs picked for both sides",
     },
-    { ok: match.appearances.length > 0, label: "At least one player added" },
   ];
-  // The pair rule (submit refuses it too): only shown when it fails, since a
-  // single-half match can't break it.
+  if (perms.makeOfficial) {
+    checks.push({ ok: match.appearances.length > 0, label: "At least one player added" });
+  } else {
+    for (const side of perms.send) {
+      checks.push({
+        ok: match.appearances.some((a) => a.side === side),
+        label: perms.send.length > 1
+          ? `At least one player in the ${SIDE_LABELS[side]} team`
+          : "At least one player in your team",
+      });
+    }
+  }
   const twoSided = clubOnBothSlots(match.halves);
   if (twoSided !== null) {
     const name =
       match.halves.flatMap((h) => h.sides).find((s) => s.clubId === twoSided)?.clubName ?? "A club";
     checks.push({ ok: false, label: `${name} is on both sides of this match` });
   }
-  if (!match.isFriendly) {
+  if (perms.makeOfficial && !match.isFriendly) {
     checks.push({
       ok: hasActiveSeason,
       label: hasActiveSeason
@@ -91,7 +112,16 @@ export function SubmitPanel({
         : "No active season. Start one in Seasons first.",
     });
   }
+  const showChecks = perms.makeOfficial || perms.send.length > 0;
+
+  // A manager never sees a league score before it is official.
+  const showPoints = match.isFriendly || isStaff || locked;
   const points = leaguePointsLine(match, rules);
+
+  const showTally = isStaff && !locked && !match.isFriendly;
+  const tally = goalTally(match);
+  const score = officialScore(match);
+  const mismatch = tally.home !== score.home || tally.away !== score.away;
 
   return (
     <section className="space-y-3">
@@ -101,24 +131,51 @@ export function SubmitPanel({
           className="space-y-1 rounded-2xl border border-green-300 bg-green-50 px-3 py-2.5"
         >
           <p className="text-[12px] font-bold text-green-900">
-            Locked — submitted{match.submittedAt ? ` ${fmtStamp(match.submittedAt)}` : ""}.
+            {match.isFriendly ? "Locked — submitted" : "Official"}
+            {match.submittedAt ? ` ${fmtStamp(match.submittedAt)}` : ""}.
             {match.seasonName ? ` Season: ${match.seasonName}.` : ""}
-            {canEdit ? " Reopen it to make changes." : ""}
+            {canEdit && perms.reopen ? " Reopen it to make changes." : ""}
           </p>
           <p data-testid="audit-line" className="text-[11px] text-green-800">
-            Submitted by {submittedBy ?? "—"}
+            {match.isFriendly ? "Submitted by" : "Made official by"} {submittedBy ?? "—"}
             {match.submittedAt ? ` · ${fmtStamp(match.submittedAt)}` : ""}
           </p>
         </div>
       )}
 
-      {!locked && (
+      {!locked && match.status === "sent" && !isStaff && (
+        <p
+          data-testid="waiting-banner"
+          className="rounded-2xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-[12px] font-semibold text-amber-900"
+        >
+          Sent to KFANDRA. Waiting for KFANDRA to make this official.
+        </p>
+      )}
+      {!locked && match.status === "draft" && !isStaff && canEdit && perms.send.length === 0
+        && (sent.home || sent.away) && (
+        <p
+          data-testid="sent-note"
+          className="rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-[12px] text-gray-700"
+        >
+          Your team has been sent. Waiting for the other club to send theirs.
+        </p>
+      )}
+      {!locked && match.status === "sent" && isStaff && (
+        <p
+          data-testid="staff-sent-note"
+          className="rounded-2xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-[12px] text-amber-900"
+        >
+          Both teams have been sent. Check the match, enter the score and make it official.
+        </p>
+      )}
+
+      {showChecks && (
         <div
           data-testid="submit-checks"
           className="space-y-1.5 rounded-2xl border border-gray-200 bg-white p-4"
         >
           <p className="text-[10px] font-bold uppercase tracking-wide text-gray-600">
-            Before submitting
+            {perms.makeOfficial ? "Before submitting" : "Before sending"}
           </p>
           {checks.map((c) => (
             <p
@@ -136,18 +193,43 @@ export function SubmitPanel({
         </div>
       )}
 
-      <div data-testid="league-points" className="space-y-1 rounded-2xl border border-gray-200 bg-white p-4">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-gray-600">League points</p>
-        {points.kind === "friendly" ? (
-          <p className="text-[12px] text-gray-600">Friendly — no league points.</p>
-        ) : points.kind === "incomplete" ? (
-          <p className="text-[12px] text-gray-500">Pick both clubs to see the points.</p>
-        ) : (
-          <p data-testid="league-points-line" className="text-[12px] font-semibold tabular-nums text-gray-900">
-            {points.text}
+      {showTally && (
+        <div
+          data-testid="tally"
+          data-mismatch={mismatch}
+          className={`space-y-1 rounded-2xl border p-4 ${
+            mismatch ? "border-amber-300 bg-amber-50" : "border-gray-200 bg-white"
+          }`}
+        >
+          <p className="text-[10px] font-bold uppercase tracking-wide text-gray-600">
+            Recorded goals
           </p>
-        )}
-      </div>
+          <p data-testid="tally-line" className="text-[12px] font-semibold tabular-nums text-gray-900">
+            {sideClubLabel(match, "home", { counted: true })} {tally.home} – {tally.away}{" "}
+            {sideClubLabel(match, "away", { counted: true })}
+          </p>
+          {mismatch && (
+            <p data-testid="tally-mismatch" className="text-[12px] text-amber-900">
+              Differs from the recorded goals. Your score is used.
+            </p>
+          )}
+        </div>
+      )}
+
+      {showPoints && (
+        <div data-testid="league-points" className="space-y-1 rounded-2xl border border-gray-200 bg-white p-4">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-gray-600">League points</p>
+          {points.kind === "friendly" ? (
+            <p className="text-[12px] text-gray-600">Friendly — no league points.</p>
+          ) : points.kind === "incomplete" ? (
+            <p className="text-[12px] text-gray-500">Pick both clubs to see the points.</p>
+          ) : (
+            <p data-testid="league-points-line" className="text-[12px] font-semibold tabular-nums text-gray-900">
+              {points.text}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4">
         <p className="text-[10px] font-bold uppercase tracking-wide text-gray-600">
@@ -216,22 +298,53 @@ export function SubmitPanel({
         )}
       </div>
 
-      {!locked && (
+      {perms.send.map((side) => (
+        <button
+          key={side}
+          type="button"
+          data-testid={`send-team-${side}`}
+          disabled={busy}
+          onClick={() => onSend(side)}
+          className="w-full rounded-2xl bg-green-600 px-4 py-3.5 text-sm font-bold text-white shadow-sm disabled:opacity-40"
+        >
+          {perms.send.length > 1 ? `Send ${SIDE_LABELS[side]} team` : "Send my team"}
+        </button>
+      ))}
+      {perms.send.length > 0 && (
+        <p className="text-[11px] text-gray-500">
+          After sending, you can&apos;t change your team. KFANDRA can send it back if needed.
+        </p>
+      )}
+
+      {perms.makeOfficial && (
+        <button
+          type="button"
+          data-testid="submit-match"
+          disabled={busy}
+          onClick={onMakeOfficial}
+          className="w-full rounded-2xl bg-green-600 px-4 py-3.5 text-sm font-bold text-white shadow-sm disabled:opacity-40"
+        >
+          {match.isFriendly ? "Submit & lock" : "Make official"}
+        </button>
+      )}
+      <ErrorNote message={submitError} testId="submit-error" />
+
+      {perms.sendBack && (
         <>
           <button
             type="button"
-            data-testid="submit-match"
+            data-testid="send-back"
             disabled={busy}
-            onClick={onSubmit}
-            className="w-full rounded-2xl bg-green-600 px-4 py-3.5 text-sm font-bold text-white shadow-sm disabled:opacity-40"
+            onClick={onSendBack}
+            className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm font-bold text-gray-800 disabled:opacity-40"
           >
-            Submit &amp; lock
+            Send back to managers
           </button>
-          <ErrorNote message={submitError} testId="submit-error" />
+          <ErrorNote message={sendBackError} testId="send-back-error" />
         </>
       )}
 
-      {locked && canReopen && (
+      {locked && perms.reopen && (
         <>
           <button
             type="button"
@@ -253,8 +366,11 @@ export function SubmitPanel({
                   Reopen this match?
                 </DialogTitle>
                 <DialogDescription className="text-[12px] text-gray-600">
-                  Reopening clears the season tag and the submitted timestamp, and re-opens
-                  totals KFANDRA may already have read as final.
+                  {match.isFriendly
+                    ? "Reopening takes it back to Draft for both clubs, "
+                    : "Reopening takes it back to Waiting for KFANDRA, "}
+                  clears the season tag and re-opens totals that may already have been read
+                  as final.
                 </DialogDescription>
               </DialogHeader>
               <ErrorNote message={reopenError} testId="reopen-error" />
@@ -281,11 +397,11 @@ export function SubmitPanel({
           </Dialog>
         </>
       )}
-      {locked && canEdit && !canReopen && (
+      {locked && canEdit && !perms.reopen && (
         <p className="text-[11px] text-gray-600">Only KFANDRA can reopen a match.</p>
       )}
 
-      {!locked && (
+      {perms.deleteDraft && (
         <div className="pt-1">
           <button
             type="button"

@@ -19,7 +19,7 @@ import type { Season } from "@/lib/klcsra/types";
  *
  * Two deliberate choices:
  *  * Every `ActionResult.error` is shown verbatim next to the control that
- *    produced it. `closeSeasonAction` in particular returns "N draft match(es)
+ *    produced it. `closeSeasonAction` in particular returns "N unfinished match(es)
  *    dated in this season..." which tells KFANDRA exactly what to do next.
  *  * Start and Close are two-step. Starting a season SILENTLY closes the one
  *    currently active, so the confirm names the season that is about to be

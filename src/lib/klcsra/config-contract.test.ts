@@ -30,11 +30,6 @@ import { DEFAULT_TABLE_GROUPS, parseTableGroups } from "./table-groups";
 const HERE = dirname(fileURLToPath(import.meta.url));
 // src/lib/klcsra -> repo root
 const REPO_ROOT = resolve(HERE, "..", "..", "..");
-/** Re-seeds the standings rules (v2) and sport stats, and adds table groups. */
-const LEAGUE_SQL = readFileSync(
-  resolve(REPO_ROOT, "supabase/migrations/20261020120000_klc_league_scoring.sql"),
-  "utf8",
-);
 /** Adds the Multi-Game Variations table (Sir, 2026-10-28). */
 const MGV_SQL = readFileSync(
   resolve(REPO_ROOT, "supabase/migrations/20261028120000_klc_mgv_table.sql"),
@@ -45,6 +40,12 @@ const CONVERSION_SQL = readFileSync(
   resolve(REPO_ROOT, "supabase/migrations/20261108120000_klc_conversion_stat.sql"),
   "utf8",
 );
+/** Changes the 4–6 player league points (KFANDRA, 2026-11-22). */
+const POINTS_4TO6_SQL = readFileSync(
+  resolve(REPO_ROOT, "supabase/migrations/20261122120000_klc_points_4to6.sql"),
+  "utf8",
+);
+
 /** The migration that owns each key's CURRENT value. */
 const KEYS = [
   "klcsra_stat_rates",
@@ -56,7 +57,7 @@ type SeededKey = (typeof KEYS)[number];
 const SQL_FOR = {
   klcsra_stat_rates: CONVERSION_SQL,
   klcsra_sport_stats: CONVERSION_SQL,
-  klcsra_standings_rules: LEAGUE_SQL,
+  klcsra_standings_rules: POINTS_4TO6_SQL,
   klcsra_table_groups: MGV_SQL,
 } satisfies Record<SeededKey, string>;
 

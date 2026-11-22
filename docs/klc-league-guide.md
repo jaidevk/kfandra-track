@@ -100,12 +100,12 @@ teams together**.
 
 | Win | 7+ players | 4–6 players | 2–3 players |
 |---|---|---|---|
-| Football / Fooba | 5 | 1 | 0.5 |
-| Rugby Sox | 5 | 1 | 0.5 |
-| Rugby Variation | 3 | 1 | 0.5 |
-| Short Game Variation | 3 | 1 | 0.5 |
-| Multi-Game Variation | 3 | 1 | 0.5 |
-| **Draw (all types)** | 1 | 0.2 | 0.1 |
+| Football / Fooba | 5 | 3 | 0.5 |
+| Rugby Sox | 5 | 3 | 0.5 |
+| Rugby Variation | 3 | 3 | 0.5 |
+| Short Game Variation | 3 | 3 | 0.5 |
+| Multi-Game Variation | 3 | 3 | 0.5 |
+| **Draw (all types)** | 1 | 0.5 | 0.1 |
 | **Loss** | 0 | 0 | 0 |
 
 - **Combined (joint-manager) match:** one result on the total score across both

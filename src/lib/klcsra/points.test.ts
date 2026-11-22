@@ -15,9 +15,9 @@ describe("computeMatchPoints", () => {
     expect(pts(sport, 8, 2, 2)).toEqual({ tier: "7plus", outcome: "draw", home: 1, away: 1 });
   });
 
-  it.each([...SPORTS])("%s: 4–6 win 1 / draw 0.2", (sport: Sport) => {
-    expect(pts(sport, 6, 1, 0)).toMatchObject({ tier: "4to6", home: 1, away: 0 });
-    expect(pts(sport, 4, 1, 1)).toMatchObject({ tier: "4to6", home: 0.2, away: 0.2 });
+  it.each([...SPORTS])("%s: 4–6 win 3 / draw 0.5", (sport: Sport) => {
+    expect(pts(sport, 6, 1, 0)).toMatchObject({ tier: "4to6", home: 3, away: 0 });
+    expect(pts(sport, 4, 1, 1)).toMatchObject({ tier: "4to6", home: 0.5, away: 0.5 });
   });
 
   it.each([...SPORTS])("%s: 2–3 win 0.5 / draw 0.1", (sport: Sport) => {
@@ -46,7 +46,7 @@ describe("computeMatchPoints", () => {
       ],
     };
     expect(computeMatchPoints({ sport: "football", totalPlayers: 8, homeScore: 1, awayScore: 0 }, tiers))
-      .toMatchObject({ tier: "4to6", home: 1 });
+      .toMatchObject({ tier: "4to6", home: 3 });
   });
 
   it("a winning margin earns no bonus (v1 margin rule is gone)", () => {

@@ -2,8 +2,9 @@
  * Pure KLCSRA league points rules, v2 (no DB/server imports). DB loader in
  * config.ts. Shape and numbers: league-scoring handover spec §3.2.
  *
- * Every type has a win value for every tier: below 7 players all types earn
- * the variation points (Q3), so a win always beats a draw.
+ * Every type has a win value for every tier. Below 7 players all types earn
+ * the same points (4–6: win 3, draw 0.5; 2–3: win 0.5, draw 0.1; KFANDRA
+ * 2026-11-22), so a win always beats a draw.
  */
 import { SPORTS, type Sport } from "./sport-stats";
 
@@ -32,8 +33,8 @@ export interface StandingsRules {
   loss: number;
 }
 
-const MAIN: TierPoints = { "7plus": 5, "4to6": 1, "2to3": 0.5 };
-const VARIATION: TierPoints = { "7plus": 3, "4to6": 1, "2to3": 0.5 };
+const MAIN: TierPoints = { "7plus": 5, "4to6": 3, "2to3": 0.5 };
+const VARIATION: TierPoints = { "7plus": 3, "4to6": 3, "2to3": 0.5 };
 
 export const DEFAULT_STANDINGS_RULES: StandingsRules = {
   version: 2,
@@ -51,7 +52,7 @@ export const DEFAULT_STANDINGS_RULES: StandingsRules = {
     short_game_variation: { ...VARIATION },
     multi_game_variation: { ...VARIATION },
   },
-  draw: { "7plus": 1, "4to6": 0.2, "2to3": 0.1 },
+  draw: { "7plus": 1, "4to6": 0.5, "2to3": 0.1 },
   loss: 0,
 };
 

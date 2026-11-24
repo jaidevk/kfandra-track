@@ -122,7 +122,7 @@ describe("buildLeagueTable", () => {
 
   it("uses the tier from total players", () => {
     const t = buildLeagueTable([single("football", "A", 1, "B", 0, 5)], "all", CLUBS, R, G);
-    expect(row(t, "A").Pts).toBe(1);
+    expect(row(t, "A").Pts).toBe(3);
   });
 
   it("names an unknown club rather than crashing", () => {

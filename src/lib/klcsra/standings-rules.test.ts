@@ -23,15 +23,15 @@ describe("DEFAULT_STANDINGS_RULES (v2)", () => {
     expect(D.win.multi_game_variation["7plus"]).toBe(3);
   });
 
-  it("below 7 every type earns the variation points", () => {
+  it("below 7 every type earns the same points: 4–6 win 3, 2–3 win 0.5", () => {
     for (const s of SPORTS) {
-      expect(D.win[s]["4to6"]).toBe(1);
+      expect(D.win[s]["4to6"]).toBe(3);
       expect(D.win[s]["2to3"]).toBe(0.5);
     }
   });
 
-  it("draws 1 / 0.2 / 0.1 and loss 0", () => {
-    expect(D.draw).toEqual({ "7plus": 1, "4to6": 0.2, "2to3": 0.1 });
+  it("draws 1 / 0.5 / 0.1 and loss 0", () => {
+    expect(D.draw).toEqual({ "7plus": 1, "4to6": 0.5, "2to3": 0.1 });
     expect(D.loss).toBe(0);
   });
 });

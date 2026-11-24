@@ -53,16 +53,16 @@ describe("leaguePointsLine", () => {
 
   it("shows the tier, the score and each club's points", () => {
     expect(text(match({}))).toBe("Tier 7+ · 1 – 0 · A 5 · B 0");
-    expect(text(match({ appearances: players(5) }))).toBe("Tier 4–6 · 1 – 0 · A 1 · B 0");
+    expect(text(match({ appearances: players(5) }))).toBe("Tier 4–6 · 1 – 0 · A 3 · B 0");
   });
 
   it("under 2 players: the result stands but scores nothing", () => {
     expect(text(match({ appearances: players(1) }))).toBe("Under 2 players · 1 – 0 · A 0 · B 0");
   });
 
-  it("a draw in tier 4–6 gives 0.2 each", () => {
+  it("a draw in tier 4–6 gives 0.5 each", () => {
     expect(text(match({ appearances: players(4), halves: [half(1, ["A", 2], ["B", 2])] })))
-      .toBe("Tier 4–6 · 2 – 2 · A 0.2 · B 0.2");
+      .toBe("Tier 4–6 · 2 – 2 · A 0.5 · B 0.5");
   });
 
   it("a variation sport wins 3 in tier 7+", () => {

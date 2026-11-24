@@ -49,6 +49,24 @@ export function canReopenMatch(viewer: Viewer): boolean {
   return viewer.role === "super_admin" || viewer.role === "kfandra";
 }
 
+/**
+ * Who may mark a friendly Official or Unofficial (spec 2026-11-22 §3):
+ * KFANDRA / super_admin on any friendly at any time; a manager of a club on
+ * either side at any status, unless the friendly's date falls in a closed
+ * season. Never a league match. An admin is treated as a manager here.
+ */
+export function canSetFriendlyMark(
+  viewer: Viewer,
+  managed: ReadonlySet<string>,
+  m: { isFriendly: boolean; clubIds: readonly string[] },
+  opts: { seasonClosed: boolean },
+): boolean {
+  if (!m.isFriendly) return false;
+  if (canReopenMatch(viewer)) return true;
+  if (opts.seasonClosed) return false;
+  return m.clubIds.some((id) => managed.has(id));
+}
+
 export function matchClubIds(halves: { sides: { clubId: string | null }[] }[]): string[] {
   const ids: string[] = [];
   for (const h of halves) {

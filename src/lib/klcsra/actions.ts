@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentPlayer, type CurrentPlayer } from "@/lib/auth/current-user";
 import { isStaffRole } from "@/lib/auth/roles";
 import {
-  canEditMatch, canReopenMatch, clubOnBothSlots, clubOnOtherSide, keepsManagedClub, matchClubIds,
+  canEditMatch, canReopenMatch, canSetFriendlyMark, clubOnBothSlots, clubOnOtherSide, keepsManagedClub, matchClubIds,
   matchPermissions, ownedSides, sentSides, type MatchPermissions,
 } from "./access";
 import { loadSportStats, loadStatRates } from "./config";
@@ -13,6 +13,7 @@ import * as repo from "./repository";
 import { SPORTS, statsForSport, type Sport } from "./sport-stats";
 import { STAT_KEYS, type StatKey, type StatRates } from "./stat-rates";
 import { cleanTimes, isTimed, trimTimes } from "./goal-times";
+import { seasonForDate } from "./season-status";
 import { asCandidate, findDuplicates, type DuplicateCandidate } from "./duplicates";
 import type { MatchDraft, MatchStatus, PayoutLine, Season, SideKey } from "./types";
 
@@ -672,6 +673,53 @@ export async function reopenMatchAction(matchId: string): Promise<ActionResult> 
     return OK;
   } catch (e) {
     return failed(e, "Failed to reopen the match.");
+  }
+}
+
+const NO_MARK = "Only KFANDRA or a manager of a club in this friendly can change that.";
+const SEASON_CLOSED = "The season is closed. Only KFANDRA can change this now.";
+
+/**
+ * Mark a friendly Official or Unofficial (spec 2026-11-22 §3). Allowed at any
+ * status, including on a submitted friendly (the submit lock covers only the
+ * child tables). Every change is written to audit_log.
+ */
+export async function setFriendlyMarkAction(
+  matchId: string,
+  official: boolean,
+): Promise<ActionResult> {
+  if (typeof official !== "boolean") return { ok: false, error: "Pick Official or Unofficial." };
+  const player = await getCurrentPlayer();
+  if (!player) return { ok: false, error: NOT_SIGNED_IN };
+  const match = await repo.getMatch(matchId);
+  if (!match) return { ok: false, error: NO_MATCH };
+  if (!match.isFriendly) return { ok: false, error: "Only a friendly can be marked Official." };
+
+  const loaded = await loadManaged(player.id);
+  if (!loaded.ok) return loaded;
+  let seasonClosed: boolean;
+  try {
+    seasonClosed = seasonForDate(await repo.listSeasons(), match.entryDate)?.status === "closed";
+  } catch (e) {
+    return failed(e, "Failed to load the seasons.");
+  }
+  const clubIds = matchClubIds(match.halves);
+  if (!canSetFriendlyMark(player, loaded.data, { isFriendly: true, clubIds }, { seasonClosed })) {
+    const manages = clubIds.some((id) => loaded.data.has(id));
+    return { ok: false, error: manages && seasonClosed ? SEASON_CLOSED : NO_MARK };
+  }
+  if (match.isOfficialFriendly === official) return OK;
+
+  try {
+    await repo.setOfficialFriendly(matchId, official);
+    await repo.writeAudit({
+      actorPlayerId: player.id, action: "klc.friendly_mark", entityType: "klc_match",
+      entityId: matchId, diff: { from: match.isOfficialFriendly, to: official },
+    });
+    revalidateMatch(matchId);
+    return OK;
+  } catch (e) {
+    return failed(e, "Failed to change the friendly type.");
   }
 }
 

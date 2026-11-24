@@ -21,8 +21,8 @@ Two pieces, two PRs:
 2. **Helper-bsr.18, the register and values.** The register screen for KFANDRA, the
    value calculation, the Values tab and the value history.
 
-Out of scope: loans, loan fees and loan points, organisations, club money, tickets,
-divisions and cups.
+Out of scope: loans, loan fees and loan points, organisations, club money, tickets
+and later competition formats.
 
 ## 2. Rules (from KFANDRA)
 

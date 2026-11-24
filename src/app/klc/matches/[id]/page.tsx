@@ -10,6 +10,7 @@ import { listClubs as listClubProfiles } from "@/lib/klc/repository";
 import {
   canEditMatch,
   canRecordMatches,
+  canSetFriendlyMark,
   matchClubIds,
   matchPermissions,
 } from "@/lib/klcsra/access";
@@ -22,7 +23,9 @@ import {
   listClubs,
   listManagedClubIds,
   listMatches,
+  listSeasons,
 } from "@/lib/klcsra/repository";
+import { seasonForDate } from "@/lib/klcsra/season-status";
 import { statsForSport } from "@/lib/klcsra/sport-stats";
 import { hideLeagueScore } from "@/lib/klcsra/tally";
 import type { MatchDraft } from "@/lib/klcsra/types";
@@ -79,13 +82,14 @@ export default async function MatchDetailPage({
   const player = await getCurrentPlayer();
   if (!player) redirect(`/login?next=/klc/matches/${id}`);
 
-  const [match, managed, rates, sportStats, season, rules] = await Promise.all([
+  const [match, managed, rates, sportStats, season, rules, seasons] = await Promise.all([
     getMatch(id),
     listManagedClubIds(player.id),
     loadStatRates(),
     loadSportStats(),
     getActiveSeason(),
     loadStandingsRules(),
+    listSeasons(),
   ]);
   if (!match) notFound();
   const canEdit = canEditMatch(
@@ -97,6 +101,17 @@ export default async function MatchDetailPage({
   // private to the people involved.
   if (match.status !== "submitted" && !canEdit) notFound();
   const perms = matchPermissions(player, match, managed);
+  const friendlySeason = seasonForDate(seasons, match.entryDate);
+  const friendlyMark = {
+    canSet: canSetFriendlyMark(
+      player,
+      managed,
+      { isFriendly: match.isFriendly, clubIds: matchClubIds(match.halves) },
+      { seasonClosed: friendlySeason?.status === "closed" },
+    ),
+    /** Not inside any season's dates: an official friendly won't change values. */
+    outsideSeason: friendlySeason === null,
+  };
   const staff = isStaffRole(player.role);
   // Matches between the same two clubs that day (spec §4), shown as a banner
   // until this one is official. A manager sees only those they could open.
@@ -159,6 +174,7 @@ export default async function MatchDetailPage({
         activeSeasonName={season?.name ?? null}
         submittedBy={submittedBy}
         rules={rules}
+        friendlyMark={friendlyMark}
       />
     </div>
   );

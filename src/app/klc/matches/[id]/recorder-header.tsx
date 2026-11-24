@@ -26,6 +26,8 @@ export function RecorderHeader({
   sync,
   error,
   onMeta,
+  friendlyMark,
+  onFriendlyMark,
 }: {
   match: MatchDraft;
   /** The season this match will be (or was) tagged with; null when there is none. */
@@ -42,6 +44,9 @@ export function RecorderHeader({
     /** Called if the save fails, to roll optimistic local state back. */
     onFail?: () => void,
   ) => void;
+  /** Who may switch a friendly Official/Unofficial, and whether it sits outside every season. */
+  friendlyMark: { canSet: boolean; outsideSeason: boolean };
+  onFriendlyMark: (official: boolean) => Promise<{ ok: true } | { ok: false; error: string }>;
 }) {
   // Local state, never re-keyed off the server: this component is the only
   // writer, and remounting it on each autosave refresh would fight the typing
@@ -49,6 +54,8 @@ export function RecorderHeader({
   const [date, setDate] = useState(match.entryDate);
   const [sport, setSport] = useState<Sport>(match.sport);
   const [friendly, setFriendly] = useState(match.isFriendly);
+  const [official, setOfficial] = useState(match.isOfficialFriendly);
+  const [markError, setMarkError] = useState<string | null>(null);
   const [duration, setDuration] = useState(
     match.durationMinutes === null ? "" : String(match.durationMinutes),
   );
@@ -175,6 +182,8 @@ export function RecorderHeader({
             const f = i === 1;
             if (f === friendly) return;
             setFriendly(f);
+            // Back to League clears the mark on the server (updateMatchMeta).
+            if (!f) setOfficial(false);
             onMeta({ isFriendly: f }, true, () => setFriendly(!f));
           }}
         />
@@ -186,6 +195,43 @@ export function RecorderHeader({
           ]}
         />
       </div>
+      {/* The mark is not tied to `locked`: it may change on a submitted friendly. */}
+      {friendly && (
+        <div data-testid="friendly-mark" data-official={official}>
+          <Segmented
+            label="Friendly type"
+            options={[
+              { on: official, label: "Official", testId: "flag-official-friendly", buttonTestId: "mark-official" },
+              { on: !official, label: "Unofficial", buttonTestId: "mark-unofficial" },
+            ]}
+            disabled={!friendlyMark.canSet}
+            onPick={
+              friendlyMark.canSet
+                ? async (i) => {
+                    const next = i === 0;
+                    if (next === official) return;
+                    setOfficial(next);
+                    setMarkError(null);
+                    const res = await onFriendlyMark(next);
+                    if (!res.ok) {
+                      setOfficial(!next);
+                      setMarkError(res.error);
+                    }
+                  }
+                : undefined
+            }
+          />
+          <p className="mt-1 text-[11px] text-gray-500">
+            {official
+              ? friendlyMark.outsideSeason
+                ? "Not inside a season: won't change values."
+                : "Official: will change player values. No league points."
+              : "Unofficial: changes nothing."}
+          </p>
+          <ErrorNote message={markError} testId="friendly-mark-error" />
+        </div>
+      )}
+
       <p className="text-[11px] text-gray-500">
         {friendly ? "Friendly — MMG only, no Kroopies are credited. " : ""}
         Format is fixed when the match is created.

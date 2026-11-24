@@ -51,6 +51,8 @@ export interface AppearanceDraft {
 export interface MatchDraft {
   id: string; entryDate: string; sport: Sport;
   isFriendly: boolean; isCombined: boolean;
+  /** A friendly marked Official (spec 2026-11-22 §3). Always false for a league match. */
+  isOfficialFriendly: boolean;
   durationMinutes: number | null;
   status: MatchStatus; submittedAt: string | null;
   /** When each team's manager tapped Send my team; null until then. */
@@ -66,6 +68,7 @@ export interface MatchDraft {
 export interface MatchSummary {
   id: string; entryDate: string; sport: Sport;
   isFriendly: boolean; isCombined: boolean;
+  isOfficialFriendly: boolean;
   status: MatchStatus; seasonName: string | null;
   createdBy: string | null;
   /** Every club on any side of any half. */

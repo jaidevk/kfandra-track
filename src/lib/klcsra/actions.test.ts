@@ -23,6 +23,9 @@ vi.mock("./repository", () => ({
   makeOfficial: vi.fn(),
   sendBack: vi.fn(),
   listMatches: vi.fn(),
+  listSeasons: vi.fn(),
+  setOfficialFriendly: vi.fn(),
+  writeAudit: vi.fn(),
 }));
 vi.mock("./config", () => ({
   loadStatRates: vi.fn(),
@@ -43,13 +46,14 @@ import {
   reopenMatchAction,
   sendBackAction,
   sendTeamAction,
+  setFriendlyMarkAction,
   setGoalTimesAction,
   setSideClubAction,
   setSideScoreAction,
   setStatAction,
   updateMatchMetaAction,
 } from "./actions";
-import type { MatchDraft, SideKey } from "./types";
+import type { MatchDraft, Season, SideKey } from "./types";
 
 const NOT_STAFF = "You do not have permission to do that.";
 const LOCKED = "This match is locked. Reopen it first.";
@@ -80,7 +84,7 @@ const side = (s: SideKey, clubId: string) =>
 function draft(overrides: Partial<MatchDraft> = {}): MatchDraft {
   return {
     id: "m1", entryDate: "2026-10-01", sport: "football",
-    isFriendly: false, isCombined: false, durationMinutes: null,
+    isFriendly: false, isOfficialFriendly: false, isCombined: false, durationMinutes: null,
     status: "draft", submittedAt: null, homeSentAt: null, awaySentAt: null, seasonId: null, seasonName: null,
     createdBy: null,
     halves: [{ id: "h1", halfNo: 1, sides: [side("home", "A"), side("away", "B")] }],
@@ -624,5 +628,57 @@ describe("more gate checks", () => {
       expect((await setSideClubAction("m1", "h1", "home", "C")).ok).toBe(false);
       expect(repo.setSideClub).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("setFriendlyMarkAction", () => {
+  const season = (status: Season["status"], startDate: string, endDate: string | null): Season =>
+    ({ id: "s", seasonNo: 2, name: "S2", startDate, endDate, status });
+  const friendly = (o: Partial<MatchDraft> = {}) =>
+    draft({ isFriendly: true, entryDate: "2026-12-01", ...o });
+
+  it("a manager of a club in it marks it Official, and the change is logged", async () => {
+    signIn(as("user", "m"));
+    manages("A");
+    vi.mocked(repo.getMatch).mockResolvedValue(friendly({ status: "submitted" }));
+    vi.mocked(repo.listSeasons).mockResolvedValue([season("active", "2026-11-01", null)]);
+    expect(await setFriendlyMarkAction("m1", true)).toEqual({ ok: true, data: undefined });
+    expect(repo.setOfficialFriendly).toHaveBeenCalledWith("m1", true);
+    expect(repo.writeAudit).toHaveBeenCalledWith({
+      actorPlayerId: "m", action: "klc.friendly_mark", entityType: "klc_match",
+      entityId: "m1", diff: { from: false, to: true },
+    });
+  });
+
+  it("refuses a manager once the season is closed; KFANDRA still can", async () => {
+    manages("A");
+    vi.mocked(repo.getMatch).mockResolvedValue(friendly());
+    vi.mocked(repo.listSeasons).mockResolvedValue([season("closed", "2026-11-01", "2026-12-31")]);
+    signIn(as("user", "m"));
+    expect(await setFriendlyMarkAction("m1", true))
+      .toEqual({ ok: false, error: "The season is closed. Only KFANDRA can change this now." });
+    signIn(as("kfandra"));
+    expect((await setFriendlyMarkAction("m1", true)).ok).toBe(true);
+  });
+
+  it("refuses an unrelated manager and a league match, writing nothing", async () => {
+    vi.mocked(repo.listSeasons).mockResolvedValue([]);
+    signIn(as("user", "m"));
+    manages("Z");
+    vi.mocked(repo.getMatch).mockResolvedValue(friendly());
+    expect((await setFriendlyMarkAction("m1", true)).ok).toBe(false);
+    signIn(as("kfandra"));
+    vi.mocked(repo.getMatch).mockResolvedValue(draft());
+    expect((await setFriendlyMarkAction("m1", true)).ok).toBe(false);
+    expect(repo.setOfficialFriendly).not.toHaveBeenCalled();
+    expect(repo.writeAudit).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when the mark doesn't change", async () => {
+    signIn(as("kfandra"));
+    vi.mocked(repo.listSeasons).mockResolvedValue([]);
+    vi.mocked(repo.getMatch).mockResolvedValue(friendly({ isOfficialFriendly: true }));
+    expect((await setFriendlyMarkAction("m1", true)).ok).toBe(true);
+    expect(repo.setOfficialFriendly).not.toHaveBeenCalled();
   });
 });

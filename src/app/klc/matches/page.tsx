@@ -247,7 +247,7 @@ function MatchCard({ match: m }: { match: MatchSummary }) {
           )}
           {m.isFriendly && (
             <Tag testId="tag-friendly" tone="violet">
-              Friendly
+              {m.isOfficialFriendly ? "Official friendly" : "Friendly"}
             </Tag>
           )}
           {m.seasonName && (

@@ -754,6 +754,7 @@ export type Database = {
           id: string
           is_combined: boolean
           is_friendly: boolean
+          is_official_friendly: boolean
           season_id: string | null
           sport: string
           status: string
@@ -771,6 +772,7 @@ export type Database = {
           id?: string
           is_combined?: boolean
           is_friendly?: boolean
+          is_official_friendly?: boolean
           season_id?: string | null
           sport?: string
           status?: string
@@ -788,6 +790,7 @@ export type Database = {
           id?: string
           is_combined?: boolean
           is_friendly?: boolean
+          is_official_friendly?: boolean
           season_id?: string | null
           sport?: string
           status?: string

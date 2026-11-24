@@ -10,6 +10,7 @@ import {
   reopenMatchAction,
   sendBackAction,
   sendTeamAction,
+  setFriendlyMarkAction,
   setGoalTimesAction,
   setSideClubAction,
   setSideScoreAction,
@@ -80,6 +81,7 @@ export function MatchRecorder({
   activeSeasonName,
   submittedBy,
   rules,
+  friendlyMark,
 }: {
   match: MatchDraft;
   clubs: RecorderClub[];
@@ -98,6 +100,8 @@ export function MatchRecorder({
   /** The season a league match would be tagged with today, or null. */
   activeSeasonName: string | null;
   submittedBy: string | null;
+  /** Who may switch a friendly Official/Unofficial, and whether it sits outside every season. */
+  friendlyMark: { canSet: boolean; outsideSeason: boolean };
   rules: StandingsRules;
 }) {
   const router = useRouter();
@@ -488,6 +492,8 @@ export function MatchRecorder({
         sync={sync}
         error={err("header")}
         onMeta={onMeta}
+        friendlyMark={friendlyMark}
+        onFriendlyMark={(official) => setFriendlyMarkAction(match.id, official)}
       />
 
       <TeamBoard

@@ -1,4 +1,5 @@
 import "server-only";
+import type { Json } from "@/lib/supabase/database.types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { StatKey } from "./stat-rates";
 import type { Sport } from "./sport-stats";
@@ -259,7 +260,7 @@ export async function listMatches(opts: { entryDate?: string } = {}): Promise<Ma
   let query = admin
     .from("klc_matches")
     .select(
-      `id, entry_date, sport, is_friendly, is_combined, status,
+      `id, entry_date, sport, is_friendly, is_official_friendly, is_combined, status,
        created_by, home_sent_at, away_sent_at,
        klc_seasons(name),
        klc_match_halves(id, half_no,
@@ -283,6 +284,7 @@ export async function listMatches(opts: { entryDate?: string } = {}): Promise<Ma
       sport: m.sport as Sport,
       isFriendly: m.is_friendly,
       isCombined: m.is_combined,
+      isOfficialFriendly: m.is_official_friendly,
       status: m.status as MatchStatus,
       seasonName: one(m.klc_seasons as ToOne<{ name: string }>)?.name ?? null,
       createdBy: m.created_by,
@@ -324,7 +326,7 @@ function toAppearanceDraft(a: AppearanceRow): AppearanceDraft {
   };
 }
 
-export const MATCH_DRAFT_COLS = `id, entry_date, sport, is_friendly, is_combined, duration_minutes,
+export const MATCH_DRAFT_COLS = `id, entry_date, sport, is_friendly, is_official_friendly, is_combined, duration_minutes,
    status, submitted_at, season_id, created_by, home_sent_at, away_sent_at,
    klc_seasons(name),
    klc_match_halves(id, half_no,
@@ -335,7 +337,7 @@ export const MATCH_DRAFT_COLS = `id, entry_date, sport, is_friendly, is_combined
 
 export interface MatchDraftRow {
   id: string; entry_date: string; sport: string;
-  is_friendly: boolean; is_combined: boolean; duration_minutes: number | null;
+  is_friendly: boolean; is_official_friendly: boolean; is_combined: boolean; duration_minutes: number | null;
   status: string; submitted_at: string | null; season_id: string | null;
   created_by: string | null;
   home_sent_at: string | null; away_sent_at: string | null;
@@ -355,6 +357,7 @@ export function toMatchDraft(data: MatchDraftRow): MatchDraft {
     sport: data.sport as Sport,
     isFriendly: data.is_friendly,
     isCombined: data.is_combined,
+    isOfficialFriendly: data.is_official_friendly,
     durationMinutes: data.duration_minutes,
     status: data.status as MatchStatus,
     submittedAt: data.submitted_at,
@@ -461,12 +464,16 @@ export interface MatchMetaPatch {
 export async function updateMatchMeta(id: string, patch: MatchMetaPatch): Promise<void> {
   const fields: {
     entry_date?: string; sport?: string; duration_minutes?: number | null;
-    is_friendly?: boolean;
+    is_friendly?: boolean; is_official_friendly?: boolean;
   } = {};
   if (patch.entryDate !== undefined) fields.entry_date = patch.entryDate;
   if (patch.sport !== undefined) fields.sport = patch.sport;
   if (patch.durationMinutes !== undefined) fields.duration_minutes = patch.durationMinutes;
-  if (patch.isFriendly !== undefined) fields.is_friendly = patch.isFriendly;
+  if (patch.isFriendly !== undefined) {
+    fields.is_friendly = patch.isFriendly;
+    // The check constraint forbids a marked league match.
+    if (!patch.isFriendly) fields.is_official_friendly = false;
+  }
   if (Object.keys(fields).length === 0) return;
 
   const admin = createAdminClient();
@@ -766,4 +773,30 @@ export async function reopenMatch(id: string, to: "sent" | "draft"): Promise<voi
     .eq("id", id)
     .eq("status", "submitted");
   if (error) throw new Error(`Failed to reopen the match: ${error.message}`);
+}
+
+/** Mark a friendly Official (true) or Unofficial (false). */
+export async function setOfficialFriendly(id: string, official: boolean): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("klc_matches")
+    .update({ is_official_friendly: official })
+    .eq("id", id)
+    .eq("is_friendly", true);
+  if (error) throw new Error(`Failed to update the friendly: ${error.message}`);
+}
+
+/** Append one row to audit_log (privileged actions). */
+export async function writeAudit(entry: {
+  actorPlayerId: string; action: string; entityType: string; entityId: string; diff: Json;
+}): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin.from("audit_log").insert({
+    actor_player_id: entry.actorPlayerId,
+    action: entry.action,
+    entity_type: entry.entityType,
+    entity_id: entry.entityId,
+    diff: entry.diff,
+  });
+  if (error) throw new Error(`Failed to write the audit log: ${error.message}`);
 }

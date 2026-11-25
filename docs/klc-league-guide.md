@@ -157,6 +157,20 @@ A friendly earns no league points and no Kroopies, but counts towards MMG.
 If you switch a match between **League** and **Friendly**, any score already
 entered is cleared.
 
+### Official and unofficial friendlies
+
+Every friendly is marked **Official** or **Unofficial** under **Friendly type**
+on the match screen. A new friendly starts as Unofficial. KFANDRA, or the
+manager of either club, can switch it at any time, even after the friendly is
+submitted. Once the season is closed, only KFANDRA can change it. Every change
+is recorded.
+
+| | Official friendly | Unofficial friendly |
+|---|---|---|
+| Player values | Will change (coming with player values) | No change |
+| League points, results and scorers | No | No |
+| Match fee and win bonus | No | No |
+
 ### Rules the recorder checks for you
 
 - **Your own team only:** you add and edit your own club's players and stats.

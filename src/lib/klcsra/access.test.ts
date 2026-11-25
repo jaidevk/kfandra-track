@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  canEditMatch, canRecordMatches, canReopenMatch, clubOnBothSlots, clubOnOtherSide, hasOwnDraft,
+  canEditMatch, canRecordMatches, canReopenMatch, canSetFriendlyMark, clubOnBothSlots, clubOnOtherSide, hasOwnDraft,
   keepsManagedClub, matchClubIds,
 } from "./access";
 
@@ -259,5 +259,28 @@ describe("matchPermissions — staff", () => {
       expect(p.times).toEqual({ home: true, away: true });
     }
     expect(matchPermissions({ id: "x", role: "super_admin" }, pm({ status: "submitted" }), new Set()).reopen).toBe(true);
+  });
+});
+
+describe("canSetFriendlyMark", () => {
+  const friendly = { isFriendly: true, clubIds: ["A", "B"] };
+  const open = { seasonClosed: false };
+  it("KFANDRA and super_admin: any friendly, closed season included", () => {
+    for (const role of ["kfandra", "super_admin"] as const) {
+      expect(canSetFriendlyMark({ id: "k", role }, none, friendly, open)).toBe(true);
+      expect(canSetFriendlyMark({ id: "k", role }, none, friendly, { seasonClosed: true })).toBe(true);
+    }
+  });
+  it("a manager of a club in the match, while the season isn't closed", () => {
+    expect(canSetFriendlyMark({ id: "m", role: "user" }, managesA, friendly, open)).toBe(true);
+    expect(canSetFriendlyMark({ id: "m", role: "user" }, managesA, friendly, { seasonClosed: true })).toBe(false);
+  });
+  it("not another manager, a plain player or an admin without a club in it", () => {
+    expect(canSetFriendlyMark({ id: "m", role: "user" }, managesA, { isFriendly: true, clubIds: ["C", "D"] }, open)).toBe(false);
+    expect(canSetFriendlyMark({ id: "p", role: "user" }, none, friendly, open)).toBe(false);
+    expect(canSetFriendlyMark({ id: "a", role: "admin" }, none, friendly, open)).toBe(false);
+  });
+  it("never on a league match", () => {
+    expect(canSetFriendlyMark({ id: "k", role: "kfandra" }, none, { isFriendly: false, clubIds: ["A"] }, open)).toBe(false);
   });
 });

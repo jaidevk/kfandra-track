@@ -63,7 +63,7 @@ const row = (
   isFriendly = false,
 ): MatchDraftRow => ({
   id, entry_date: entryDate, sport: "football",
-  is_friendly: isFriendly, is_combined: false, duration_minutes: null,
+  is_friendly: isFriendly, is_official_friendly: false, is_combined: false, duration_minutes: null,
   status: "submitted", submitted_at: submittedAt, home_sent_at: null, away_sent_at: null, season_id: isFriendly ? null : "s2",
   created_by: null,
   klc_seasons: null, klc_match_halves: [], klc_match_appearances: [],

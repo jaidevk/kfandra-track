@@ -640,9 +640,9 @@ Then run `npm run -s docs:pdf:league`.
 Run:
 ```bash
 npm run -s lint && npx tsc --noEmit && npx vitest run && npx playwright test e2e/klc-friendly-mark.spec.ts e2e/klc-match-workflow.spec.ts e2e/klcsra-recorder.spec.ts
-git diff main | grep -niE 'rotation|goalkeeper|\bGK\b|division|promot|relegat|\bdiv\b'
 ```
-Expected: everything passes, and the grep prints nothing.
+Then run the confidentiality check from the bd memories over `git diff main`.
+Expected: everything passes, and the check finds nothing.
 
 - [ ] **Step 3: Commit (one bead, one commit) and open the PR**
 

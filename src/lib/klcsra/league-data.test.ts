@@ -109,3 +109,19 @@ describe("clubNamesFromDrafts", () => {
     expect(clubNamesFromDrafts([])).toEqual([]);
   });
 });
+
+describe("toStatRows official names", () => {
+  it("prefers the player's KLC name", () => {
+    const d = {
+      id: "m", entryDate: "2026-12-01", sport: "football", isFriendly: false, isCombined: false,
+      isOfficialFriendly: false, durationMinutes: null, status: "submitted", submittedAt: null,
+      homeSentAt: null, awaySentAt: null, seasonId: "s", seasonName: null, createdBy: null,
+      halves: [{ id: "h", halfNo: 1, sides: [] }],
+      appearances: [
+        { id: "a1", playerId: "p1", displayName: "Pat", klcName: "Patrick", side: "home", slot: 1, stats: { 1: { goal: 1 } } },
+        { id: "a2", playerId: "p2", displayName: "Sam", klcName: null, side: "away", slot: 1, stats: { 1: { goal: 1 } } },
+      ],
+    } as const;
+    expect(toStatRows(d as never).map((r) => r.displayName)).toEqual(["Patrick", "Sam"]);
+  });
+});

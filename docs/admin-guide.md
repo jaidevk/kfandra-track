@@ -119,6 +119,30 @@ breakdown — and use **Copy sheet as text** to paste a club's figures to them.
 Rates live in `app_config` under `klc_rates`. Link managers to their accounts
 with `supabase/snippets/link-club-managers.sql`.
 
+## KLC Register — KFANDRA
+
+**Admin → Register** holds each KLC player's **base value** and **official KLC
+name**. Only KFANDRA can open it; other staff see a message instead.
+
+- **Season:** pick it at the top. It opens on the active season, otherwise the
+  next upcoming one.
+- **Who is listed:** the manager of every active club. A player's club is the
+  club they manage.
+- **Per player:** type the official name and tap **Save name**; type the base
+  value and tap **Save value**. Each change is logged.
+- **Flags:**
+  - **No base value yet:** the player isn't valued and isn't on the Values tab.
+  - **Played without a base value:** they've played a match that counts.
+  - **Manages more than one club:** the first club in the club order is used.
+- **Value changes:** tap **Value changes**, then enter a date inside the season,
+  a plus or minus amount and a note, and tap **Add change**. The change applies
+  from that date on.
+- **Mistakes:** nothing is deleted. Tap **Void** on a change and say why; it stays
+  in the list, struck through, and stops counting.
+
+Values themselves are worked out by the app from the matches; see the KLC
+League guide, "Player values".
+
 ---
 
 > **Private — KFANDRA staff only.** Keep this guide and the app internal to

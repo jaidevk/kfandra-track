@@ -87,6 +87,24 @@ export function matchResult(
   return { scored, agg, pts };
 }
 
+export type SideOutcome = "win" | "draw" | "loss";
+
+/**
+ * One side's result, decided exactly like the league table: the higher
+ * aggregate over the counted halves wins. Null when the table couldn't score
+ * the match: no complete counted half, a combined match missing a half, or
+ * fewer than 2 players. Used for player values (spec 2026-11-22 §5).
+ */
+export function sideOutcome(m: LeagueMatch, side: SideKey): SideOutcome | null {
+  const halves = countedHalves(m);
+  if (halves.length === 0 || m.totalPlayers < 2) return null;
+  if (m.isCombined && halves.length < 2) return null;
+  const agg = aggregateScores({ ...m, halves });
+  const mine = side === "home" ? agg.home : agg.away;
+  const theirs = side === "home" ? agg.away : agg.home;
+  return mine > theirs ? "win" : mine < theirs ? "loss" : "draw";
+}
+
 function compareRows(a: TableRow, b: TableRow): number {
   return (
     b.Pts - a.Pts ||

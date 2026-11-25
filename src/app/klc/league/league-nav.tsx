@@ -9,7 +9,7 @@ import { DismissibleDetails } from "./season-picker";
 
 export function TabBar({ params }: { params: LeagueParams }) {
   return (
-    <nav aria-label={strings.league.sectionsLabel} className="grid grid-cols-5 gap-1 rounded-xl bg-gray-100 p-1 text-[11px] font-bold">
+    <nav aria-label={strings.league.sectionsLabel} className="grid grid-cols-6 gap-1 rounded-xl bg-gray-100 p-1 text-[11px] font-bold">
       {LEAGUE_TABS.map((t) => {
         const on = t === params.tab;
         return (

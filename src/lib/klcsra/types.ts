@@ -39,6 +39,8 @@ export interface HalfDraft { id: string; halfNo: number; sides: SideDraft[]; }
 /** One player, one team, whole match. Stats are keyed by half. */
 export interface AppearanceDraft {
   id: string; playerId: string; displayName: string;
+  /** Official KLC name (players.klc_name); boards prefer it. Absent in older fixtures. */
+  klcName?: string | null;
   side: SideKey; slot: number;
   stats: Record<number, Partial<Record<StatKey, number>>>;
   /**

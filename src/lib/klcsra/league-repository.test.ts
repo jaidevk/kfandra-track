@@ -32,7 +32,7 @@ vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({ from: (table: string) => fakeQuery(table) }),
 }));
 
-import { listSubmittedMatchDrafts } from "./league-repository";
+import { listCountedMatches, listSubmittedMatchDrafts } from "./league-repository";
 import type { MatchDraftRow } from "./repository";
 import type { Season } from "./types";
 
@@ -131,5 +131,19 @@ describe("listSubmittedMatchDrafts", () => {
     respond = (q) =>
       isFriendlies(q) ? { data: null, error: { message: "boom" } } : { data: [], error: null };
     await expect(listSubmittedMatchDrafts(season(null))).rejects.toThrow(/friendlies: boom/);
+  });
+});
+
+describe("listCountedMatches", () => {
+  it("keeps league matches and official friendlies, still filtering status = submitted", async () => {
+    respond = (q) => {
+      if (isLeague(q)) return { data: [row("l1", "2026-09-01", "2026-09-01T10:00:00Z")], error: null };
+      const official = { ...row("f1", "2026-09-02", "2026-09-02T10:00:00Z", true), is_official_friendly: true };
+      const unofficial = row("f2", "2026-09-03", "2026-09-03T10:00:00Z", true);
+      return { data: [official, unofficial], error: null };
+    };
+    const got = await listCountedMatches(season(null));
+    expect(got.map((m) => m.id).sort()).toEqual(["f1", "l1"]);
+    for (const q of queries) expect(hasCall(q, "eq", "status", "submitted")).toBe(true);
   });
 });

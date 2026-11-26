@@ -93,6 +93,42 @@ Players with tied totals share a rank.
   dates. Tap one to see its tables.
 - **Scoring** shows the points scale the app is using right now (below).
 
+## 5a. Player values — everyone
+
+Every KLC player has a value in Kroopies (KR). KFANDRA sets each player's
+**base value** at the start of the season, and the value then moves with every
+match that counts.
+
+- **Matches that count:** league matches once they're official, and **official**
+  friendlies. Unofficial friendlies don't change values.
+- **Where to see it:** KLC League → **Values** ranks players by their current
+  value. Tap a player to see their value session by session, with every change
+  and its reason.
+
+| In a match that counts | Value change |
+|---|---|
+| Win / draw / loss | **+20** / **+5** / **−10** |
+| Each goal (main or rebound goals included), try or conversion | **+2** |
+| Each assist | **+1** |
+| Each pre-assist | **+0.5** |
+| Each save | **+2** |
+| Yellow / red / blue card | **−10** / **−20** / **−50** |
+| Tackles, late challenges | No change |
+
+- **When it applies:** all of a session's matches are added together at the end
+  of that day.
+- **Never below zero:** a value stops at 0 KR.
+- **Small matches** (fewer than 7 players in total): a player's first 5 such
+  matches in a season change nothing. From the 6th they count as normal.
+- **KFANDRA's changes:** KFANDRA can add a plus or minus change from a chosen
+  date, with a note (for example after an illness). It shows in the player's
+  history.
+
+> **Example.** A player starts at **200 KR**. Their side wins a 7 v 7 league
+> match (+20); they score once (+2) and make one assist (+1): **223 KR**. Next
+> session their side loses an official friendly (−10) and they get a yellow card
+> (−10): **203 KR**.
+
 ## 6. How points are worked out
 
 Points depend on the match type and the number of players, **counting both

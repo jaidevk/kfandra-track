@@ -26,6 +26,7 @@ import { DEFAULT_STAT_RATES, STAT_KEYS } from "./stat-rates";
 import { DEFAULT_SPORT_STATS, SPORTS } from "./sport-stats";
 import { DEFAULT_STANDINGS_RULES } from "./standings-rules";
 import { DEFAULT_TABLE_GROUPS, parseTableGroups } from "./table-groups";
+import { DEFAULT_VALUE_RULES } from "./value-rules";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // src/lib/klcsra -> repo root
@@ -46,12 +47,19 @@ const POINTS_4TO6_SQL = readFileSync(
   "utf8",
 );
 
+/** Adds the KLC player value rules (Helper-bsr.18, 2026-11-25). */
+const VALUES_SQL = readFileSync(
+  resolve(REPO_ROOT, "supabase/migrations/20261125120000_klc_player_values.sql"),
+  "utf8",
+);
+
 /** The migration that owns each key's CURRENT value. */
 const KEYS = [
   "klcsra_stat_rates",
   "klcsra_sport_stats",
   "klcsra_standings_rules",
   "klcsra_table_groups",
+  "klc_value_rules",
 ] as const;
 type SeededKey = (typeof KEYS)[number];
 const SQL_FOR = {
@@ -59,6 +67,7 @@ const SQL_FOR = {
   klcsra_sport_stats: CONVERSION_SQL,
   klcsra_standings_rules: POINTS_4TO6_SQL,
   klcsra_table_groups: MGV_SQL,
+  klc_value_rules: VALUES_SQL,
 } satisfies Record<SeededKey, string>;
 
 /**
@@ -70,6 +79,7 @@ const SHAPE = {
   klcsra_sport_stats: "object",
   klcsra_standings_rules: "object",
   klcsra_table_groups: "array",
+  klc_value_rules: "object",
 } satisfies Record<SeededKey, "object" | "array">;
 
 const INSERT = "insert into public.app_config";
@@ -108,7 +118,7 @@ function seededValue(key: SeededKey): unknown {
 }
 
 describe("migration seeds match TypeScript defaults", () => {
-  it("finds all four seeded rule sets in the migrations", () => {
+  it("finds every seeded rule set in the migrations", () => {
     // Guards against the extraction silently yielding nothing, which would
     // make every assertion below vacuous.
     for (const key of KEYS) {
@@ -151,6 +161,10 @@ describe("migration seeds match TypeScript defaults", () => {
 
   it("klcsra_standings_rules deep-equals DEFAULT_STANDINGS_RULES", () => {
     expect(seededValue("klcsra_standings_rules")).toEqual(DEFAULT_STANDINGS_RULES);
+  });
+
+  it("klc_value_rules deep-equals DEFAULT_VALUE_RULES", () => {
+    expect(seededValue("klc_value_rules")).toEqual(DEFAULT_VALUE_RULES);
   });
 
   it("klcsra_table_groups is seeded as an array that parses to DEFAULT_TABLE_GROUPS, in order", () => {

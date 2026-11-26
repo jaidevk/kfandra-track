@@ -12,12 +12,14 @@ import { listSubmittedMatchDrafts } from "@/lib/klcsra/league-repository";
 import { buildLeagueTable } from "@/lib/klcsra/league-table";
 import { listSeasons } from "@/lib/klcsra/repository";
 import { groupScoreKinds } from "@/lib/klcsra/table-groups";
+import { loadSeasonValues } from "@/lib/klcsra/value-repository";
 import { Empty, GroupChips, SeasonPicker, TabBar, seasonLabel } from "./league-nav";
 import { LeadersTab } from "./leaders-tab";
 import { MatchesTab } from "./matches-tab";
 import { ScoringTab } from "./scoring-tab";
 import { SeasonsTab } from "./seasons-tab";
 import { TableTab } from "./table-tab";
+import { ValuesTab } from "./values-tab";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +50,9 @@ export default async function LeaguePage({
     body = <ScoringTab rules={rules} />;
   } else if (!season) {
     body = <Empty text={league.noSeason} testId="league-no-season" />;
+  } else if (params.tab === "values") {
+    const { values } = await loadSeasonValues(season);
+    body = <ValuesTab values={values} seasonId={season.id} />;
   } else {
     const drafts = await listSubmittedMatchDrafts(season);
     if (params.tab === "matches") {

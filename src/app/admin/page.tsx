@@ -10,6 +10,7 @@ export default function AdminDashboard() {
     { href: "/admin/klc", ...admin.klcCard },
     { href: "/klc/matches", ...admin.klcMatchesCard },
     { href: "/admin/klc/seasons", ...admin.klcSeasonsCard },
+    { href: "/admin/klc/register", ...admin.klcRegisterCard },
     { href: "/admin/config", ...admin.configCard },
   ];
   return (

@@ -302,7 +302,7 @@ export async function listMatches(opts: { entryDate?: string } = {}): Promise<Ma
 interface StatRow { half_no: number; stat_key: string; stat_count: number; minutes: (number | null)[] | null }
 interface AppearanceRow {
   id: string; player_id: string; side: string; slot: number;
-  players: ToOne<{ display_name: string }>;
+  players: ToOne<{ display_name: string; klc_name: string | null }>;
   klc_player_stats: StatRow[] | null;
 }
 
@@ -319,6 +319,7 @@ function toAppearanceDraft(a: AppearanceRow): AppearanceDraft {
     id: a.id,
     playerId: a.player_id,
     displayName: one(a.players)?.display_name ?? "Unknown",
+    klcName: one(a.players)?.klc_name ?? null,
     side: a.side as SideKey,
     slot: a.slot,
     stats,
@@ -332,7 +333,7 @@ export const MATCH_DRAFT_COLS = `id, entry_date, sport, is_friendly, is_official
    klc_match_halves(id, half_no,
      klc_match_sides(id, side, score, club_id, clubs(name))),
    klc_match_appearances(id, player_id, side, slot,
-     players(display_name),
+     players(display_name, klc_name),
      klc_player_stats(half_no, stat_key, stat_count, minutes))`;
 
 export interface MatchDraftRow {

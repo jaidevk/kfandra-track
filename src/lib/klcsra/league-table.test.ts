@@ -5,6 +5,7 @@ import {
   clubsOnSide,
   countedHalves,
   matchResult,
+  sideOutcome,
   type LeagueMatch,
 } from "./league-table";
 import { DEFAULT_STANDINGS_RULES as R } from "./standings-rules";
@@ -175,5 +176,32 @@ describe("helpers", () => {
     };
     expect(clubsOnSide(m, "home")).toEqual(["A", "C"]);
     expect(clubsOnSide(m, "away")).toEqual(["B"]);
+  });
+});
+
+describe("sideOutcome", () => {
+  const base = {
+    id: "m", entryDate: "2026-12-01", sport: "football" as const,
+    isCombined: false, isFriendly: false, totalPlayers: 14,
+  };
+  const half = (halfNo: number, h: number, a: number) => ({
+    halfNo, home: { clubId: "a", score: h }, away: { clubId: "b", score: a },
+  });
+
+  it("scores a normal match from half 1 only", () => {
+    const m = { ...base, halves: [half(1, 2, 1), half(2, 0, 5)] };
+    expect(sideOutcome(m, "home")).toBe("win");
+    expect(sideOutcome(m, "away")).toBe("loss");
+  });
+
+  it("scores a combined match over both halves", () => {
+    const m = { ...base, isCombined: true, halves: [half(1, 2, 1), half(2, 0, 1)] };
+    expect(sideOutcome(m, "home")).toBe("draw");
+  });
+
+  it("gives no result for an incomplete match or fewer than 2 players", () => {
+    expect(sideOutcome({ ...base, halves: [] }, "home")).toBeNull();
+    expect(sideOutcome({ ...base, isCombined: true, halves: [half(1, 1, 0)] }, "home")).toBeNull();
+    expect(sideOutcome({ ...base, totalPlayers: 1, halves: [half(1, 1, 0)] }, "home")).toBeNull();
   });
 });

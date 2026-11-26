@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { MATCH_DRAFT_COLS, toMatchDraft, type MatchDraftRow } from "./repository";
+import { isCountedForValues } from "./player-values";
 import type { MatchDraft, Season } from "./types";
 
 /**
@@ -54,4 +55,14 @@ function newestFirst(a: MatchDraft, b: MatchDraft): number {
     return b.submittedAt.localeCompare(a.submittedAt);
   }
   return a.id.localeCompare(b.id);
+}
+
+/**
+ * The matches that change player values (spec 2026-11-22 §5): the season's
+ * submitted league matches and its submitted official friendlies. Filters
+ * `listSubmittedMatchDrafts` rather than querying again, so the
+ * `status = 'submitted'` guarantee holds here too.
+ */
+export async function listCountedMatches(season: Season): Promise<MatchDraft[]> {
+  return (await listSubmittedMatchDrafts(season)).filter(isCountedForValues);
 }

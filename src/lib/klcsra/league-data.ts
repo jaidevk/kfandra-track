@@ -57,7 +57,7 @@ export function toStatRows(d: MatchDraft): StatRow[] {
         rows.push({
           matchId: d.id, entryDate: d.entryDate,
           submittedAt: d.submittedAt, halfNo: Number(halfNo),
-          playerId: a.playerId, displayName: a.displayName, clubName,
+          playerId: a.playerId, displayName: a.klcName ?? a.displayName, clubName,
           sport: d.sport, isFriendly: d.isFriendly,
           statKey: statKey as StatKey, count,
         });

@@ -2,7 +2,7 @@
 import type { TableGroups } from "./table-groups";
 import type { Season } from "./types";
 
-export const LEAGUE_TABS = ["table", "matches", "leaders", "seasons", "scoring"] as const;
+export const LEAGUE_TABS = ["table", "matches", "leaders", "values", "seasons", "scoring"] as const;
 export type LeagueTab = (typeof LEAGUE_TABS)[number];
 
 export interface LeagueParams {

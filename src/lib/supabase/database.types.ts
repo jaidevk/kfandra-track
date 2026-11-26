@@ -822,6 +822,52 @@ export type Database = {
           },
         ]
       }
+      klc_player_base_values: {
+        Row: {
+          base_value: number
+          player_id: string
+          season_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          base_value: number
+          player_id: string
+          season_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          base_value?: number
+          player_id?: string
+          season_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "klc_player_base_values_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "klc_player_base_values_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "klc_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "klc_player_base_values_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       klc_player_stats: {
         Row: {
           appearance_id: string
@@ -853,6 +899,77 @@ export type Database = {
             columns: ["appearance_id"]
             isOneToOne: false
             referencedRelation: "klc_match_appearances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      klc_player_value_changes: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          effective_date: string
+          id: string
+          note: string
+          player_id: string
+          season_id: string
+          void_note: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          effective_date: string
+          id?: string
+          note: string
+          player_id: string
+          season_id: string
+          void_note?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          effective_date?: string
+          id?: string
+          note?: string
+          player_id?: string
+          season_id?: string
+          void_note?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "klc_player_value_changes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "klc_player_value_changes_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "klc_player_value_changes_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "klc_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "klc_player_value_changes_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "players"
             referencedColumns: ["id"]
           },
         ]
@@ -1036,6 +1153,7 @@ export type Database = {
           display_name: string
           id: string
           is_active: boolean
+          klc_name: string | null
           phone: string
           pin_hash: string
           role: "super_admin" | "kfandra" | "admin" | "user"
@@ -1046,6 +1164,7 @@ export type Database = {
           display_name: string
           id?: string
           is_active?: boolean
+          klc_name?: string | null
           phone: string
           pin_hash: string
           role?: "super_admin" | "kfandra" | "admin" | "user"
@@ -1056,6 +1175,7 @@ export type Database = {
           display_name?: string
           id?: string
           is_active?: boolean
+          klc_name?: string | null
           phone?: string
           pin_hash?: string
           role?: "super_admin" | "kfandra" | "admin" | "user"

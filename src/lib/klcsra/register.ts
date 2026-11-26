@@ -37,3 +37,11 @@ export function buildRegister(
   }
   return out;
 }
+
+/** Active players who manage no club, by app name, so KFANDRA can still set their official name. */
+export function playersWithoutClub(people: RegisterPerson[], register: RegisterPlayer[]): RegisterPerson[] {
+  const inRegister = new Set(register.map((r) => r.playerId));
+  return people
+    .filter((p) => !inRegister.has(p.id))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: "base" }));
+}

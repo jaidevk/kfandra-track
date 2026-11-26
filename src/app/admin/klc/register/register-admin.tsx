@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { useHydrated } from "@/hooks/use-hydrated";
 import type { ActionResult } from "@/lib/klcsra/actions";
 import { formatChange, formatKr, type PlayerValue, type RegisterPlayer, type ValueChange } from "@/lib/klcsra/player-values";
+import type { RegisterPerson } from "@/lib/klcsra/register";
 import type { Season } from "@/lib/klcsra/types";
 import {
   addValueChangeAction, setBaseValueAction, setKlcNameAction, voidValueChangeAction,
@@ -17,10 +18,10 @@ import {
  * verbatim next to its row.
  */
 export default function RegisterAdmin({
-  seasons, season, register, changes, values,
+  seasons, season, register, changes, values, others,
 }: {
   seasons: Season[]; season: Season; register: RegisterPlayer[];
-  changes: ValueChange[]; values: PlayerValue[];
+  changes: ValueChange[]; values: PlayerValue[]; others: RegisterPerson[];
 }) {
   const hydrated = useHydrated();
   const router = useRouter();
@@ -54,7 +55,35 @@ export default function RegisterAdmin({
           />
         ))}
       </ul>
+      {others.length > 0 && (
+        <section className="space-y-2">
+          <h3 className="text-sm font-bold text-gray-900">Players without a club</h3>
+          <p className="text-[11px] text-gray-600">Official names only. Give a player a club to value them.</p>
+          <ul className="space-y-2">
+            {others.map((p) => <OtherRow key={p.id} person={p} />)}
+          </ul>
+        </section>
+      )}
     </div>
+  );
+}
+
+function OtherRow({ person }: { person: RegisterPerson }) {
+  const { pending, error, run } = useAction();
+  const [name, setName] = useState(person.klcName ?? "");
+  return (
+    <li data-testid="other-row" data-player-id={person.id} className="rounded-xl border border-gray-200 bg-white p-3 text-[12px]">
+      <p className="font-semibold text-gray-900">{person.displayName}</p>
+      <div className="mt-2 grid grid-cols-[1fr_auto] gap-2">
+        <input data-testid="name-input" value={name} onChange={(e) => setName(e.target.value)}
+          placeholder="Official KLC name" aria-label="Official KLC name"
+          className="rounded-lg border border-gray-300 px-2 py-1" />
+        <button data-testid="name-save" disabled={pending}
+          onClick={() => run(() => setKlcNameAction(person.id, name))}
+          className="rounded-lg bg-gray-900 px-3 py-1 font-semibold text-white disabled:opacity-50">Save name</button>
+      </div>
+      {error && <p data-testid="register-error" role="alert" className="mt-1 text-red-700">{error}</p>}
+    </li>
   );
 }
 

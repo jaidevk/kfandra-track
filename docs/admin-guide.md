@@ -127,7 +127,8 @@ name**. Only KFANDRA can open it; other staff see a message instead.
 - **Season:** pick it at the top. It opens on the active season, otherwise the
   next upcoming one.
 - **Who is listed:** the manager of every active club. A player's club is the
-  club they manage.
+  club they manage. Active players who manage no club are listed below, under
+  **Players without a club**, with their official name only.
 - **Per player:** type the official name and tap **Save name**; type the base
   value and tap **Save value**. Each change is logged.
 - **Flags:**

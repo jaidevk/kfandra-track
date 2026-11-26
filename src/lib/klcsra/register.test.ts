@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildRegister } from "./register";
+import { buildRegister, playersWithoutClub } from "./register";
 
 const clubs = [
   { id: "c2", name: "Bravo", sortOrder: 2, managerPlayerId: "p1" },
@@ -31,5 +31,17 @@ describe("buildRegister", () => {
   it("skips a club whose manager isn't a known player", () => {
     const r = buildRegister([{ id: "c9", name: "Ghost", sortOrder: 0, managerPlayerId: "zz" }], players, []);
     expect(r).toEqual([]);
+  });
+});
+
+describe("playersWithoutClub", () => {
+  it("lists everyone not in the register, by app name", () => {
+    const people = [
+      { id: "p1", displayName: "Pat", klcName: "Patrick" },
+      { id: "p3", displayName: "zed", klcName: null },
+      { id: "p4", displayName: "Abe", klcName: "Abraham" },
+    ];
+    const r = buildRegister(clubs, players, []);
+    expect(playersWithoutClub(people, r).map((p) => p.id)).toEqual(["p4", "p3"]);
   });
 });

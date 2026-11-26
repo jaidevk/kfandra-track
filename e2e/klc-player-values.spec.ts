@@ -157,3 +157,21 @@ test("KFANDRA adds a dated change and the history shows it", async ({ browser })
     await k.context.close();
   }
 });
+
+test("KFANDRA sets the official name of a player without a club", async ({ browser }) => {
+  const loner = await seedPlayer("user", "E2E V Loner");
+  const k = await openAs(browser, "kfandra", "E2E V KFANDRA");
+  try {
+    await k.page.goto("/admin/klc/register");
+    await expect(k.page.getByTestId("register-admin")).toHaveAttribute("data-hydrated", "true");
+    await expect(k.page.locator(`[data-testid="register-row"][data-player-id="${loner.id}"]`)).toHaveCount(0);
+    const row = k.page.locator(`[data-testid="other-row"][data-player-id="${loner.id}"]`);
+    await row.getByTestId("name-input").fill("E2E Loner Official");
+    await row.getByTestId("name-save").click();
+    await expect.poll(async () =>
+      (await db.sql<{ n: string | null }>(`select klc_name as n from players where id = $1`, [loner.id]))[0]?.n,
+    ).toBe("E2E Loner Official");
+  } finally {
+    await k.context.close();
+  }
+});

@@ -1,7 +1,7 @@
 import { getCurrentPlayer } from "@/lib/auth/current-user";
 import { canReopenMatch } from "@/lib/klcsra/access";
 import { listSeasons } from "@/lib/klcsra/repository";
-import { loadSeasonValues } from "@/lib/klcsra/value-repository";
+import { listPlayersWithoutClub, loadSeasonValues } from "@/lib/klcsra/value-repository";
 import type { Season } from "@/lib/klcsra/types";
 import RegisterAdmin from "./register-admin";
 
@@ -34,7 +34,9 @@ export default async function RegisterPage({
   const season = seasons.find((s) => s.id === seasonParam) ?? defaultRegisterSeason(seasons);
   if (!season) return <p className="text-sm text-gray-600">Create a season first.</p>;
   const { register, changes, values } = await loadSeasonValues(season);
+  const others = await listPlayersWithoutClub(register);
   return (
-    <RegisterAdmin seasons={seasons} season={season} register={register} changes={changes} values={values} />
+    <RegisterAdmin seasons={seasons} season={season} register={register} changes={changes} values={values}
+      others={others} />
   );
 }

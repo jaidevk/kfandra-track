@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { loadValueRules } from "./config";
 import { listCountedMatches } from "./league-repository";
 import { computePlayerValues, type PlayerValue, type RegisterPlayer, type ValueChange } from "./player-values";
-import { buildRegister } from "./register";
+import { buildRegister, playersWithoutClub, type RegisterPerson } from "./register";
 import type { Season } from "./types";
 
 /**
@@ -61,6 +61,17 @@ export async function loadSeasonValues(season: Season): Promise<{
     listRegister(season.id), listValueChanges(season.id), loadValueRules(), listCountedMatches(season),
   ]);
   return { register, changes, values: computePlayerValues({ players: register, matches, changes, rules }) };
+}
+
+/** Active players who manage no active club, for their official names. */
+export async function listPlayersWithoutClub(register: RegisterPlayer[]): Promise<RegisterPerson[]> {
+  const admin = createAdminClient();
+  const { data, error } = await admin.from("players").select("id, display_name, klc_name").eq("is_active", true);
+  if (error) throw new Error(`Failed to load the players: ${error.message}`);
+  return playersWithoutClub(
+    (data ?? []).map((p) => ({ id: p.id, displayName: p.display_name, klcName: p.klc_name })),
+    register,
+  );
 }
 
 export async function getBaseValue(seasonId: string, playerId: string): Promise<number | null> {
